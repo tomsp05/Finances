@@ -124,7 +124,7 @@ struct AddTransactionView: View {
         VStack(spacing: 20) {
             // Transaction type selector
             VStack(alignment: .leading, spacing: 10) {
-                Text("Transaction Type")
+                Text("")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 

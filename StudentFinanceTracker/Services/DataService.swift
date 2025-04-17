@@ -144,3 +144,46 @@ class DataService {
         return nil
     }
 }
+
+//
+//  BudgetService.swift
+//  StudentFinanceTracker
+//
+//  Created by Tom Speake on 4/17/25.
+//
+
+import Foundation
+
+extension DataService {
+    // File URL for budgets
+    private var budgetsFileURL: URL {
+        // Access the documents directory directly instead of using the private property
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        let documentsDirectory = paths[0]
+        return documentsDirectory.appendingPathComponent("budgets.json")
+    }
+    
+    // Save budgets to file
+    func saveBudgets(_ budgets: [Budget]) {
+        do {
+            let data = try JSONEncoder().encode(budgets)
+            try data.write(to: budgetsFileURL)
+        } catch {
+            print("Failed to save budgets: \(error.localizedDescription)")
+        }
+    }
+    
+    // Load budgets from file
+    func loadBudgets() -> [Budget]? {
+        guard let data = try? Data(contentsOf: budgetsFileURL) else {
+            return nil
+        }
+        
+        do {
+            return try JSONDecoder().decode([Budget].self, from: data)
+        } catch {
+            print("Failed to load budgets: \(error.localizedDescription)")
+            return nil
+        }
+    }
+}

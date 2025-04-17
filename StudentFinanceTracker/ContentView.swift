@@ -92,6 +92,7 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ScrollView {
+      
                 VStack(spacing: 24) {
                     // Header with current balance
                     NavigationLink(destination: AccountsListView()) {
@@ -168,11 +169,11 @@ struct ContentView: View {
                     // Navigation cards in a 2x2 grid using the theme color
                     VStack(spacing: 16) {
                         HStack(spacing: 16) {
-                            NavigationLink(destination: PayCreditCardView()) {
+                            NavigationLink(destination: BudgetListView()) {
                                 NavCardView(
-                                    title: "Pay",
-                                    subtitle: "Credit Card",
-                                    iconName: "arrow.right.circle.dotted"
+                                    title: "Budgets",
+                                    subtitle: "Keep Track",
+                                    iconName: "sterlingsign.gauge.chart.leftthird.topthird.rightthird"
                                 )
                             }
                             

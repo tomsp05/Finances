@@ -87,29 +87,6 @@ struct AccountsListView: View {
                                 if !creditAccounts.isEmpty {
                                     accountSection(title: "Credit Cards", accounts: creditAccounts, iconName: "creditcard.fill")
                                     
-                                    // Add Pay Credit Card button
-                                    NavigationLink(destination: PayCreditCardView()) {
-                                        HStack {
-                                            Image(systemName: "creditcard.arrow.and.receipt")
-                                                .font(.title2)
-                                                .foregroundColor(viewModel.themeColor)
-                                            
-                                            Text("Pay Credit Card")
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(viewModel.themeColor)
-                                            
-                                            Spacer()
-                                            
-                                            Image(systemName: "chevron.right")
-                                                .foregroundColor(.gray)
-                                        }
-                                        .padding()
-                                        .background(viewModel.themeColor.opacity(0.1))
-                                        .cornerRadius(15)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                    .padding(.horizontal)
-                                    .padding(.bottom, 10)
                                 }
                 
                 // Add Account Button
