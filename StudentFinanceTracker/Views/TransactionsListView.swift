@@ -3,6 +3,7 @@ import SwiftUI
 struct TransactionsListView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @State private var showFilterSheet = false
+    @Environment(\.colorScheme) var colorScheme
     
     // Filter state
     @State private var filterState = TransactionFilterState()
@@ -90,7 +91,7 @@ struct TransactionsListView: View {
         }
         .navigationTitle("Transactions")
         .navigationBarItems(trailing: filterButton)
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .sheet(isPresented: $showFilterSheet) {
             NavigationView {
                 TransactionFilterView(filterState: $filterState)
@@ -184,7 +185,7 @@ struct TransactionsListView: View {
             
             Divider()
         }
-        .background(Color(.systemBackground))
+        .background(Color(UIColor.secondarySystemGroupedBackground))
     }
     
     // Filter tag component
@@ -199,7 +200,7 @@ struct TransactionsListView: View {
         .padding(.horizontal, 12)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(color.opacity(0.15))
+                .fill(color.opacity(colorScheme == .dark ? 0.25 : 0.15))
         )
         .foregroundColor(color)
     }
@@ -288,7 +289,7 @@ struct TransactionsListView: View {
                         .padding(.vertical, 12)
                         .background(viewModel.themeColor)
                         .cornerRadius(10)
-                        .shadow(color: viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
+                        .shadow(color: colorScheme == .dark ? Color.clear : viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
                 }
             }
             

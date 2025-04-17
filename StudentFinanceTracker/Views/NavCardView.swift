@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NavCardView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     
     /// The main text (e.g. for net balance, this is the £ sign and value).
     var title: String
@@ -49,14 +50,14 @@ struct NavCardView: View {
                 // Use theme color if no specific color is provided
                 let backgroundColor = cardColor ?? viewModel.themeColor
                 
-                // Base color
-                backgroundColor
+                // Base color with slight adjustment for dark mode
+                backgroundColor.opacity(colorScheme == .dark ? 0.9 : 1.0)
                 
-                // Gradient overlay for more depth
+                // Gradient overlay for more depth - adjusted for dark mode
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        backgroundColor.opacity(0.7),
-                        backgroundColor
+                        backgroundColor.opacity(colorScheme == .dark ? 0.6 : 0.7),
+                        backgroundColor.opacity(colorScheme == .dark ? 0.95 : 1.0)
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -71,13 +72,18 @@ struct NavCardView: View {
                                 path.addLine(to: CGPoint(x: 0, y: i))
                             }
                         }
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.07 : 0.1), lineWidth: 1)
                     }
                 }
             }
         )
         .cornerRadius(20)
-        .shadow(color: (cardColor ?? viewModel.themeColor).opacity(0.5), radius: isProminent ? 15 : 10, x: 0, y: isProminent ? 8 : 5)
+        .shadow(
+            color: (cardColor ?? viewModel.themeColor).opacity(colorScheme == .dark ? 0.2 : 0.5),
+            radius: isProminent ? (colorScheme == .dark ? 10 : 15) : (colorScheme == .dark ? 7 : 10),
+            x: 0,
+            y: isProminent ? (colorScheme == .dark ? 5 : 8) : (colorScheme == .dark ? 3 : 5)
+        )
     }
     
     // Helper: convert Alignment into TextAlignment for multiline text.
@@ -101,34 +107,6 @@ struct NavCardView: View {
             return .trailing
         default:
             return .leading
-        }
-    }
-}
-
-struct NavCardView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            NavCardView(
-                title: "£1,234.56",
-                subtitle: "Current Balance",
-                cardColor: Color.blue,
-                textAlignment: .center,
-                isProminent: true,
-                iconName: "creditcard.fill"
-            )
-            .environmentObject(FinanceViewModel())
-            .previewLayout(.sizeThatFits)
-            .padding()
-            
-            NavCardView(
-                title: "Accounts",
-                subtitle: "",
-                cardColor: nil, // Using theme color
-                iconName: "folder.fill"
-            )
-            .environmentObject(FinanceViewModel())
-            .previewLayout(.sizeThatFits)
-            .padding()
         }
     }
 }

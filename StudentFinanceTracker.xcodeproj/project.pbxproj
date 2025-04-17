@@ -34,6 +34,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Models/CurrencyFormatting.swift,
+				ViewModels/darkMode.swift,
 			);
 			target = 7A9B39532DAD883100A7693B /* StudentFinanceTracker */;
 		};
@@ -45,6 +46,7 @@
 			buildPhase = 7A9B39522DAD883100A7693B /* Resources */;
 			membershipExceptions = (
 				Models/CurrencyFormatting.swift,
+				ViewModels/darkMode.swift,
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */

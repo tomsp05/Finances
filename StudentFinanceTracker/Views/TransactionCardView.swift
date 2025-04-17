@@ -3,6 +3,7 @@ import SwiftUI
 struct TransactionCardView: View {
     let transaction: Transaction
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     
     // Animation state
     @State private var isAppearing: Bool = false
@@ -21,11 +22,11 @@ struct TransactionCardView: View {
     var transactionColor: Color {
         switch transaction.type {
         case .income:
-            return .green
+            return colorScheme == .dark ? .green : .green.opacity(0.9)
         case .expense:
-            return .red
+            return colorScheme == .dark ? .red : .red.opacity(0.9)
         case .transfer:
-            return .blue
+            return colorScheme == .dark ? .blue : .blue.opacity(0.9)
         }
     }
         
@@ -75,8 +76,8 @@ struct TransactionCardView: View {
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    transactionColor.opacity(0.7),
-                                    transactionColor.opacity(0.5)
+                                    transactionColor.opacity(colorScheme == .dark ? 0.8 : 0.7),
+                                    transactionColor.opacity(colorScheme == .dark ? 0.6 : 0.5)
                                 ]),
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -88,7 +89,7 @@ struct TransactionCardView: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                 }
-                .shadow(color: transactionColor.opacity(0.3), radius: 3, x: 0, y: 2)
+                .shadow(color: transactionColor.opacity(colorScheme == .dark ? 0.2 : 0.3), radius: 3, x: 0, y: 2)
                 .scaleEffect(isAppearing ? 1.0 : 0.8)
                 .opacity(isAppearing ? 1.0 : 0.0)
                 
@@ -104,7 +105,7 @@ struct TransactionCardView: View {
                             .font(.system(size: 12, weight: .medium))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(viewModel.themeColor.opacity(0.15))
+                            .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.25 : 0.15))
                             .foregroundColor(viewModel.themeColor)
                             .cornerRadius(4)
                         
@@ -127,7 +128,7 @@ struct TransactionCardView: View {
                         .font(.system(size: 12, weight: .medium))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color(.systemGray5))
+                        .background(Color(UIColor.tertiarySystemFill))
                         .cornerRadius(4)
                         .foregroundColor(.secondary)
                     
@@ -173,7 +174,7 @@ struct TransactionCardView: View {
                         .padding(.vertical, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.blue.opacity(0.15))
+                                .fill(Color.blue.opacity(colorScheme == .dark ? 0.25 : 0.15))
                         )
                         .foregroundColor(.blue)
                     }
@@ -189,7 +190,7 @@ struct TransactionCardView: View {
                         .padding(.vertical, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.purple.opacity(0.15))
+                                .fill(Color.purple.opacity(colorScheme == .dark ? 0.25 : 0.15))
                         )
                         .foregroundColor(.purple)
                     }
@@ -205,7 +206,7 @@ struct TransactionCardView: View {
                         .padding(.vertical, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.orange.opacity(0.15))
+                                .fill(Color.orange.opacity(colorScheme == .dark ? 0.25 : 0.15))
                         )
                         .foregroundColor(.orange)
                     }
@@ -218,17 +219,17 @@ struct TransactionCardView: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 15)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.07), radius: 8, x: 0, y: 2)
+                .fill(Color(UIColor.secondarySystemBackground))
+                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.07), radius: 8, x: 0, y: 2)
         )
         .overlay(
             // Add a subtle accent border based on transaction type
             RoundedRectangle(cornerRadius: 15)
                 .stroke(
-                    isFutureDate ? Color.blue.opacity(0.3) :
-                    transaction.isRecurring ? Color.purple.opacity(0.3) :
-                    transaction.isSplit ? Color.orange.opacity(0.3) :
-                    transactionColor.opacity(0.2),
+                    isFutureDate ? Color.blue.opacity(colorScheme == .dark ? 0.4 : 0.3) :
+                    transaction.isRecurring ? Color.purple.opacity(colorScheme == .dark ? 0.4 : 0.3) :
+                    transaction.isSplit ? Color.orange.opacity(colorScheme == .dark ? 0.4 : 0.3) :
+                    transactionColor.opacity(colorScheme == .dark ? 0.3 : 0.2),
                     lineWidth: 1
                 )
         )
@@ -237,67 +238,5 @@ struct TransactionCardView: View {
                 isAppearing = true
             }
         }
-    }
-}
-
-struct TransactionCardView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            // Standard transaction
-            TransactionCardView(transaction:
-                Transaction(
-                    date: Date(),
-                    amount: 45.99,
-                    description: "Groceries",
-                    type: .expense,
-                    categoryId: UUID()
-                )
-            )
-            
-            // Future transaction
-            TransactionCardView(transaction:
-                Transaction(
-                    date: Date().addingTimeInterval(60*60*24*5),
-                    amount: 200.00,
-                    description: "Rent",
-                    type: .expense,
-                    categoryId: UUID(),
-                    isFutureTransaction: true
-                )
-            )
-            
-            // Recurring transaction
-            TransactionCardView(transaction:
-                Transaction(
-                    date: Date(),
-                    amount: 9.99,
-                    description: "Netflix Subscription",
-                    type: .expense,
-                    categoryId: UUID(),
-                    isRecurring: true,
-                    recurrenceInterval: .monthly
-                )
-            )
-            
-            // Split transaction
-            TransactionCardView(transaction: {
-                var transaction = Transaction(
-                    date: Date(),
-                    amount: 24.50,
-                    description: "Dinner with Alex",
-                    type: .expense,
-                    categoryId: UUID()
-                )
-                transaction.isSplit = true
-                transaction.friendName = "Alex"
-                transaction.friendAmount = 24.50
-                transaction.userAmount = 24.50
-                return transaction
-            }())
-        }
-        .environmentObject(FinanceViewModel())
-        .previewLayout(.sizeThatFits)
-        .padding()
-        .background(Color(.systemGroupedBackground))
     }
 }

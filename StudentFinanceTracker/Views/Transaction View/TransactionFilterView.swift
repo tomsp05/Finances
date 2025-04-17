@@ -4,6 +4,7 @@ struct TransactionFilterView: View {
     @Binding var filterState: TransactionFilterState
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme // Add colorScheme environment
     
     // Temporary state for editing amount values
     @State private var minAmountString: String = ""
@@ -63,7 +64,8 @@ struct TransactionFilterView: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(filterState.timeFilter == filter ?
-                                              viewModel.themeColor.opacity(0.1) : Color(.systemBackground))
+                                              viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1) :
+                                              Color(UIColor.secondarySystemBackground))
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
@@ -86,14 +88,15 @@ struct TransactionFilterView: View {
                         // Start Date
                         ZStack {
                             RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemBackground))
-                                .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+                                .fill(Color(UIColor.secondarySystemBackground))
+                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                             
                             DatePicker("Start Date", selection: Binding(
                                 get: { self.filterState.customStartDate ?? Date() },
                                 set: { self.filterState.customStartDate = $0 }
                             ), displayedComponents: .date)
                             .datePickerStyle(CompactDatePickerStyle())
+                            .accentColor(viewModel.themeColor)
                             .padding()
                         }
                         .frame(height: 60)
@@ -101,14 +104,15 @@ struct TransactionFilterView: View {
                         // End Date
                         ZStack {
                             RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemBackground))
-                                .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+                                .fill(Color(UIColor.secondarySystemBackground))
+                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                             
                             DatePicker("End Date", selection: Binding(
                                 get: { self.filterState.customEndDate ?? Date() },
                                 set: { self.filterState.customEndDate = $0 }
                             ), displayedComponents: .date)
                             .datePickerStyle(CompactDatePickerStyle())
+                            .accentColor(viewModel.themeColor)
                             .padding()
                         }
                         .frame(height: 60)
@@ -147,8 +151,8 @@ struct TransactionFilterView: View {
                     NavigationLink(destination: CategoryFilterView(selectedCategories: $filterState.selectedCategories)) {
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemBackground))
-                                .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+                                .fill(Color(UIColor.secondarySystemBackground))
+                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                             
                             HStack {
                                 Image(systemName: "tag")
@@ -181,8 +185,8 @@ struct TransactionFilterView: View {
                     // Min Amount
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 15)
-                            .fill(Color(.systemBackground))
-                            .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+                            .fill(Color(UIColor.secondarySystemBackground))
+                            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                         
                         HStack {
                             Text("Minimum")
@@ -214,8 +218,8 @@ struct TransactionFilterView: View {
                     // Max Amount
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 15)
-                            .fill(Color(.systemBackground))
-                            .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+                            .fill(Color(UIColor.secondarySystemBackground))
+                            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                         
                         HStack {
                             Text("Maximum")
@@ -253,8 +257,8 @@ struct TransactionFilterView: View {
                     
                     ZStack {
                         RoundedRectangle(cornerRadius: 15)
-                            .fill(Color(.systemBackground))
-                            .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+                            .fill(Color(UIColor.secondarySystemBackground))
+                            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                         
                         Toggle("Only Show Recurring Transactions", isOn: $filterState.onlyRecurring)
                             .toggleStyle(SwitchToggleStyle(tint: viewModel.themeColor))
@@ -273,9 +277,9 @@ struct TransactionFilterView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(Color.gray)
+                            .background(Color(UIColor.systemGray))
                             .cornerRadius(15)
-                            .shadow(color: Color.gray.opacity(0.4), radius: 8, x: 0, y: 4)
+                            .shadow(color: colorScheme == .dark ? Color.clear : Color.gray.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                     
                     Button(action: {
@@ -288,7 +292,7 @@ struct TransactionFilterView: View {
                             .padding(.vertical, 16)
                             .background(viewModel.themeColor)
                             .cornerRadius(15)
-                            .shadow(color: viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
+                            .shadow(color: colorScheme == .dark ? Color.clear : viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                 }
                 .padding(.top, 10)
@@ -296,7 +300,7 @@ struct TransactionFilterView: View {
             .padding()
             .padding(.bottom, 20)
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Filter Transactions")
     }
 }
@@ -308,6 +312,7 @@ struct TypeFilterButton: View {
     var action: () -> Void
     
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         Button(action: action) {
@@ -317,7 +322,7 @@ struct TypeFilterButton: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(isSelected ? viewModel.themeColor : Color(.systemGray6))
+                        .fill(isSelected ? viewModel.themeColor : Color(UIColor.tertiarySystemFill))
                 )
                 .foregroundColor(isSelected ? .white : .primary)
         }
@@ -328,6 +333,7 @@ struct TypeFilterButton: View {
 struct CategoryFilterView: View {
     @Binding var selectedCategories: Set<UUID>
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     
     // Grid layout for categories
     private let columns = [
@@ -408,8 +414,9 @@ struct CategoryFilterView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(Color.gray)
+                            .background(Color(UIColor.systemGray))
                             .cornerRadius(15)
+                            .shadow(color: colorScheme == .dark ? Color.clear : Color.gray.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                     
                     Button(action: {
@@ -424,6 +431,7 @@ struct CategoryFilterView: View {
                             .padding(.vertical, 16)
                             .background(viewModel.themeColor)
                             .cornerRadius(15)
+                            .shadow(color: colorScheme == .dark ? Color.clear : viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                 }
                 .padding(.horizontal)
@@ -431,7 +439,7 @@ struct CategoryFilterView: View {
             }
             .padding(.vertical)
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Select Categories")
     }
 }
@@ -443,6 +451,15 @@ struct CategoryFilterButton: View {
     let onTap: () -> Void
     
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var categoryColor: Color {
+        if category.type == .income {
+            return .green
+        } else {
+            return .red
+        }
+    }
     
     var body: some View {
         Button(action: onTap) {
@@ -450,15 +467,13 @@ struct CategoryFilterButton: View {
                 ZStack {
                     Circle()
                         .fill(isSelected ?
-                              (category.type == .income ? Color.green.opacity(0.2) : Color.red.opacity(0.2)) :
-                              Color.gray.opacity(0.1))
+                              categoryColor.opacity(colorScheme == .dark ? 0.3 : 0.2) :
+                              Color.gray.opacity(colorScheme == .dark ? 0.2 : 0.1))
                         .frame(width: 50, height: 50)
                     
                     Image(systemName: category.iconName)
                         .font(.system(size: 22))
-                        .foregroundColor(isSelected ?
-                                        (category.type == .income ? .green : .red) :
-                                        .gray)
+                        .foregroundColor(isSelected ? categoryColor : .gray)
                 }
                 
                 Text(category.name)
@@ -472,17 +487,32 @@ struct CategoryFilterButton: View {
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(isSelected ?
-                          (category.type == .income ? Color.green.opacity(0.1) : Color.red.opacity(0.1)) :
+                          categoryColor.opacity(colorScheme == .dark ? 0.15 : 0.1) :
                           Color.clear)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ?
-                            (category.type == .income ? Color.green : Color.red) :
-                            Color.clear,
-                            lineWidth: 2)
+                    .stroke(isSelected ? categoryColor : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+extension FinanceViewModel {
+    /// Returns a dynamic version of the theme color that adapts to dark mode
+    var adaptiveThemeColor: Color {
+        // Use current theme color but adjust opacity or brightness based on color scheme
+        Color(themeColor)
+    }
+    
+    /// Returns a standard color for use with cards and elevated content
+    func cardBackgroundColor(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : .white
+    }
+    
+    /// Returns a shadow suitable for the current color scheme
+    func shadowColor(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color.clear : Color.black.opacity(0.06)
     }
 }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     
     /// State to track previous balance for animation
     @State private var previousBalance: Double = 0.0
@@ -106,10 +107,15 @@ struct ContentView: View {
                                     value: netCurrentBalance,
                                     fromValue: previousBalance,
                                     isAnimating: isAnimating,
-                                    fontSize: 42
+                                    fontSize: 42,
+                                    positiveColor: colorScheme == .dark ? .green : .green.opacity(0.8),
+                                    negativeColor: colorScheme == .dark ? .red : .red.opacity(0.8)
                                 )
                                 .scaleEffect(animationScale)
-                                .modifier(ShimmerEffect(isAnimating: isAnimating))
+                                .modifier(ShimmerEffect(
+                                    isAnimating: isAnimating,
+                                    isDarkMode: colorScheme == .dark
+                                ))
                                 
                                 // Change amount badge
                                 if showChangeAmount && previousBalance != netCurrentBalance {
@@ -128,8 +134,8 @@ struct ContentView: View {
                                         .padding(.vertical, 6)
                                         .background(
                                             Capsule()
-                                                .fill(Color(.systemBackground))
-                                                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                                                .fill(Color(UIColor.secondarySystemBackground))
+                                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
                                         )
                                         .offset(y: -50)
                                     }
@@ -151,9 +157,9 @@ struct ContentView: View {
                         }
                         .padding(.vertical, 20)
                         .frame(maxWidth: .infinity)
-                        .background(Color(.systemBackground))
+                        .background(Color(UIColor.secondarySystemBackground))
                         .cornerRadius(15)
-                        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         .padding(.horizontal)
                         .contentShape(Rectangle())
                     }
@@ -246,7 +252,7 @@ struct ContentView: View {
                                     .foregroundColor(viewModel.themeColor)
                                     .padding()
                                     .frame(maxWidth: .infinity)
-                                    .background(viewModel.themeColor.opacity(0.1))
+                                    .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
                                     .cornerRadius(15)
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -257,7 +263,7 @@ struct ContentView: View {
                 .padding(.bottom, 20)
             }
             .navigationTitle("Finance")
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
+            .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
             .onAppear {
                 // Store initial balance value when view appears
                 previousBalance = netCurrentBalance
@@ -312,15 +318,10 @@ struct ContentView: View {
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView().environmentObject(FinanceViewModel())
-    }
-}
-
 // Custom shimmer effect modifier for balance animation
 struct ShimmerEffect: ViewModifier {
     var isAnimating: Bool
+    var isDarkMode: Bool
     @State private var phase: CGFloat = 0
     
     func body(content: Content) -> some View {
@@ -331,8 +332,8 @@ struct ShimmerEffect: ViewModifier {
                         LinearGradient(
                             gradient: Gradient(stops: [
                                 .init(color: Color.clear, location: 0),
-                                .init(color: Color.white.opacity(0.5), location: 0.3),
-                                .init(color: Color.white.opacity(0.5), location: 0.7),
+                                .init(color: isDarkMode ? Color.white.opacity(0.3) : Color.white.opacity(0.5), location: 0.3),
+                                .init(color: isDarkMode ? Color.white.opacity(0.3) : Color.white.opacity(0.5), location: 0.7),
                                 .init(color: Color.clear, location: 1)
                             ]),
                             startPoint: .leading,
