@@ -3,6 +3,8 @@ import SwiftUI
 struct AddTransactionView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
+
     
     // Transaction fields
     @State private var amount: String = ""
@@ -94,7 +96,7 @@ struct AddTransactionView: View {
             // Bottom navigation area with progress bar and buttons
             bottomNavArea
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .navigationTitle(getNavigationTitle())
         .onAppear {
             // Default selections if needed
@@ -894,7 +896,7 @@ struct AddTransactionView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 10)
-            .background(Color(.systemBackground))
+            .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         }
     }
     

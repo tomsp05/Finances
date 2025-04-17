@@ -91,7 +91,7 @@ struct TransactionsListView: View {
         }
         .navigationTitle("Transactions")
         .navigationBarItems(trailing: filterButton)
-        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .sheet(isPresented: $showFilterSheet) {
             NavigationView {
                 TransactionFilterView(filterState: $filterState)
@@ -185,7 +185,7 @@ struct TransactionsListView: View {
             
             Divider()
         }
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
     }
     
     // Filter tag component

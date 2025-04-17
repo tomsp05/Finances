@@ -263,7 +263,7 @@ struct ContentView: View {
                 .padding(.bottom, 20)
             }
             .navigationTitle("Finance")
-            .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+            .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
             .onAppear {
                 // Store initial balance value when view appears
                 previousBalance = netCurrentBalance

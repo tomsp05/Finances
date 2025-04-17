@@ -3,6 +3,7 @@ import SwiftUI
 struct EditTransactionView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     
     let transaction: Transaction
     
@@ -101,7 +102,7 @@ struct EditTransactionView: View {
             .padding(.bottom, 30)
         }
         .navigationTitle("Edit Transaction")
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .alert(isPresented: $showDeleteAlert) {
             Alert(
                 title: Text("Delete Transaction"),

@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.presentationMode) var presentationMode
+    @Environment(\.colorScheme) var colorScheme
+
     
     // For editing account settings
     @State private var accountNames: [UUID: String] = [:]
@@ -34,6 +36,7 @@ struct SettingsView: View {
                     Text("Settings")
                         .font(.largeTitle)
                         .fontWeight(.bold)
+                    
                     
                     Spacer()
                     
@@ -306,7 +309,7 @@ struct SettingsView: View {
             }
             .padding(.bottom, 30)
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .onAppear {
             // Populate account edits
             for account in viewModel.accounts {

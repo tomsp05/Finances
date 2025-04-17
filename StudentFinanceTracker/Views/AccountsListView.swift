@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AccountsListView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     
     /// Computes the net current balance:
     /// (Current account balance) minus (sum of credit card balances)
@@ -132,7 +133,7 @@ struct AccountsListView: View {
             }
         }
         .navigationTitle("Accounts")
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
     }
     
     // Helper function to create account sections
