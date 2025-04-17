@@ -4,6 +4,9 @@ struct AccountsListView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
     
+    // Animation state
+    @State private var isAppearing: Bool = false
+    
     /// Computes the net current balance:
     /// (Current account balance) minus (sum of credit card balances)
     private var netCurrentBalance: Double {
@@ -83,11 +86,10 @@ struct AccountsListView: View {
                 }
                 
                 // Credit Card Accounts Section
-                // Credit Card Accounts Section
-                                if !creditAccounts.isEmpty {
-                                    accountSection(title: "Credit Cards", accounts: creditAccounts, iconName: "creditcard.fill")
-                                    
-                                }
+                if !creditAccounts.isEmpty {
+                    accountSection(title: "Credit Cards", accounts: creditAccounts, iconName: "creditcard.fill")
+                
+                }
                 
                 // Add Account Button
                 NavigationLink(destination: SettingsView()) {
@@ -111,6 +113,11 @@ struct AccountsListView: View {
         }
         .navigationTitle("Accounts")
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                isAppearing = true
+            }
+        }
     }
     
     // Helper function to create account sections
@@ -133,57 +140,98 @@ struct AccountsListView: View {
             }
             .padding(.horizontal)
             
-            // Account cards in this section
+            // Account cards in this section - now styled like transaction cards
             ForEach(accounts) { account in
-                HStack(spacing: 16) {
-                    // Account type indicator
-                    ZStack {
-                        Circle()
-                            .fill(getAccountColor(account.type).opacity(0.2))
-                            .frame(width: 50, height: 50)
+                VStack(spacing: 0) {
+                    HStack(alignment: .center, spacing: 12) {
+                        // Icon with colored background - matching transaction card style
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            getAccountColor(account.type).opacity(colorScheme == .dark ? 0.8 : 0.7),
+                                            getAccountColor(account.type).opacity(colorScheme == .dark ? 0.6 : 0.5)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 42, height: 42)
                         
-                        Image(systemName: getAccountIcon(account.type))
-                            .font(.system(size: 24))
-                            .foregroundColor(getAccountColor(account.type))
-                    }
-                    
-                    // Account details
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(account.name)
-                            .font(.headline)
-                        
-                        Text("Initial: \(formatCurrency(account.initialBalance))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    // Balance with color indication
-                    VStack(alignment: .trailing) {
-                        Text(formatCurrency(account.balance))
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundColor(getBalanceColor(account))
-                        
-                        // Balance change indicator
-                        if account.balance != account.initialBalance {
-                            let difference = account.balance - account.initialBalance
-                            HStack(spacing: 2) {
-                                Image(systemName: difference >= 0 ? "arrow.up" : "arrow.down")
-                                    .font(.system(size: 10))
-                                
-                                Text(formatCurrency(abs(difference)))
-                                    .font(.caption)
-                            }
-                            .foregroundColor(difference >= 0 ? .green : .red)
+                            Image(systemName: getAccountIcon(account.type))
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
                         }
+                        .shadow(color: getAccountColor(account.type).opacity(colorScheme == .dark ? 0.2 : 0.3), radius: 3, x: 0, y: 2)
+                        .scaleEffect(isAppearing ? 1.0 : 0.8)
+                        .opacity(isAppearing ? 1.0 : 0.0)
+                        
+                        // Account details
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(account.name)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            // Account type pill
+                            Text(accountTypeName(account.type))
+                                .font(.system(size: 12, weight: .medium))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                .foregroundColor(viewModel.themeColor)
+                                .cornerRadius(4)
+                        }
+                        .opacity(isAppearing ? 1.0 : 0.0)
+                        .offset(x: isAppearing ? 0 : -10)
+                        
+                        Spacer()
+                        
+                        // Balance with styling matching transaction cards
+                        VStack(alignment: .trailing, spacing: 4) {
+                            // Initial balance as pill
+                            Text("Initial: \(formatCurrency(account.initialBalance))")
+                                .font(.system(size: 12, weight: .medium))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color(UIColor.tertiarySystemFill))
+                                .cornerRadius(4)
+                                .foregroundColor(.secondary)
+                            
+                            // Current balance with better styling
+                            Text(formatCurrency(account.balance))
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(getBalanceColor(account))
+                            
+                            // Balance change indicator
+                            if account.balance != account.initialBalance {
+                                let difference = account.balance - account.initialBalance
+                                HStack(spacing: 4) {
+                                    Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                        .font(.system(size: 10))
+                                    
+                                    Text(formatCurrency(abs(difference)))
+                                        .font(.system(size: 12))
+                                }
+                                .foregroundColor(difference >= 0 ? .green : .red)
+                            }
+                        }
+                        .scaleEffect(isAppearing ? 1.0 : 1.1)
+                        .opacity(isAppearing ? 1.0 : 0.0)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
-                .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(15)
-                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(Color(UIColor.secondarySystemBackground))
+                        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.07), radius: 8, x: 0, y: 2)
+                )
+                .overlay(
+                    // Add a subtle accent border based on account type
+                    RoundedRectangle(cornerRadius: 15)
+                        .stroke(getAccountColor(account.type).opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
+                )
                 .padding(.horizontal)
             }
         }
@@ -211,6 +259,14 @@ struct AccountsListView: View {
             return account.balance > 0 ? .red : .green
         } else {
             return account.balance >= 0 ? .green : .red
+        }
+    }
+    
+    private func accountTypeName(_ type: AccountType) -> String {
+        switch type {
+        case .savings: return "Savings"
+        case .current: return "Current"
+        case .credit: return "Credit"
         }
     }
 }

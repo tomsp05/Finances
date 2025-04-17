@@ -92,79 +92,90 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-      
+
                 VStack(spacing: 24) {
                     // Header with current balance
                     NavigationLink(destination: AccountsListView()) {
-                        VStack(spacing: 8) {
-                            Text("Current Balance")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
+                    VStack(spacing: 8) {
+                        Text("Net Balance")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        ZStack(alignment: .center) {
+                            // Main balance with counting animation
+                            CountingValueView(
+                                value: netCurrentBalance,
+                                fromValue: previousBalance,
+                                isAnimating: isAnimating,
+                                fontSize: 42,
+                                positiveColor: colorScheme == .dark ? .white : .white.opacity(1),
+                                negativeColor: colorScheme == .dark ? .white : .white.opacity(1)
+                            )
+                            .scaleEffect(animationScale)
+                            .modifier(ShimmerEffect(
+                                isAnimating: isAnimating,
+                                isDarkMode: colorScheme == .dark
+                            ))
                             
-                            // Balance with animation wrapper
-                            ZStack(alignment: .center) {
-                                // Main balance with counting animation
-                                CountingValueView(
-                                    value: netCurrentBalance,
-                                    fromValue: previousBalance,
-                                    isAnimating: isAnimating,
-                                    fontSize: 42,
-                                    positiveColor: colorScheme == .dark ? .green : .green.opacity(0.8),
-                                    negativeColor: colorScheme == .dark ? .red : .red.opacity(0.8)
-                                )
-                                .scaleEffect(animationScale)
-                                .modifier(ShimmerEffect(
-                                    isAnimating: isAnimating,
-                                    isDarkMode: colorScheme == .dark
-                                ))
-                                
-                                // Change amount badge
-                                if showChangeAmount && previousBalance != netCurrentBalance {
-                                    let difference = netCurrentBalance - previousBalance
-                                    VStack {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                                .foregroundColor(difference >= 0 ? .green : .red)
-                                                .font(.system(size: 16))
-                                            
-                                            Text(formatCurrency(abs(difference)))
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(difference >= 0 ? .green : .red)
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            Capsule()
-                                                .fill(Color(UIColor.secondarySystemBackground))
-                                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                                        )
-                                        .offset(y: -50)
+                            // Change amount badge
+                            if showChangeAmount && previousBalance != netCurrentBalance {
+                                let difference = netCurrentBalance - previousBalance
+                                VStack {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                            .foregroundColor(difference >= 0 ? .green : .red)
+                                            .font(.system(size: 16))
+                                        
+                                        Text(formatCurrency(abs(difference)))
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(difference >= 0 ? .green : .red)
                                     }
-                                    .transition(.scale.combined(with: .opacity))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(UIColor.secondarySystemBackground))
+                                            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                                    )
+                                    .offset(y: -50)
                                 }
+                                .transition(.scale.combined(with: .opacity))
                             }
-                            
-                            // Visual cue that this is tappable
-                            HStack(spacing: 4) {
-                                Text("View Accounts")
-                                    .font(.caption)
-                                    .foregroundColor(viewModel.themeColor)
-                                
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundColor(viewModel.themeColor)
-                            }
-                            .padding(.top, 4)
                         }
-                        .padding(.vertical, 20)
-                        .frame(maxWidth: .infinity)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(15)
-                        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        .padding(.horizontal)
-                        .contentShape(Rectangle())
+                        
+                        // Visual cue that this is tappable
+                        HStack(spacing: 4) {
+                            Text("View Accounts")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                        }
+                        .padding(.top, 4)
+                        
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .padding(.vertical, 24)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                viewModel.themeColor.opacity(0.7),
+                                viewModel.themeColor
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .cornerRadius(20)
+                    .shadow(color: viewModel.themeColor.opacity(0.5), radius: 10, x: 0, y: 5)
+                    .padding(.horizontal)
+                    .padding(.top)}
+                    
+                    
+
                     
                     // Navigation cards in a 2x2 grid using the theme color
                     VStack(spacing: 16) {
