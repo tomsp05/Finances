@@ -153,7 +153,7 @@ struct AddTransactionView: View {
                 
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
+                        .fill(Color(UIColor.secondarySystemBackground))
                         .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                     
                     HStack {
@@ -189,7 +189,7 @@ struct AddTransactionView: View {
                 
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
+                        .fill(Color(UIColor.secondarySystemBackground))
                         .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                     
                     TextField("Enter description", text: $description)
@@ -206,7 +206,7 @@ struct AddTransactionView: View {
                 
                 ZStack {
                     RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
+                        .fill(Color(UIColor.secondarySystemBackground))
                         .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                     
                     DatePicker("", selection: $date, displayedComponents: .date)
@@ -225,7 +225,7 @@ struct AddTransactionView: View {
                     
                     ZStack {
                         RoundedRectangle(cornerRadius: 15)
-                            .fill(Color(.systemBackground))
+                            .fill(Color(UIColor.secondarySystemBackground))
                             .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                         
                         VStack(alignment: .leading, spacing: 8) {
@@ -364,7 +364,7 @@ struct AddTransactionView: View {
                     
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 15)
-                            .fill(Color(.systemBackground))
+                            .fill(Color(UIColor.secondarySystemBackground))
                             .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                         
                         TextField("Friend's name", text: $friendName)
@@ -387,7 +387,7 @@ struct AddTransactionView: View {
                         
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemBackground))
+                                .fill(Color(UIColor.secondarySystemBackground))
                                 .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                             
                             HStack {
@@ -415,7 +415,7 @@ struct AddTransactionView: View {
                         
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemBackground))
+                                .fill(Color(UIColor.secondarySystemBackground))
                                 .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                             
                             HStack {
@@ -597,7 +597,7 @@ struct AddTransactionView: View {
                                 .font(.headline)
                             
                             if friendPaymentIsOther {
-                                TextField("Cash, Venmo, etc", text: $friendPaymentDestination)
+                                TextField("Cash, etc", text: $friendPaymentDestination)
                                     .font(.subheadline)
                             } else {
                                 Text("External payment method")
@@ -811,7 +811,7 @@ struct AddTransactionView: View {
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(15)
             .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
             

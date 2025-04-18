@@ -395,7 +395,7 @@ struct SettingsView: View {
                             
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 15)
-                                    .fill(Color(.systemBackground))
+                                    .fill(Color(UIColor.secondarySystemBackground))
                                     .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                                 
                                 TextField("Account Name", text: Binding(
@@ -436,7 +436,7 @@ struct SettingsView: View {
                             
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 15)
-                                    .fill(Color(.systemBackground))
+                                    .fill(Color(UIColor.secondarySystemBackground))
                                     .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                                 
                                 HStack {
@@ -581,7 +581,11 @@ struct SettingsView: View {
             // Content
             content()
                 .padding()
-                .background(Color(.systemBackground))
+                .background(
+                    colorScheme == .dark
+                        ? Color(UIColor.secondarySystemBackground)
+                        : Color(UIColor.systemBackground)
+                )
                 .cornerRadius(15)
                 .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         }
@@ -622,7 +626,7 @@ struct SettingsView: View {
                         
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemBackground))
+                                .fill(Color(UIColor.secondarySystemBackground))
                                 .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                             
                             TextField("Account Name", text: $newAccountName)
@@ -660,7 +664,7 @@ struct SettingsView: View {
                         
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemBackground))
+                                .fill(Color(UIColor.secondarySystemBackground))
                                 .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                             
                             HStack {

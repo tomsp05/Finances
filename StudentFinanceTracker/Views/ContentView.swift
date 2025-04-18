@@ -3,6 +3,8 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.verticalSizeClass) var verticalSizeClass
     
     /// State to track previous balance for animation
     @State private var previousBalance: Double = 0.0
@@ -52,6 +54,20 @@ struct ContentView: View {
         return formatter.string(from: date)
     }
     
+    // Get appropriate font size based on device size class
+    private var balanceFontSize: CGFloat {
+        if horizontalSizeClass == .compact {
+            return verticalSizeClass == .compact ? 32 : 42 // Phone landscape vs portrait
+        } else {
+            return 50 // iPad
+        }
+    }
+    
+    // Determine appropriate padding based on screen size
+    private var horizontalPadding: CGFloat {
+        horizontalSizeClass == .compact ? 16 : 24
+    }
+    
     // Enhanced refreshBalanceDisplay method
     func refreshBalanceDisplay() {
         // Force view model to recalculate all accounts first
@@ -92,134 +108,93 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-
-                VStack(spacing: 24) {
+                VStack(spacing: adaptiveSpacing(24)) {
                     // Header with current balance
                     NavigationLink(destination: AccountsListView()) {
-                    VStack(spacing: 8) {
-                        Text("Net Balance")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        
-                        ZStack(alignment: .center) {
-                            // Main balance with counting animation
-                            CountingValueView(
-                                value: netCurrentBalance,
-                                fromValue: previousBalance,
-                                isAnimating: isAnimating,
-                                fontSize: 42,
-                                positiveColor: colorScheme == .dark ? .white : .white.opacity(1),
-                                negativeColor: colorScheme == .dark ? .white : .white.opacity(1)
-                            )
-                            .scaleEffect(animationScale)
-                            .modifier(ShimmerEffect(
-                                isAnimating: isAnimating,
-                                isDarkMode: colorScheme == .dark
-                            ))
+                        VStack(spacing: 8) {
+                            Text("Net Balance")
+                                .font(.headline)
+                                .foregroundColor(.white)
                             
-                            // Change amount badge
-                            if showChangeAmount && previousBalance != netCurrentBalance {
-                                let difference = netCurrentBalance - previousBalance
-                                VStack {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                            .foregroundColor(difference >= 0 ? .green : .red)
-                                            .font(.system(size: 16))
-                                        
-                                        Text(formatCurrency(abs(difference)))
-                                            .font(.system(size: 14, weight: .bold))
-                                            .foregroundColor(difference >= 0 ? .green : .red)
+                            ZStack(alignment: .center) {
+                                // Main balance with counting animation
+                                CountingValueView(
+                                    value: netCurrentBalance,
+                                    fromValue: previousBalance,
+                                    isAnimating: isAnimating,
+                                    fontSize: balanceFontSize,
+                                    positiveColor: colorScheme == .dark ? .white : .white.opacity(1),
+                                    negativeColor: colorScheme == .dark ? .white : .white.opacity(1)
+                                )
+                                .scaleEffect(animationScale)
+                                .modifier(ShimmerEffect(
+                                    isAnimating: isAnimating,
+                                    isDarkMode: colorScheme == .dark
+                                ))
+                                
+                                // Change amount badge
+                                if showChangeAmount && previousBalance != netCurrentBalance {
+                                    let difference = netCurrentBalance - previousBalance
+                                    VStack {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                                .foregroundColor(difference >= 0 ? .green : .red)
+                                                .font(.system(size: 16))
+                                            
+                                            Text(formatCurrency(abs(difference)))
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundColor(difference >= 0 ? .green : .red)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color(UIColor.secondarySystemBackground))
+                                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                                        )
+                                        .offset(y: -50)
                                     }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color(UIColor.secondarySystemBackground))
-                                            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                                    )
-                                    .offset(y: -50)
+                                    .transition(.scale.combined(with: .opacity))
                                 }
-                                .transition(.scale.combined(with: .opacity))
                             }
-                        }
-                        
-                        // Visual cue that this is tappable
-                        HStack(spacing: 4) {
-                            Text("View Accounts")
-                                .font(.caption)
-                                .foregroundColor(.white)
                             
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.white)
+                            // Visual cue that this is tappable
+                            HStack(spacing: 4) {
+                                Text("View Accounts")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.top, 4)
+                            
                         }
-                        .padding(.top, 4)
-                        
-                    }
-                    .padding(.vertical, 24)
-                    .padding(.horizontal, 20)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                viewModel.themeColor.opacity(0.7),
-                                viewModel.themeColor
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                        .padding(.vertical, adaptiveSpacing(24))
+                        .padding(.horizontal, adaptiveSpacing(20))
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    viewModel.themeColor.opacity(0.7),
+                                    viewModel.themeColor
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .cornerRadius(20)
-                    .shadow(color: viewModel.themeColor.opacity(0.5), radius: 10, x: 0, y: 5)
-                    .padding(.horizontal)
-                    .padding(.top)}
-                    
-                    
-
-                    
-                    // Navigation cards in a 2x2 grid using the theme color
-                    VStack(spacing: 16) {
-                        HStack(spacing: 16) {
-                            NavigationLink(destination: BudgetListView()) {
-                                NavCardView(
-                                    title: "Budgets",
-                                    subtitle: "Keep Track",
-                                    iconName: "sterlingsign.gauge.chart.leftthird.topthird.rightthird"
-                                )
-                            }
-                            
-                            NavigationLink(destination: TransactionAnalyticsView()) {
-                                NavCardView(
-                                    title: "Analytics",
-                                    subtitle: "View Spending",
-                                    iconName: "chart.pie.fill"
-                                )
-                            }
-                        }
-                        
-                        HStack(spacing: 16) {
-                            NavigationLink(destination: AddTransactionView()) {
-                                NavCardView(
-                                    title: "Add",
-                                    subtitle: "Transaction",
-                                    iconName: "plus.circle.fill"
-                                )
-                            }
-                            
-                            NavigationLink(destination: SettingsView()) {
-                                NavCardView(
-                                    title: "Settings",
-                                    subtitle: "Customise",
-                                    iconName: "gear"
-                                )
-                            }
-                        }
+                        .cornerRadius(20)
+                        .shadow(color: viewModel.themeColor.opacity(0.5), radius: 10, x: 0, y: 5)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.top)
                     }
-                    .padding(.horizontal)
+                    
+                    // Navigation cards in a grid layout that adapts to device size
+                    adaptiveNavCardsView()
                     
                     // Recent Transactions Section
                     VStack(alignment: .leading, spacing: 12) {
-                        
                         if viewModel.transactions.isEmpty {
                             VStack(spacing: 12) {
                                 Image(systemName: "doc.text")
@@ -270,7 +245,7 @@ struct ContentView: View {
                             .buttonStyle(PlainButtonStyle())
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, horizontalPadding)
                 }
                 .padding(.bottom, 20)
             }
@@ -326,6 +301,101 @@ struct ContentView: View {
                     previousBalance = newBalanceValue
                 }
             }
+        }
+        .navigationViewStyle(StackNavigationViewStyle()) // Ensures proper navigation style on all devices
+    }
+    
+    // Helper function to create adaptive spacing based on size class
+    private func adaptiveSpacing(_ defaultSpacing: CGFloat) -> CGFloat {
+        horizontalSizeClass == .compact ? defaultSpacing : defaultSpacing * 1.3
+    }
+    
+    // Adaptive grid layout for navigation cards
+    @ViewBuilder
+    private func adaptiveNavCardsView() -> some View {
+        if horizontalSizeClass == .compact && verticalSizeClass == .regular {
+            // Portrait phone layout - 2x2 grid
+            VStack(spacing: 16) {
+                HStack(spacing: 16) {
+                    navCardBudgets
+                    navCardAnalytics
+                }
+                
+                HStack(spacing: 16) {
+                    navCardAddTransaction
+                    navCardSettings
+                }
+            }
+            .padding(.horizontal, horizontalPadding)
+        } else if horizontalSizeClass == .compact && verticalSizeClass == .compact {
+            // Landscape phone layout - single row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    navCardBudgets
+                        .frame(width: 180)
+                    navCardAnalytics
+                        .frame(width: 180)
+                    navCardAddTransaction
+                        .frame(width: 180)
+                    navCardSettings
+                        .frame(width: 180)
+                }
+                .padding(.horizontal, horizontalPadding)
+            }
+        } else {
+            // iPad layout - adaptive grid
+            let columns = [
+                GridItem(.adaptive(minimum: 200, maximum: 300), spacing: 16)
+            ]
+            
+            LazyVGrid(columns: columns, spacing: 16) {
+                navCardBudgets
+                navCardAnalytics
+                navCardAddTransaction
+                navCardSettings
+            }
+            .padding(.horizontal, horizontalPadding)
+        }
+    }
+    
+    // Extract nav card views for reuse
+    private var navCardBudgets: some View {
+        NavigationLink(destination: BudgetListView()) {
+            NavCardView(
+                title: "Budgets",
+                subtitle: "Keep Track",
+                iconName: "sterlingsign.gauge.chart.leftthird.topthird.rightthird"
+            )
+        }
+    }
+    
+    private var navCardAnalytics: some View {
+        NavigationLink(destination: TransactionAnalyticsView()) {
+            NavCardView(
+                title: "Analytics",
+                subtitle: "View Spending",
+                iconName: "chart.pie.fill"
+            )
+        }
+    }
+    
+    private var navCardAddTransaction: some View {
+        NavigationLink(destination: AddTransactionView()) {
+            NavCardView(
+                title: "Add",
+                subtitle: "Transaction",
+                iconName: "plus.circle.fill"
+            )
+        }
+    }
+    
+    private var navCardSettings: some View {
+        NavigationLink(destination: SettingsView()) {
+            NavCardView(
+                title: "Settings",
+                subtitle: "Customise",
+                iconName: "gear"
+            )
         }
     }
 }

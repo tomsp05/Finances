@@ -198,8 +198,11 @@ struct EditTransactionView: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color(.systemBackground))
-        .cornerRadius(15)
+        .background(
+            colorScheme == .dark
+                ? Color(UIColor.secondarySystemBackground)
+                : Color(UIColor.systemBackground)
+        )        .cornerRadius(15)
         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
     
@@ -224,8 +227,11 @@ struct EditTransactionView: View {
                         .font(.system(size: 14, weight: .bold))
                 }
                 .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(expandedSection == section ? 15 : 15)
+                .background(
+                    colorScheme == .dark
+                        ? Color(UIColor.secondarySystemBackground)
+                        : Color(UIColor.systemBackground)
+                )                .cornerRadius(expandedSection == section ? 15 : 15)
             }
             .buttonStyle(PlainButtonStyle())
             .disabled(transaction.isSplit) // Disable editing for split transactions
@@ -263,14 +269,21 @@ struct EditTransactionView: View {
                     .padding(.top, 8)
                 }
                 .padding()
-                .background(Color(.systemBackground).opacity(0.5))
-                .cornerRadius(15)
+                .background(
+                    colorScheme == .dark
+                        ? Color(UIColor.secondarySystemBackground)
+                        : Color(UIColor.systemBackground)
+                )                .cornerRadius(15)
                 .transition(.opacity)
             }
         }
         .background(
             RoundedRectangle(cornerRadius: 15)
-                .fill(Color(.systemBackground))
+                .fill(
+                    colorScheme == .dark
+                        ? Color(UIColor.secondarySystemBackground)
+                        : Color(UIColor.systemBackground)
+                )
                 .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         )
     }
