@@ -12,6 +12,8 @@ struct SettingsView: View {
     @State private var accountTypes: [UUID: AccountType] = [:]
     @State private var editingAccount: Account? = nil
     @State private var showEditAccountSheet = false
+    @State private var showTestDataAlert = false
+    @State private var showDeleteConfirmation = false
     
     // Theme options
     let themeOptions = ["Blue", "Green", "Orange", "Purple", "Red", "Teal"]
@@ -26,7 +28,6 @@ struct SettingsView: View {
     @State private var newAccountType: AccountType = .savings
     @State private var newAccountBalance = ""
     @State private var accountToDelete: UUID? = nil
-    @State private var showDeleteConfirmation = false
     
     var body: some View {
         ScrollView {
@@ -261,6 +262,105 @@ struct SettingsView: View {
                     }
                 }
                 
+                // Add these sections to the existing SettingsView inside the body (right before the About section)
+
+                // Data management section
+                settingsSection(title: "Data Management", icon: "externaldrive.fill") {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Button(action: { showingExportOptions = true }) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up.fill")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.blue)
+                                    .cornerRadius(8)
+                                
+                                Text("Export Data")
+                                    .fontWeight(.semibold)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // Add test data button
+                        Button(action: {
+                            viewModel.generateTestData()
+                            showTestDataAlert = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.square.fill")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.green)
+                                    .cornerRadius(8)
+                                
+                                Text("Generate Test Data")
+                                    .fontWeight(.semibold)
+                                
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // Delete all transactions button
+                        Button(action: {
+                            showDeleteConfirmation = true
+                        }) {
+                            HStack {
+                                Image(systemName: "trash.fill")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.red)
+                                    .cornerRadius(8)
+                                
+                                Text("Delete All Transactions")
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.red)
+                                
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        Button(action: resetAllData) {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.red)
+                                    .cornerRadius(8)
+                                
+                                Text("Reset All Data")
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.red)
+                                
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                
                 // About section
                 settingsSection(title: "About", icon: "info.circle.fill") {
                     VStack(alignment: .leading, spacing: 12) {
@@ -347,6 +447,23 @@ struct SettingsView: View {
                     if let id = accountToDelete {
                         deleteAccount(id: id)
                     }
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .alert(isPresented: $showTestDataAlert) {
+            Alert(
+                title: Text("Test Data Generated"),
+                message: Text("6 months of sample transactions have been added to your account."),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        .alert(isPresented: $showDeleteConfirmation) {
+            Alert(
+                title: Text("Delete All Transactions"),
+                message: Text("Are you sure you want to delete all transactions? This action cannot be undone."),
+                primaryButton: .destructive(Text("Delete")) {
+                    viewModel.deleteAllTransactions()
                 },
                 secondaryButton: .cancel()
             )

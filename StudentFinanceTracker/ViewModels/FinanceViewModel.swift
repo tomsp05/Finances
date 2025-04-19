@@ -639,3 +639,239 @@ extension FinanceViewModel {
     }
 }
 
+// Add this extension to FinanceViewModel.swift
+
+extension FinanceViewModel {
+    // Generate test data for the app
+    func generateTestData() {
+        // First, ensure we have categories to use
+        if incomeCategories.isEmpty {
+            incomeCategories = Category.defaultIncomeCategories
+        }
+        
+        if expenseCategories.isEmpty {
+            expenseCategories = Category.defaultExpenseCategories
+        }
+        
+        // Make sure we have accounts
+        if accounts.isEmpty {
+            accounts = [
+                Account(name: "Savings Account", type: .savings, initialBalance: 1500.0, balance: 1500.0),
+                Account(name: "Current Account", type: .current, initialBalance: 2000.0, balance: 2000.0),
+                Account(name: "Credit Card", type: .credit, initialBalance: 0.0, balance: 0.0)
+            ]
+        }
+        
+        // Get current date for reference
+        let currentDate = Date()
+        let calendar = Calendar.current
+        
+        // Generate 6 months of data
+        var newTransactions: [Transaction] = []
+        
+        // Get account IDs
+        let savingsId = accounts.first(where: { $0.type == .savings })?.id
+        let currentId = accounts.first(where: { $0.type == .current })?.id
+        let creditId = accounts.first(where: { $0.type == .credit })?.id
+        
+        // Get category IDs
+        let salaryId = incomeCategories.first(where: { $0.name == "Salary" })?.id ?? incomeCategories[0].id
+        let loanId = incomeCategories.first(where: { $0.name == "Student Loan" })?.id ?? incomeCategories[0].id
+        let giftId = incomeCategories.first(where: { $0.name == "Gift" })?.id ?? incomeCategories[0].id
+        
+        let foodId = expenseCategories.first(where: { $0.name == "Food" })?.id ?? expenseCategories[0].id
+        let transportId = expenseCategories.first(where: { $0.name == "Transport" })?.id ?? expenseCategories[0].id
+        let entertainmentId = expenseCategories.first(where: { $0.name == "Entertainment" })?.id ?? expenseCategories[0].id
+        let shoppingId = expenseCategories.first(where: { $0.name == "Shopping" })?.id ?? expenseCategories[0].id
+        let billsId = expenseCategories.first(where: { $0.name == "Bills" })?.id ?? expenseCategories[0].id
+        let housingId = expenseCategories.first(where: { $0.name == "Housing" })?.id ?? expenseCategories[0].id
+        
+        // Generate monthly income (standard transactions)
+        for monthOffset in 0..<6 {
+            // Calculate date for this month
+            let monthDate = calendar.date(byAdding: .month, value: -monthOffset, to: currentDate)!
+            
+            // Salary - monthly on the 25th
+            let salaryDay = calendar.date(bySettingHour: 9, minute: 30, second: 0, of: getDateForDay(25, in: monthDate))!
+            let salaryAmount = Double.random(in: 1800...2200)
+            newTransactions.append(
+                Transaction(
+                    date: salaryDay,
+                    amount: salaryAmount,
+                    description: "Monthly Salary",
+                    fromAccount: nil,
+                    toAccount: .current,
+                    fromAccountId: nil,
+                    toAccountId: currentId,
+                    type: .income,
+                    categoryId: salaryId
+                )
+            )
+            
+            // Student loan - quarterly
+            if monthOffset % 3 == 0 {
+                let loanDay = calendar.date(bySettingHour: 10, minute: 15, second: 0, of: getDateForDay(15, in: monthDate))!
+                newTransactions.append(
+                    Transaction(
+                        date: loanDay,
+                        amount: 2500.0,
+                        description: "Student Loan Installment",
+                        fromAccount: nil,
+                        toAccount: .current,
+                        fromAccountId: nil,
+                        toAccountId: currentId,
+                        type: .income,
+                        categoryId: loanId
+                    )
+                )
+            }
+            
+            // Random gift (occasional)
+            if Bool.random() && monthOffset < 3 {
+                let randomDay = Int.random(in: 1...28)
+                let giftDay = calendar.date(bySettingHour: 14, minute: 0, second: 0, of: getDateForDay(randomDay, in: monthDate))!
+                let giftAmount = Double.random(in: 20...200)
+                newTransactions.append(
+                    Transaction(
+                        date: giftDay,
+                        amount: giftAmount,
+                        description: "Gift from family",
+                        fromAccount: nil,
+                        toAccount: .current,
+                        fromAccountId: nil,
+                        toAccountId: currentId,
+                        type: .income,
+                        categoryId: giftId
+                    )
+                )
+            }
+            
+            // Generate several expenses throughout the month
+            for _ in 1...15 {
+                let randomDay = Int.random(in: 1...28)
+                let expenseDate = calendar.date(bySettingHour: Int.random(in: 8...21),
+                                                minute: Int.random(in: 0...59),
+                                                second: 0,
+                                                of: getDateForDay(randomDay, in: monthDate))!
+                
+                // Pick a random category and amount
+                let categories = [(foodId, "Food", 5.0...50.0),
+                                 (transportId, "Transport", 2.0...30.0),
+                                 (entertainmentId, "Entertainment", 10.0...100.0),
+                                 (shoppingId, "Shopping", 15.0...200.0)]
+                
+                let randomIndex = Int.random(in: 0..<categories.count)
+                let (categoryId, categoryName, amountRange) = categories[randomIndex]
+                let amount = Double.random(in: amountRange)
+                
+                // Randomly pick account to pay from
+                let isCredit = Bool.random()
+                
+                newTransactions.append(
+                    Transaction(
+                        date: expenseDate,
+                        amount: amount,
+                        description: "\(categoryName) expense",
+                        fromAccount: isCredit ? .credit : .current,
+                        toAccount: nil,
+                        fromAccountId: isCredit ? creditId : currentId,
+                        toAccountId: nil,
+                        type: .expense,
+                        categoryId: categoryId
+                    )
+                )
+            }
+            
+            // Monthly bills
+            let billDay = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: getDateForDay(1, in: monthDate))!
+            newTransactions.append(
+                Transaction(
+                    date: billDay,
+                    amount: Double.random(in: 80...120),
+                    description: "Utilities",
+                    fromAccount: .current,
+                    toAccount: nil,
+                    fromAccountId: currentId,
+                    toAccountId: nil,
+                    type: .expense,
+                    categoryId: billsId
+                )
+            )
+            
+            // Rent
+            let rentDay = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: getDateForDay(1, in: monthDate))!
+            newTransactions.append(
+                Transaction(
+                    date: rentDay,
+                    amount: 750.0,
+                    description: "Rent",
+                    fromAccount: .current,
+                    toAccount: nil,
+                    fromAccountId: currentId,
+                    toAccountId: nil,
+                    type: .expense,
+                    categoryId: housingId
+                )
+            )
+            
+            // Transfer to savings
+            let transferDay = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: getDateForDay(26, in: monthDate))!
+            newTransactions.append(
+                Transaction(
+                    date: transferDay,
+                    amount: Double.random(in: 200...400),
+                    description: "Monthly savings",
+                    fromAccount: .current,
+                    toAccount: .savings,
+                    fromAccountId: currentId,
+                    toAccountId: savingsId,
+                    type: .transfer,
+                    categoryId: expenseCategories[0].id
+                )
+            )
+            
+            // Credit card payment
+            let ccPayDay = calendar.date(bySettingHour: 15, minute: 30, second: 0, of: getDateForDay(15, in: monthDate))!
+            newTransactions.append(
+                Transaction(
+                    date: ccPayDay,
+                    amount: Double.random(in: 200...500),
+                    description: "Credit card payment",
+                    fromAccount: .current,
+                    toAccount: .credit,
+                    fromAccountId: currentId,
+                    toAccountId: creditId,
+                    type: .transfer,
+                    categoryId: expenseCategories[0].id
+                )
+            )
+        }
+        
+        // Add all the transactions
+        transactions.append(contentsOf: newTransactions)
+        
+        // Save changes
+        DataService.shared.saveTransactions(transactions)
+        DataService.shared.saveCategories(incomeCategories, type: .income)
+        DataService.shared.saveCategories(expenseCategories, type: .expense)
+        DataService.shared.saveAccounts(accounts)
+        
+        // Recalculate account balances
+        recalcAccounts()
+    }
+    
+    // Helper to get a specific day in a month
+    private func getDateForDay(_ day: Int, in date: Date) -> Date {
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month], from: date)
+        components.day = min(day, calendar.range(of: .day, in: .month, for: date)?.count ?? 28)
+        return calendar.date(from: components) ?? date
+    }
+    
+    // Delete all transactions
+    func deleteAllTransactions() {
+        transactions.removeAll()
+        DataService.shared.saveTransactions([])
+        recalcAccounts()
+    }
+}
