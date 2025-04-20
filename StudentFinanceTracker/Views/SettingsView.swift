@@ -340,16 +340,7 @@ struct SettingsView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .alert(isPresented: $showResetConfirmation) {
-                            Alert(
-                                title: Text("Reset All Data"),
-                                message: Text("Are you sure you want to reset all data? This will delete all accounts, transactions, categories, and settings. This action cannot be undone."),
-                                primaryButton: .destructive(Text("Reset Everything")) {
-                                    viewModel.resetAllData()
-                                },
-                                secondaryButton: .cancel()
-                            )
-                        }
+                        
                     }
                 }
                 
