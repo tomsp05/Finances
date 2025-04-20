@@ -27,7 +27,7 @@ struct NavCardView: View {
                     .font(.system(size: adaptiveIconSize()))
                     .foregroundColor(.white)
                     .frame(width: adaptiveIconContainerSize(), height: adaptiveIconContainerSize())
-                    .background(Color.white.opacity(0.2))
+                    .background(Color.white.opacity(colorScheme == .dark ? 0.25 : 0.2))
                     .clipShape(Circle())
             }
             
@@ -54,20 +54,20 @@ struct NavCardView: View {
                 // Use theme color if no specific color is provided
                 let backgroundColor = cardColor ?? viewModel.themeColor
                 
-                // Base color with slight adjustment for dark mode
-                backgroundColor.opacity(colorScheme == .dark ? 0.9 : 1.0)
+                // Base color with improved dark mode appearance
+                backgroundColor.opacity(colorScheme == .dark ? 0.95 : 1.0)
                 
                 // Gradient overlay for more depth - adjusted for dark mode
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        backgroundColor.opacity(colorScheme == .dark ? 0.6 : 0.7),
-                        backgroundColor.opacity(colorScheme == .dark ? 0.95 : 1.0)
+                        backgroundColor.opacity(colorScheme == .dark ? 0.7 : 0.8),
+                        backgroundColor.opacity(colorScheme == .dark ? 1.0 : 1.0)
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
                 
-                // Optional pattern overlay for texture
+                // Optional pattern overlay for texture - enhanced for dark mode
                 if isProminent {
                     GeometryReader { geo in
                         Path { path in
@@ -76,17 +76,25 @@ struct NavCardView: View {
                                 path.addLine(to: CGPoint(x: 0, y: i))
                             }
                         }
-                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.07 : 0.1), lineWidth: 1)
+                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1), lineWidth: 1)
                     }
                 }
             }
         )
         .cornerRadius(20)
         .shadow(
-            color: (cardColor ?? viewModel.themeColor).opacity(colorScheme == .dark ? 0.2 : 0.5),
-            radius: isProminent ? (colorScheme == .dark ? 10 : 15) : (colorScheme == .dark ? 7 : 10),
+            color: (cardColor ?? viewModel.themeColor).opacity(colorScheme == .dark ? 0.3 : 0.5),
+            radius: isProminent ? (colorScheme == .dark ? 8 : 15) : (colorScheme == .dark ? 5 : 10),
             x: 0,
-            y: 4
+            y: colorScheme == .dark ? 2 : 4
+        )
+        // Add a subtle border in dark mode for better definition
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(
+                    (cardColor ?? viewModel.themeColor).opacity(colorScheme == .dark ? 0.4 : 0.0),
+                    lineWidth: colorScheme == .dark ? 1 : 0
+                )
         )
     }
     

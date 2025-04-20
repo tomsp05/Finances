@@ -1,19 +1,13 @@
-//
-//  BudgetDetailView.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
-
 import SwiftUI
 
 struct BudgetDetailView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @State private var showingEditSheet = false
     @Environment(\.colorScheme) var colorScheme
-
     
+    // Animation state
+    @State private var isAppearing: Bool = false
+
     var budget: Budget
     
     // The actual budget might update in the ViewModel, need to find it
@@ -24,7 +18,7 @@ struct BudgetDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Budget overview card
+                // Budget overview card with circular progress
                 budgetOverviewCard
                 
                 // Budget details
@@ -43,6 +37,7 @@ struct BudgetDetailView: View {
                     showingEditSheet = true
                 }) {
                     Text("Edit")
+                        .foregroundColor(viewModel.themeColor)
                 }
             }
         }
@@ -57,64 +52,95 @@ struct BudgetDetailView: View {
                     )
             }
         }
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1)) {
+                isAppearing = true
+            }
+        }
     }
     
     // MARK: - Helper Views
     
     private var budgetOverviewCard: some View {
         VStack(spacing: 16) {
-            // Progress circle
+            // Progress circle with animated appearance
             ZStack {
+                // Track Circle
                 Circle()
-                    .stroke(Color.gray.opacity(0.2), style: StrokeStyle(lineWidth: 20, lineCap: .round))
+                    .stroke(Color.gray.opacity(colorScheme == .dark ? 0.3 : 0.2), style: StrokeStyle(lineWidth: 20, lineCap: .round))
                     .frame(width: 160, height: 160)
+                    .scaleEffect(isAppearing ? 1.0 : 0.8)
+                    .opacity(isAppearing ? 1.0 : 0.0)
                 
+                // Progress Circle
                 Circle()
                     .trim(from: 0, to: CGFloat(min(currentBudget.percentUsed, 1.0)))
                     .stroke(getProgressColor(), style: StrokeStyle(lineWidth: 20, lineCap: .round))
                     .frame(width: 160, height: 160)
                     .rotationEffect(.degrees(-90))
-                    .animation(.easeInOut, value: currentBudget.percentUsed)
+                    .animation(.easeInOut.delay(0.3), value: currentBudget.percentUsed)
+                    .scaleEffect(isAppearing ? 1.0 : 0.8)
+                    .opacity(isAppearing ? 1.0 : 0.0)
                 
+                // Center text
                 VStack(spacing: 4) {
                     Text("\(Int(currentBudget.percentUsed * 100))%")
-                        .font(.title)
-                        .fontWeight(.bold)
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(colorScheme == .dark ? .white : .primary)
                     
                     Text("Used")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
+                .scaleEffect(isAppearing ? 1.0 : 0.8)
+                .opacity(isAppearing ? 1.0 : 0.0)
             }
             .padding(20)
             
-            // Budget amount
-            HStack(spacing: 30) {
-                VStack(spacing: 4) {
+            // Budget amount info cards
+            HStack(spacing: 0) {
+                // Budget amount
+                VStack(spacing: 6) {
                     Text("Budget")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     Text(formatCurrency(currentBudget.amount))
                         .font(.headline)
+                        .foregroundColor(.primary)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.15 : 0.1))
+                )
                 
-                Divider()
-                    .frame(height: 30)
+                Spacer()
+                    .frame(width: 12)
                 
-                VStack(spacing: 4) {
+                // Spent amount
+                VStack(spacing: 6) {
                     Text("Spent")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     Text(formatCurrency(currentBudget.currentSpent))
                         .font(.headline)
+                        .foregroundColor(.primary)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.red.opacity(colorScheme == .dark ? 0.15 : 0.1))
+                )
                 
-                Divider()
-                    .frame(height: 30)
+                Spacer()
+                    .frame(width: 12)
                 
-                VStack(spacing: 4) {
+                // Remaining amount
+                VStack(spacing: 6) {
                     Text("Remaining")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -123,14 +149,29 @@ struct BudgetDetailView: View {
                         .font(.headline)
                         .foregroundColor(getBudgetStatusColor())
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.green.opacity(colorScheme == .dark ? 0.15 : 0.1))
+                )
             }
+            .padding(.horizontal, 10)
         }
         .padding(20)
-        .background(Color(.systemBackground))
-        .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(UIColor.secondarySystemBackground))
+                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(getProgressColor().opacity(colorScheme == .dark ? 0.2 : 0.1), lineWidth: 1)
+        )
         .padding(.horizontal)
         .padding(.top)
+        .offset(y: isAppearing ? 0 : 20)
+        .opacity(isAppearing ? 1.0 : 0.0)
     }
     
     private var budgetDetailsCard: some View {
@@ -138,6 +179,8 @@ struct BudgetDetailView: View {
             Text("Budget Details")
                 .font(.headline)
                 .padding(.horizontal)
+                .opacity(isAppearing ? 1.0 : 0.0)
+                .offset(y: isAppearing ? 0 : 10)
             
             VStack(spacing: 0) {
                 detailRow(title: "Type", value: getBudgetTypeText())
@@ -158,7 +201,7 @@ struct BudgetDetailView: View {
                     Divider()
                         .padding(.leading, 120)
                     
-                    detailRow(title: "Category", value: category.name)
+                    detailRow(title: "Category", value: category.name, iconName: category.iconName)
                 }
                 
                 if currentBudget.type == .account, let accountId = currentBudget.accountId,
@@ -166,20 +209,37 @@ struct BudgetDetailView: View {
                     Divider()
                         .padding(.leading, 120)
                     
-                    detailRow(title: "Account", value: account.name)
+                    detailRow(title: "Account", value: account.name, iconName: getAccountIcon(account.type))
                 }
             }
-            .background(Color(.systemBackground))
-            .cornerRadius(15)
+            .background(
+                RoundedRectangle(cornerRadius: 15)
+                    .fill(Color(UIColor.secondarySystemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 15)
+                    .stroke(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1), lineWidth: 1)
+            )
+            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
             .padding(.horizontal)
+            .offset(y: isAppearing ? 0 : 20)
+            .opacity(isAppearing ? 1.0 : 0.0)
+            .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2), value: isAppearing)
         }
     }
     
-    private func detailRow(title: String, value: String) -> some View {
+    private func detailRow(title: String, value: String, iconName: String? = nil) -> some View {
         HStack {
             Text(title)
                 .foregroundColor(.secondary)
                 .frame(width: 120, alignment: .leading)
+            
+            if let icon = iconName {
+                Image(systemName: icon)
+                    .foregroundColor(viewModel.themeColor)
+                    .font(.system(size: 14))
+                    .padding(.trailing, 4)
+            }
             
             Text(value)
                 .fontWeight(.medium)
@@ -195,34 +255,95 @@ struct BudgetDetailView: View {
             Text("Recent Transactions")
                 .font(.headline)
                 .padding(.horizontal)
+                .opacity(isAppearing ? 1.0 : 0.0)
+                .offset(y: isAppearing ? 0 : 10)
+                .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.3), value: isAppearing)
             
             if relevantTransactions.isEmpty {
-                HStack {
-                    Spacer()
-                    
-                    VStack(spacing: 12) {
-                        Image(systemName: "doc.text")
-                            .font(.system(size: 32))
-                            .foregroundColor(.secondary)
-                        
-                        Text("No transactions yet")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(30)
-                    
-                    Spacer()
-                }
-                .background(Color(.systemBackground))
-                .cornerRadius(15)
-                .padding(.horizontal)
+                emptyTransactionsView
             } else {
-                ForEach(relevantTransactions.prefix(5)) { transaction in
-                    TransactionCardView(transaction: transaction)
-                        .padding(.horizontal)
-                }
+                transactionsList
             }
         }
+    }
+    
+    private var emptyTransactionsView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 32))
+                .foregroundColor(.secondary)
+            
+            Text("No transactions yet")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(30)
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(Color(UIColor.secondarySystemBackground))
+                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 15)
+                .stroke(Color.gray.opacity(colorScheme == .dark ? 0.2 : 0.1), lineWidth: 1)
+        )
+        .padding(.horizontal)
+        .offset(y: isAppearing ? 0 : 20)
+        .opacity(isAppearing ? 1.0 : 0.0)
+        .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.4), value: isAppearing)
+    }
+    
+    private var transactionsList: some View {
+        VStack(spacing: 12) {
+            ForEach(Array(relevantTransactions.prefix(5).enumerated()), id: \.element.id) { index, transaction in
+                NavigationLink(destination: EditTransactionView(transaction: transaction)) {
+                    TransactionCardView(transaction: transaction)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .offset(y: isAppearing ? 0 : 20)
+                .opacity(isAppearing ? 1.0 : 0.0)
+                .animation(
+                    .spring(response: 0.5, dampingFraction: 0.7)
+                    .delay(0.4 + Double(index) * 0.05),
+                    value: isAppearing
+                )
+            }
+            
+            // "See All" button for more than 5 transactions
+            if relevantTransactions.count > 5 {
+                NavigationLink(destination:
+                    TransactionsListView()
+                        // Add custom filtering here if needed
+                ) {
+                    HStack {
+                        Text("See All Transactions")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                    }
+                    .foregroundColor(viewModel.themeColor)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.15 : 0.1))
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal)
+                .offset(y: isAppearing ? 0 : 20)
+                .opacity(isAppearing ? 1.0 : 0.0)
+                .animation(
+                    .spring(response: 0.5, dampingFraction: 0.7)
+                    .delay(0.6),
+                    value: isAppearing
+                )
+            }
+        }
+        .padding(.horizontal)
     }
     
     // MARK: - Helper Methods
@@ -230,7 +351,7 @@ struct BudgetDetailView: View {
     // Get relevant transactions for this budget
     private var relevantTransactions: [Transaction] {
         // Filter expense transactions that fall within the budget period
-        let expenseTransactions = viewModel.transactions.filter { 
+        let expenseTransactions = viewModel.transactions.filter {
             $0.type == .expense && $0.date >= currentBudget.startDate
         }
         
@@ -298,6 +419,14 @@ struct BudgetDetailView: View {
             return .orange
         } else {
             return .green
+        }
+    }
+    
+    private func getAccountIcon(_ type: AccountType) -> String {
+        switch type {
+        case .savings: return "building.columns.fill"
+        case .current: return "banknote.fill"
+        case .credit: return "creditcard.fill"
         }
     }
 }

@@ -1,15 +1,8 @@
-//
-//  BudgetCardView.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
-
 import SwiftUI
 
 struct BudgetCardView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     var budget: Budget
     
     // Helper formatter for currency
@@ -31,6 +24,7 @@ struct BudgetCardView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(budget.name)
                             .font(.headline)
+                            .foregroundColor(.primary)
                         
                         Text(budget.timePeriod.displayName())
                             .font(.caption)
@@ -43,6 +37,7 @@ struct BudgetCardView: View {
                     VStack(alignment: .trailing, spacing: 4) {
                         Text(formatCurrency(budget.amount))
                             .font(.headline)
+                            .foregroundColor(.primary)
                         
                         Text(getBudgetStatusText())
                             .font(.caption)
@@ -50,11 +45,19 @@ struct BudgetCardView: View {
                     }
                 }
                 
-                // Progress bar
-                ProgressView(value: budget.percentUsed)
-                    .progressViewStyle(LinearProgressViewStyle(tint: getProgressColor()))
-                    .background(Color.gray.opacity(0.2))
-                    .cornerRadius(10)
+                // Progress bar with improved dark mode appearance
+                ZStack(alignment: .leading) {
+                    // Background track - adjusted for dark mode
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.gray.opacity(colorScheme == .dark ? 0.3 : 0.2))
+                        .frame(height: 10)
+                    
+                    // Foreground progress - adjusted color for dark mode
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(getProgressColor())
+                        .frame(width: max(5, CGFloat(budget.percentUsed) * UIScreen.main.bounds.width * 0.75), height: 10)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: budget.percentUsed)
+                }
                 
                 // Remaining amount
                 HStack {
@@ -70,9 +73,14 @@ struct BudgetCardView: View {
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(15)
-            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            .overlay(
+                // Add a subtle border in dark mode for better definition
+                RoundedRectangle(cornerRadius: 15)
+                    .stroke(getProgressColor().opacity(colorScheme == .dark ? 0.3 : 0.1), lineWidth: 1)
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -82,18 +90,18 @@ struct BudgetCardView: View {
         return currencyFormatter.string(from: NSNumber(value: value)) ?? "£0.00"
     }
     
-    // Get color based on budget status
+    // Get color based on budget status with enhanced dark mode support
     private func getProgressColor() -> Color {
         let percentUsed = budget.percentUsed
         
         if percentUsed >= 1.0 {
-            return .red
+            return colorScheme == .dark ? .red.opacity(0.9) : .red
         } else if percentUsed >= 0.85 {
-            return .orange
+            return colorScheme == .dark ? .orange.opacity(0.9) : .orange
         } else if percentUsed >= 0.7 {
-            return .yellow
+            return colorScheme == .dark ? .yellow.opacity(0.9) : .yellow
         } else {
-            return viewModel.themeColor
+            return viewModel.adaptiveThemeColor
         }
     }
     
@@ -108,7 +116,7 @@ struct BudgetCardView: View {
         }
     }
     
-    // Get budget status color
+    // Get budget status color with dark mode enhancement
     private func getBudgetStatusColor() -> Color {
         let percentUsed = budget.percentUsed
         
@@ -117,7 +125,7 @@ struct BudgetCardView: View {
         } else if percentUsed >= 0.85 {
             return .orange
         } else {
-            return .green
+            return colorScheme == .dark ? .green.opacity(0.9) : .green
         }
     }
 }

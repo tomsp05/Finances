@@ -22,11 +22,11 @@ struct TransactionCardView: View {
     var transactionColor: Color {
         switch transaction.type {
         case .income:
-            return colorScheme == .dark ? .green : .green.opacity(0.9)
+            return .green
         case .expense:
-            return colorScheme == .dark ? .red : .red.opacity(0.9)
+            return .red
         case .transfer:
-            return colorScheme == .dark ? .blue : .blue.opacity(0.9)
+            return .blue
         }
     }
         
@@ -76,8 +76,8 @@ struct TransactionCardView: View {
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    transactionColor.opacity(colorScheme == .dark ? 0.8 : 0.7),
-                                    transactionColor.opacity(colorScheme == .dark ? 0.6 : 0.5)
+                                    transactionColor.opacity(colorScheme == .dark ? 0.9 : 0.8),
+                                    transactionColor.opacity(colorScheme == .dark ? 0.7 : 0.6)
                                 ]),
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -89,7 +89,7 @@ struct TransactionCardView: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                 }
-                .shadow(color: transactionColor.opacity(colorScheme == .dark ? 0.2 : 0.3), radius: 3, x: 0, y: 2)
+                .shadow(color: transactionColor.opacity(colorScheme == .dark ? 0.3 : 0.4), radius: 3, x: 0, y: 2)
                 .scaleEffect(isAppearing ? 1.0 : 0.8)
                 .opacity(isAppearing ? 1.0 : 0.0)
                 
@@ -105,9 +105,11 @@ struct TransactionCardView: View {
                             .font(.system(size: 12, weight: .medium))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.3 : 0.15))
+                            )
                             .foregroundColor(viewModel.themeColor)
-                            .cornerRadius(4)
                         
                         if transaction.isSplit {
                             Image(systemName: "person.2.fill")
@@ -121,15 +123,17 @@ struct TransactionCardView: View {
                 
                 Spacer()
                 
-                // Date & Amount - new aligned design
+                // Date & Amount - aligned design with dark mode improvements
                 VStack(alignment: .trailing, spacing: 4) {
                     // Date with modern pill style
                     Text(formattedDate)
                         .font(.system(size: 12, weight: .medium))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color(UIColor.tertiarySystemFill))
-                        .cornerRadius(4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(UIColor.tertiarySystemFill))
+                        )
                         .foregroundColor(.secondary)
                     
                     // Amount with better styling
@@ -174,7 +178,7 @@ struct TransactionCardView: View {
                         .padding(.vertical, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.blue.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                .fill(Color.blue.opacity(colorScheme == .dark ? 0.3 : 0.15))
                         )
                         .foregroundColor(.blue)
                     }
@@ -190,7 +194,7 @@ struct TransactionCardView: View {
                         .padding(.vertical, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.purple.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                .fill(Color.purple.opacity(colorScheme == .dark ? 0.3 : 0.15))
                         )
                         .foregroundColor(.purple)
                     }
@@ -206,7 +210,7 @@ struct TransactionCardView: View {
                         .padding(.vertical, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.orange.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                .fill(Color.orange.opacity(colorScheme == .dark ? 0.3 : 0.15))
                         )
                         .foregroundColor(.orange)
                     }
@@ -223,19 +227,22 @@ struct TransactionCardView: View {
                 .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.07), radius: 8, x: 0, y: 2)
         )
         .overlay(
-            // Add a subtle accent border based on transaction type
+            // Improved border with better dark mode visibility
             RoundedRectangle(cornerRadius: 15)
                 .stroke(
-                    isFutureDate ? Color.blue.opacity(colorScheme == .dark ? 0.4 : 0.3) :
-                    transaction.isRecurring ? Color.purple.opacity(colorScheme == .dark ? 0.4 : 0.3) :
-                    transaction.isSplit ? Color.orange.opacity(colorScheme == .dark ? 0.4 : 0.3) :
-                    transactionColor.opacity(colorScheme == .dark ? 0.3 : 0.2),
+                    isFutureDate ? Color.blue.opacity(colorScheme == .dark ? 0.5 : 0.3) :
+                    transaction.isRecurring ? Color.purple.opacity(colorScheme == .dark ? 0.5 : 0.3) :
+                    transaction.isSplit ? Color.orange.opacity(colorScheme == .dark ? 0.5 : 0.3) :
+                    transactionColor.opacity(colorScheme == .dark ? 0.4 : 0.2),
                     lineWidth: 1
                 )
         )
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                isAppearing = true
+            // Slight delay to ensure smooth appearance animation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    isAppearing = true
+                }
             }
         }
     }
