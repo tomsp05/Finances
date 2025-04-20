@@ -187,3 +187,40 @@ extension DataService {
         }
     }
 }
+
+
+extension DataService {
+    // File name for user preferences
+    private var userPreferencesFile: String { "userPreferences.json" }
+    
+    // URL for user preferences file
+    private var userPreferencesURL: URL {
+        documentsDirectory.appendingPathComponent(userPreferencesFile)
+    }
+    
+    // Save user preferences to file
+    func saveUserPreferences(_ preferences: UserPreferences) {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(preferences)
+            try data.write(to: userPreferencesURL)
+            print("User preferences saved successfully at \(userPreferencesURL)")
+        } catch {
+            print("Error saving user preferences: \(error)")
+        }
+    }
+    
+    // Load user preferences from file
+    func loadUserPreferences() -> UserPreferences? {
+        do {
+            let data = try Data(contentsOf: userPreferencesURL)
+            let preferences = try JSONDecoder().decode(UserPreferences.self, from: data)
+            print("User preferences loaded successfully from \(userPreferencesURL)")
+            return preferences
+        } catch {
+            print("Error loading user preferences: \(error)")
+        }
+        return nil
+    }
+}

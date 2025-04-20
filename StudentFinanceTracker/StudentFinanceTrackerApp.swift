@@ -6,8 +6,13 @@ struct StudentFinanceTrackerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(viewModel)
+            if viewModel.userPreferences.hasCompletedOnboarding {
+                ContentView()
+                    .environmentObject(viewModel)
+            } else {
+                OnboardingContainerView()
+                    .environmentObject(viewModel)
+            }
         }
     }
 }
