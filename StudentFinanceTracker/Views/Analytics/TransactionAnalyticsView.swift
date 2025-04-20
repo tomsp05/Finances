@@ -267,9 +267,11 @@ struct TransactionAnalyticsView: View {
                     timeOffset -= 1
                 }) {
                     Image(systemName: "chevron.left")
-                        .foregroundColor(viewModel.themeColor)
+                        .foregroundColor(viewModel.adaptiveThemeColor)
                         .padding(8)
-                        .background(Circle().fill(viewModel.themeColor.opacity(0.1)))
+                        .background(
+                            Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                        )
                 }
                 
                 Spacer()
@@ -285,11 +287,14 @@ struct TransactionAnalyticsView: View {
                     }
                 }) {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(viewModel.themeColor)
+                        .foregroundColor(viewModel.adaptiveThemeColor)
                         .padding(8)
-                        .background(Circle().fill(viewModel.themeColor.opacity(0.1)))
+                        .background(
+                            Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                        )
                 }
                 .disabled(timeOffset == 0)
+                .opacity(timeOffset == 0 ? 0.5 : 1.0)
             }
             .padding(.vertical, 4)
             
@@ -299,7 +304,8 @@ struct TransactionAnalyticsView: View {
                     TimeFilterButton(
                         title: filter.rawValue,
                         isSelected: selectedTimeFilter == filter,
-                        themeColor: viewModel.themeColor
+                        themeColor: viewModel.adaptiveThemeColor,
+                        colorScheme: colorScheme
                     ) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             selectedTimeFilter = filter
@@ -322,12 +328,12 @@ struct TransactionAnalyticsView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(viewModel.themeColor.opacity(0.1))
-                    .foregroundColor(viewModel.themeColor)
+                    .background(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                    .foregroundColor(viewModel.adaptiveThemeColor)
                     .cornerRadius(20)
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
-                            .stroke(viewModel.themeColor.opacity(0.2), lineWidth: 1)
+                            .stroke(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -350,13 +356,13 @@ struct TransactionAnalyticsView: View {
                 .padding(.vertical, 8)
                 .background(
                     selectedChartStyle == "Pie"
-                    ? viewModel.themeColor.opacity(0.2)
-                    : Color(.systemGray5)
+                    ? viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2)
+                    : Color(UIColor.tertiarySystemFill)
                 )
                 .foregroundColor(
                     selectedChartStyle == "Pie"
-                    ? viewModel.themeColor
-                    : Color(.systemGray)
+                    ? viewModel.adaptiveThemeColor
+                    : Color(UIColor.secondaryLabel)
                 )
                 .cornerRadius(10)
             }
@@ -374,13 +380,13 @@ struct TransactionAnalyticsView: View {
                 .padding(.vertical, 8)
                 .background(
                     selectedChartStyle == "Bar"
-                    ? viewModel.themeColor.opacity(0.2)
-                    : Color(.systemGray5)
+                    ? viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2)
+                    : Color(UIColor.tertiarySystemFill)
                 )
                 .foregroundColor(
                     selectedChartStyle == "Bar"
-                    ? viewModel.themeColor
-                    : Color(.systemGray)
+                    ? viewModel.adaptiveThemeColor
+                    : Color(UIColor.secondaryLabel)
                 )
                 .cornerRadius(10)
             }
@@ -398,13 +404,13 @@ struct TransactionAnalyticsView: View {
                 .padding(.vertical, 8)
                 .background(
                     selectedChartStyle == "Line"
-                    ? viewModel.themeColor.opacity(0.2)
-                    : Color(.systemGray5)
+                    ? viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2)
+                    : Color(UIColor.tertiarySystemFill)
                 )
                 .foregroundColor(
                     selectedChartStyle == "Line"
-                    ? viewModel.themeColor
-                    : Color(.systemGray)
+                    ? viewModel.adaptiveThemeColor
+                    : Color(UIColor.secondaryLabel)
                 )
                 .cornerRadius(10)
             }
@@ -435,8 +441,12 @@ struct TransactionAnalyticsView: View {
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.green.opacity(colorScheme == .dark ? 0.15 : 0.1))
+                .background(Color.green.opacity(colorScheme == .dark ? 0.2 : 0.1))
                 .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.green.opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
+                )
                 
                 // Total Expense Card
                 VStack(spacing: 4) {
@@ -455,8 +465,12 @@ struct TransactionAnalyticsView: View {
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.red.opacity(colorScheme == .dark ? 0.15 : 0.1))
+                .background(Color.red.opacity(colorScheme == .dark ? 0.2 : 0.1))
                 .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.red.opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
+                )
             }
             
             // Net Savings Card
@@ -477,9 +491,13 @@ struct TransactionAnalyticsView: View {
             }
             .padding()
             .frame(maxWidth: .infinity)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(viewModel.cardBackgroundColor(for: colorScheme))
             .cornerRadius(12)
-            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
+            .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 1)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.1), lineWidth: 1)
+            )
         }
     }
     
@@ -504,12 +522,17 @@ struct TransactionAnalyticsView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(viewModel.themeColor)
+                        .background(viewModel.adaptiveThemeColor)
                         .cornerRadius(8)
                 }
             }
         }
         .padding(.vertical, 30)
+        .padding(.horizontal)
+        .frame(maxWidth: .infinity)
+        .background(viewModel.cardBackgroundColor(for: colorScheme))
+        .cornerRadius(12)
+        .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 2)
     }
     
     // Category pie chart
@@ -538,12 +561,13 @@ struct TransactionAnalyticsView: View {
                     }
                 }
             }
-            .chartForegroundStyleScale(range: ChartColors.colorArray)
+            .chartForegroundStyleScale(range: ChartColors.adaptiveColorArray(for: colorScheme))
             .frame(height: 240)
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(viewModel.cardBackgroundColor(for: colorScheme))
         .cornerRadius(12)
+        .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 2)
     }
     
     // Category bar chart
@@ -568,12 +592,13 @@ struct TransactionAnalyticsView: View {
                     }
                 }
             }
-            .chartForegroundStyleScale(range: ChartColors.colorArray)
+            .chartForegroundStyleScale(range: ChartColors.adaptiveColorArray(for: colorScheme))
             .frame(height: min(CGFloat(expensesByCategory.count * 50), 300))
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(viewModel.cardBackgroundColor(for: colorScheme))
         .cornerRadius(12)
+        .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 2)
     }
     
     // Timeline chart
@@ -590,21 +615,23 @@ struct TransactionAnalyticsView: View {
                         x: .value("Date", dataPoint.date),
                         y: .value("Amount", dataPoint.amount)
                     )
-                    .foregroundStyle(viewModel.themeColor)
+                    .foregroundStyle(viewModel.adaptiveThemeColor)
                     .interpolationMethod(.catmullRom)
                     
                     AreaMark(
                         x: .value("Date", dataPoint.date),
                         y: .value("Amount", dataPoint.amount)
                     )
-                    .foregroundStyle(viewModel.themeColor.opacity(0.2))
+                    .foregroundStyle(
+                        viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.25 : 0.2)
+                    )
                     .interpolationMethod(.catmullRom)
                     
                     PointMark(
                         x: .value("Date", dataPoint.date),
                         y: .value("Amount", dataPoint.amount)
                     )
-                    .foregroundStyle(viewModel.themeColor)
+                    .foregroundStyle(viewModel.adaptiveThemeColor)
                 }
             }
             .chartXAxis {
@@ -612,6 +639,8 @@ struct TransactionAnalyticsView: View {
                     if let date = value.as(Date.self) {
                         AxisValueLabel {
                             Text(formatDateLabel(date))
+                                .font(.caption)
+                                .foregroundColor(colorScheme == .dark ? .secondary : .primary)
                         }
                     }
                 }
@@ -621,6 +650,8 @@ struct TransactionAnalyticsView: View {
                     if let amount = value.as(Double.self) {
                         AxisValueLabel {
                             Text("£\(Int(amount))")
+                                .font(.caption)
+                                .foregroundColor(colorScheme == .dark ? .secondary : .primary)
                         }
                     }
                 }
@@ -628,8 +659,9 @@ struct TransactionAnalyticsView: View {
             .frame(height: 240)
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(viewModel.cardBackgroundColor(for: colorScheme))
         .cornerRadius(12)
+        .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 2)
     }
     
     // Category spending breakdown section
@@ -646,7 +678,8 @@ struct TransactionAnalyticsView: View {
                     CategorySpendingRowView(
                         categorySpending: categorySpending,
                         totalAmount: totalExpenses,
-                        formatCurrency: formatCurrency
+                        formatCurrency: formatCurrency,
+                        colorScheme: colorScheme
                     )
                 }
             }
@@ -706,8 +739,9 @@ struct CategoryFilterSheet: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.gray)
+                                .background(Color(UIColor.systemGray))
                                 .cornerRadius(12)
+                                .shadow(color: colorScheme == .dark ? Color.clear : Color.gray.opacity(0.4), radius: 8, x: 0, y: 4)
                         }
                         
                         Button(action: {
@@ -720,14 +754,16 @@ struct CategoryFilterSheet: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(viewModel.themeColor)
+                                .background(viewModel.adaptiveThemeColor)
                                 .cornerRadius(12)
+                                .shadow(color: colorScheme == .dark ? Color.clear : viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
                         }
                     }
                     .padding(.top, 12)
                 }
                 .padding()
             }
+            .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("Filter Categories")
             .navigationBarItems(trailing: Button("Done") {
                 presentationMode.wrappedValue.dismiss()
@@ -755,6 +791,7 @@ struct CategoryFilterSheet: View {
     // Category selection button
     private func categoryButton(category: Category, color: Color) -> some View {
         let isSelected = selectedCategories.contains(category.id)
+        let adaptiveColor = colorScheme == .dark ? color.opacity(0.9) : color
         
         return Button(action: {
             // Toggle selection
@@ -767,12 +804,14 @@ struct CategoryFilterSheet: View {
             VStack(spacing: 8) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? color.opacity(0.2) : Color.gray.opacity(0.1))
+                        .fill(isSelected ?
+                              adaptiveColor.opacity(colorScheme == .dark ? 0.25 : 0.2) :
+                              Color.gray.opacity(colorScheme == .dark ? 0.2 : 0.1))
                         .frame(width: 44, height: 44)
                     
                     Image(systemName: category.iconName)
                         .font(.system(size: 20))
-                        .foregroundColor(isSelected ? color : Color.gray)
+                        .foregroundColor(isSelected ? adaptiveColor : Color.gray)
                 }
                 
                 Text(category.name)
@@ -783,11 +822,13 @@ struct CategoryFilterSheet: View {
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? color.opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                    .fill(isSelected ?
+                          adaptiveColor.opacity(colorScheme == .dark ? 0.15 : 0.1) :
+                          viewModel.cardBackgroundColor(for: colorScheme))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? color : Color.clear, lineWidth: 1)
+                    .stroke(isSelected ? adaptiveColor.opacity(colorScheme == .dark ? 0.5 : 1.0) : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -808,6 +849,15 @@ struct ChartColors {
         .blue, .green, .orange, .purple, .red, .teal, .yellow, .pink,
         .cyan, .indigo, .mint, .brown
     ]
+    
+    // Add dark mode adapted colors
+    static func adaptiveColorArray(for colorScheme: ColorScheme) -> [Color] {
+        if colorScheme == .dark {
+            return colorArray.map { $0.opacity(0.85) }
+        } else {
+            return colorArray
+        }
+    }
 }
 
 // MARK: - Previews

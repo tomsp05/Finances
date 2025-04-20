@@ -12,6 +12,7 @@ struct TimeFilterButton: View {
     let title: String
     let isSelected: Bool
     let themeColor: Color
+    let colorScheme: ColorScheme
     let action: () -> Void
     
     var body: some View {
@@ -23,19 +24,19 @@ struct TimeFilterButton: View {
                 .padding(.vertical, 8)
                 .background(
                     isSelected
-                    ? themeColor.opacity(0.2)
-                    : Color(.systemGray5)
+                    ? themeColor.opacity(colorScheme == .dark ? 0.3 : 0.2)
+                    : Color(UIColor.tertiarySystemFill)
                 )
                 .foregroundColor(
                     isSelected
                     ? themeColor
-                    : Color(.systemGray)
+                    : Color(UIColor.secondaryLabel)
                 )
                 .cornerRadius(20)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(
-                            isSelected ? themeColor : Color.clear,
+                            isSelected ? themeColor.opacity(colorScheme == .dark ? 0.5 : 1.0) : Color.clear,
                             lineWidth: 1
                         )
                 )
@@ -46,22 +47,49 @@ struct TimeFilterButton: View {
 
 struct TimeFilterButton_Previews: PreviewProvider {
     static var previews: some View {
-        HStack {
-            TimeFilterButton(
-                title: "Week",
-                isSelected: true,
-                themeColor: Color.blue,
-                action: {}
-            )
+        Group {
+            HStack {
+                TimeFilterButton(
+                    title: "Week",
+                    isSelected: true,
+                    themeColor: Color.blue,
+                    colorScheme: .light,
+                    action: {}
+                )
+                
+                TimeFilterButton(
+                    title: "Month",
+                    isSelected: false,
+                    themeColor: Color.blue,
+                    colorScheme: .light,
+                    action: {}
+                )
+            }
+            .padding()
+            .previewDisplayName("Light Mode")
             
-            TimeFilterButton(
-                title: "Month",
-                isSelected: false,
-                themeColor: Color.blue,
-                action: {}
-            )
+            HStack {
+                TimeFilterButton(
+                    title: "Week",
+                    isSelected: true,
+                    themeColor: Color.blue,
+                    colorScheme: .dark,
+                    action: {}
+                )
+                
+                TimeFilterButton(
+                    title: "Month",
+                    isSelected: false,
+                    themeColor: Color.blue,
+                    colorScheme: .dark,
+                    action: {}
+                )
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .environment(\.colorScheme, .dark)
+            .previewDisplayName("Dark Mode")
         }
-        .padding()
         .previewLayout(.sizeThatFits)
     }
 }

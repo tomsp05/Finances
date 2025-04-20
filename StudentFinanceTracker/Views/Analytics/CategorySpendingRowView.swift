@@ -12,6 +12,7 @@ struct CategorySpendingRowView: View {
     let categorySpending: CategorySpending
     let totalAmount: Double
     let formatCurrency: (Double) -> String
+    let colorScheme: ColorScheme
     
     var percentage: Double {
         guard totalAmount > 0 else { return 0 }
@@ -23,12 +24,12 @@ struct CategorySpendingRowView: View {
             // Category icon
             ZStack {
                 Circle()
-                    .fill(Color.red.opacity(0.2))
-                    .frame(width: 40, height: 40)
+                    .fill(getCategoryColor().opacity(colorScheme == .dark ? 0.25 : 0.2))
+                    .frame(width: 42, height: 42)
                 
                 Image(systemName: categorySpending.category.iconName)
-                    .font(.system(size: 18))
-                    .foregroundColor(.red)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(getCategoryColor())
             }
             
             // Category details
@@ -52,33 +53,63 @@ struct CategorySpendingRowView: View {
                 Text(String(format: "%.1f%%", percentage * 100))
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(getCategoryColor().opacity(colorScheme == .dark ? 0.2 : 0.1))
+                    )
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
+        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(getCategoryColor().opacity(colorScheme == .dark ? 0.25 : 0.1), lineWidth: 1)
+        )
+    }
+    
+    // Get appropriate color based on category type
+    private func getCategoryColor() -> Color {
+        return categorySpending.category.type == .expense ? .red : .green
     }
 }
 
 struct CategorySpendingRowView_Previews: PreviewProvider {
     static var previews: some View {
-        let formatter: (Double) -> String = { value in
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .currency
-            formatter.currencySymbol = "£"
-            return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
+        Group {
+            let formatter: (Double) -> String = { value in
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .currency
+                formatter.currencySymbol = "£"
+                return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
+            }
+            
+            let category = Category(name: "Food", type: .expense, iconName: "fork.knife")
+            let categorySpending = CategorySpending(id: UUID(), category: category, amount: 250.0, count: 12)
+            
+            CategorySpendingRowView(
+                categorySpending: categorySpending,
+                totalAmount: 1000.0,
+                formatCurrency: formatter,
+                colorScheme: .light
+            )
+            .padding()
+            .previewDisplayName("Light Mode")
+            
+            CategorySpendingRowView(
+                categorySpending: categorySpending,
+                totalAmount: 1000.0,
+                formatCurrency: formatter,
+                colorScheme: .dark
+            )
+            .padding()
+            .background(Color.black)
+            .environment(\.colorScheme, .dark)
+            .previewDisplayName("Dark Mode")
         }
-        
-        let category = Category(name: "Food", type: .expense, iconName: "fork.knife")
-        let categorySpending = CategorySpending(id: UUID(), category: category, amount: 250.0, count: 12)
-        
-        CategorySpendingRowView(
-            categorySpending: categorySpending,
-            totalAmount: 1000.0,
-            formatCurrency: formatter
-        )
-        .padding()
         .previewLayout(.sizeThatFits)
     }
 }
