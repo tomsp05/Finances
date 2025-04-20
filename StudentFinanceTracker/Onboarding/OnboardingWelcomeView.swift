@@ -49,7 +49,7 @@ struct OnboardingWelcomeView: View {
                     // Introduction text - only show when keyboard is hidden
                     if keyboardHeight == 0 {
                         Text("Let's set up your personal finance tracker to help you manage your money effectively.")
-                            .font(.subheadline) // Smaller font
+                            .font(.headline)
                             .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 40)
@@ -74,6 +74,10 @@ struct OnboardingWelcomeView: View {
                                     viewModel.userPreferences.userName = newValue
                                     viewModel.saveUserPreferences()
                                 }
+                            Spacer()
+                            Spacer()
+                            Spacer()
+
                         }
                         .background(
                             RoundedRectangle(cornerRadius: 10)
@@ -85,22 +89,10 @@ struct OnboardingWelcomeView: View {
                                         .stroke(viewModel.themeColor.opacity(0.3), lineWidth: 1)
                                 )
                         )
-                        
-                        if keyboardHeight > 0 {
-                            HStack {
-                                Spacer()
-                                Button("Done") {
-                                    hideKeyboard()
-                                }
-                                .foregroundColor(viewModel.themeColor)
-                                .padding(.top, 8)
-                            }
-                        }
                     }
                     .padding(.horizontal, 40)
                     
                     if keyboardHeight == 0 {
-                        // Additional welcome content - more compact
                         VStack(alignment: .leading, spacing: 12) {
                             Text("See what you can do:")
                                 .font(.headline)
