@@ -9,9 +9,11 @@ struct StudentFinanceTrackerApp: App {
             if viewModel.userPreferences.hasCompletedOnboarding {
                 ContentView()
                     .environmentObject(viewModel)
+                    .accentColor(viewModel.themeColor) // Set the global accent color
             } else {
                 OnboardingContainerView()
                     .environmentObject(viewModel)
+                    .accentColor(viewModel.themeColor) // Set the global accent color
             }
         }
     }

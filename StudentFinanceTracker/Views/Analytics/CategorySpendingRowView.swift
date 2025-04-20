@@ -1,11 +1,3 @@
-//
-//  CategorySpendingRowView.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/15/25.
-//
-
-
 import SwiftUI
 
 struct CategorySpendingRowView: View {
@@ -77,6 +69,7 @@ struct CategorySpendingRowView: View {
     }
 }
 
+// Preview provider
 struct CategorySpendingRowView_Previews: PreviewProvider {
     static var previews: some View {
         Group {

@@ -33,6 +33,9 @@ struct EditTransactionView: View {
     @State private var showDeleteAlert: Bool = false
     @State private var isAnimating: Bool = false // Control animation timing
     
+    // Animation state - new property for entry animation
+    @State private var isAppearing: Bool = false
+    
     // For recurring series management
     private var isRecurringSeries: Bool {
         transaction.isRecurring && transaction.parentTransactionId == nil
@@ -91,15 +94,23 @@ struct EditTransactionView: View {
             VStack(spacing: 20) {
                 // Transaction summary header
                 transactionHeader
-                    .transition(.opacity)
+                    .offset(y: isAppearing ? 0 : 20)
+                    .opacity(isAppearing ? 1.0 : 0.0)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1), value: isAppearing)
                 
                 // Expandable sections
-                ForEach(ExpandableSection.allCases, id: \.self) { section in
+                ForEach(Array(ExpandableSection.allCases.enumerated()), id: \.element) { index, section in
                     expandableSection(section)
+                        .offset(y: isAppearing ? 0 : 25)
+                        .opacity(isAppearing ? 1.0 : 0.0)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.15 + Double(index) * 0.08), value: isAppearing)
                 }
                 
                 // Action buttons
                 actionButtons
+                    .offset(y: isAppearing ? 0 : 30)
+                    .opacity(isAppearing ? 1.0 : 0.0)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.5), value: isAppearing)
             }
             .padding()
             .padding(.bottom, 30)
@@ -127,7 +138,14 @@ struct EditTransactionView: View {
         }
         .onAppear {
             // Add a brief delay before enabling animations to ensure smooth rendering
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation {
+                    isAppearing = true
+                }
+            }
+            
+            // Enable section expansion animation after content appears
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isAnimating = true
             }
         }

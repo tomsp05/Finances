@@ -55,6 +55,9 @@ extension FinanceViewModel {
             // Skip if the transaction date is before the budget start date
             guard transactionDate >= budget.startDate else { continue }
             
+            // For split transactions, only count the user's portion (transaction.amount)
+            // which is already properly set when the transaction is created
+            
             // Check if budget applies to this transaction
             switch budget.type {
             case .overall:
@@ -103,16 +106,21 @@ extension FinanceViewModel {
             var totalSpent: Double = 0.0
             
             for transaction in relevantTransactions {
+                // For each transaction, add the proper amount to the budget
+                // For split transactions, use only the user's portion
+                // For regular transactions, the amount already represents the full expense
+                let amountToCount = transaction.amount
+                
                 switch budget.type {
                 case .overall:
                     // All expenses count toward overall budget
-                    totalSpent += transaction.amount
+                    totalSpent += amountToCount
                     
                 case .category:
                     // Only count if transaction matches the budget category
-                    if let budgetCategoryId = budget.categoryId, 
+                    if let budgetCategoryId = budget.categoryId,
                        budgetCategoryId == transaction.categoryId {
-                        totalSpent += transaction.amount
+                        totalSpent += amountToCount
                     }
                     
                 case .account:
@@ -120,7 +128,7 @@ extension FinanceViewModel {
                     if let budgetAccountId = budget.accountId,
                        let accountIndex = accounts.firstIndex(where: { $0.id == budgetAccountId }),
                        accounts[accountIndex].type == transaction.fromAccount {
-                        totalSpent += transaction.amount
+                        totalSpent += amountToCount
                     }
                 }
             }

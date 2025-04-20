@@ -1,10 +1,3 @@
-//
-//  TransactionAnalyticsView.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/15/25.
-//
-
 import SwiftUI
 import Charts
 
@@ -12,17 +5,11 @@ struct TransactionAnalyticsView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
     
-    // Time filter options
-    enum TimeFilter: String, CaseIterable {
-        case week = "Week"
-        case month = "Month"
-        case year = "Year"
-    }
+    // Filter state
+    @State private var filterState = AnalyticsFilterState()
+    @State private var showFilterSheet = false
     
-    @State private var selectedTimeFilter: TimeFilter = .month
-    @State private var selectedCategoryIds: Set<UUID> = []
-    @State private var showCategoryFilter: Bool = false
-    @State private var timeOffset: Int = 0 // 0 = current period, -1 = previous period, etc.
+    // Chart type
     @State private var selectedChartStyle: String = "Pie" // "Pie", "Bar", or "Line"
     
     // MARK: - Computed Properties
@@ -30,14 +17,24 @@ struct TransactionAnalyticsView: View {
     // Date range based on selected time filter and offset
     private var dateRange: (start: Date, end: Date) {
         let calendar = Calendar.current
-        let endDate = Date().addingTimeInterval(Double(timeOffset) * getTimeIntervalForFilter())
+        let endDate = Date().addingTimeInterval(Double(filterState.timeOffset) * getTimeIntervalForFilter())
         
         let startDate: Date
-        switch selectedTimeFilter {
+        switch filterState.timeFilter {
         case .week:
             startDate = calendar.date(byAdding: .day, value: -7, to: endDate)!
         case .month:
             startDate = calendar.date(byAdding: .month, value: -1, to: endDate)!
+        case .yearToDate:
+            // Year to date: from January 1st of current year to now
+            var components = calendar.dateComponents([.year], from: endDate)
+            components.month = 1
+            components.day = 1
+            startDate = calendar.date(from: components)!
+        case .pastYear:
+            // Past year: from 1st of current month last year to 1st of current month this year
+            let components = calendar.dateComponents([.year, .month], from: endDate)
+            startDate = calendar.date(byAdding: .year, value: -1, to: calendar.date(from: components)!)!
         case .year:
             startDate = calendar.date(byAdding: .year, value: -1, to: endDate)!
         }
@@ -47,9 +44,11 @@ struct TransactionAnalyticsView: View {
     
     // Helper to get time interval in seconds for the selected filter
     private func getTimeIntervalForFilter() -> TimeInterval {
-        switch selectedTimeFilter {
+        switch filterState.timeFilter {
         case .week: return 7 * 24 * 60 * 60
         case .month: return 30 * 24 * 60 * 60
+        case .yearToDate: return 365 * 24 * 60 * 60 // Approximate for navigation
+        case .pastYear: return 365 * 24 * 60 * 60
         case .year: return 365 * 24 * 60 * 60
         }
     }
@@ -58,29 +57,48 @@ struct TransactionAnalyticsView: View {
     private var timePeriodTitle: String {
         let formatter = DateFormatter()
         
-        switch selectedTimeFilter {
+        switch filterState.timeFilter {
         case .week:
             formatter.dateFormat = "MMM d"
             return "\(formatter.string(from: dateRange.start)) - \(formatter.string(from: dateRange.end))"
         case .month:
             formatter.dateFormat = "MMMM yyyy"
             return formatter.string(from: dateRange.end)
+        case .yearToDate:
+            formatter.dateFormat = "yyyy"
+            let year = formatter.string(from: dateRange.end)
+            return "\(year) YTD"
+        case .pastYear:
+            formatter.dateFormat = "MMM yyyy"
+            return "\(formatter.string(from: dateRange.start)) - \(formatter.string(from: dateRange.end))"
         case .year:
             formatter.dateFormat = "MMM yyyy"
             return "\(formatter.string(from: dateRange.start)) - \(formatter.string(from: dateRange.end))"
         }
     }
     
-    // Filter transactions based on selected time period
+    // Filter transactions based on selected filters
     private var filteredTransactions: [Transaction] {
         let transactions = viewModel.transactions.filter { transaction in
+            // Time range filter
             let isInTimeRange = transaction.date >= dateRange.start && transaction.date <= dateRange.end
             
-            if selectedCategoryIds.isEmpty {
-                return isInTimeRange
-            } else {
-                return isInTimeRange && selectedCategoryIds.contains(transaction.categoryId)
+            // Transaction type filter
+            let matchesType: Bool
+            switch filterState.transactionType {
+            case .all:
+                matchesType = true
+            case .income:
+                matchesType = transaction.type == .income
+            case .expense:
+                matchesType = transaction.type == .expense
             }
+            
+            // Category filter
+            let matchesCategory = filterState.selectedCategories.isEmpty ||
+                filterState.selectedCategories.contains(transaction.categoryId)
+            
+            return isInTimeRange && matchesType && matchesCategory
         }
         
         return transactions
@@ -115,14 +133,54 @@ struct TransactionAnalyticsView: View {
         .sorted(by: { $0.amount > $1.amount })
     }
     
-    // Group expenses by date for timeline view
-    private var expensesByDate: [(date: Date, amount: Double)] {
-        let calendar = Calendar.current
+    // Group income by category
+    private var incomeByCategory: [CategorySpending] {
+        let incomeDict = Dictionary(grouping: filteredIncomes) { income in
+            income.categoryId
+        }
         
-        // Group by day for week/month, by month for year
+        return incomeDict.compactMap { (categoryId, transactions) in
+            guard let category = viewModel.getCategory(id: categoryId) else { return nil }
+            let totalAmount = transactions.reduce(0) { $0 + $1.amount }
+            return CategorySpending(
+                id: categoryId,
+                category: category,
+                amount: totalAmount,
+                count: transactions.count
+            )
+        }
+        .sorted(by: { $0.amount > $1.amount })
+    }
+    
+    // Combined categories for charts when showing all transactions
+    private var combinedCategoryData: [CategorySpending] {
+        let allTransactions = filteredTransactions
+        let categoryDict = Dictionary(grouping: allTransactions) { transaction in
+            transaction.categoryId
+        }
+        
+        return categoryDict.compactMap { (categoryId, transactions) in
+            guard let category = viewModel.getCategory(id: categoryId) else { return nil }
+            let totalAmount = transactions.reduce(0) { $0 + $1.amount }
+            return CategorySpending(
+                id: categoryId,
+                category: category,
+                amount: totalAmount,
+                count: transactions.count
+            )
+        }
+        .sorted(by: { $0.amount > $1.amount })
+    }
+    
+    // Group transactions by date for timeline view
+    private var transactionsByDate: [(date: Date, amount: Double)] {
+        let calendar = Calendar.current
+        let transactions = filteredTransactions
+        
+        // Group by day for week/month, by month for year type views
         let groupingBlock: (Transaction) -> Date = { transaction in
-            if selectedTimeFilter == .year {
-                // For year view, group by month
+            if filterState.timeFilter == .yearToDate || filterState.timeFilter == .pastYear || filterState.timeFilter == .year {
+                // For year type views, group by month
                 var components = calendar.dateComponents([.year, .month], from: transaction.date)
                 components.day = 1 // Start of month
                 return calendar.date(from: components) ?? transaction.date
@@ -132,9 +190,11 @@ struct TransactionAnalyticsView: View {
             }
         }
         
-        let groups = Dictionary(grouping: filteredExpenses, by: groupingBlock)
+        let groups = Dictionary(grouping: transactions, by: groupingBlock)
             .mapValues { transactions in
-                transactions.reduce(0) { $0 + $1.amount }
+                transactions.reduce(0) { result, transaction in
+                    result + (transaction.type == .expense ? -transaction.amount : transaction.amount)
+                }
             }
         
         // Sort by date
@@ -153,16 +213,6 @@ struct TransactionAnalyticsView: View {
         filteredIncomes.reduce(0) { $0 + $1.amount }
     }
     
-    // Get all categories that have data in current period
-    private var availableCategories: [Category] {
-        let categoryIds = Set(filteredTransactions.map { $0.categoryId })
-        
-        let expenseCategories = viewModel.expenseCategories.filter { categoryIds.contains($0.id) }
-        let incomeCategories = viewModel.incomeCategories.filter { categoryIds.contains($0.id) }
-        
-        return expenseCategories + incomeCategories
-    }
-    
     // Helper function to format currency
     private func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
@@ -178,12 +228,12 @@ struct TransactionAnalyticsView: View {
     private func formatDateLabel(_ date: Date) -> String {
         let formatter = DateFormatter()
         
-        switch selectedTimeFilter {
+        switch filterState.timeFilter {
         case .week:
             formatter.dateFormat = "EEE"
         case .month:
             formatter.dateFormat = "d"
-        case .year:
+        case .yearToDate, .pastYear, .year:
             formatter.dateFormat = "MMM"
         }
         
@@ -193,231 +243,241 @@ struct TransactionAnalyticsView: View {
     // MARK: - Body
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Time navigation and filters
-                timeNavigationView
-                
-                // Summary cards
-                summaryCards
-                
-                // Chart type selector
-                chartTypeSelector
-                
-                // Chart view based on selected type
-                if !expensesByCategory.isEmpty {
-                    if selectedChartStyle == "Pie" {
-                        if #available(iOS 16.0, *) {
-                            categoryPieChart
-                        } else {
-                            Text("Pie charts require iOS 16")
-                                .foregroundColor(.secondary)
-                                .padding()
-                        }
-                    } else if selectedChartStyle == "Bar" {
-                        if #available(iOS 16.0, *) {
-                            categoryBarChart
-                        } else {
-                            Text("Bar charts require iOS 16")
-                                .foregroundColor(.secondary)
-                                .padding()
-                        }
-                    } else if selectedChartStyle == "Line" {
-                        if #available(iOS 16.0, *) {
-                            timelineChart
-                        } else {
-                            Text("Line charts require iOS 16")
-                                .foregroundColor(.secondary)
-                                .padding()
-                        }
-                    }
-                } else {
-                    noDataView
+        VStack(spacing: 0) {
+            // Header with filters
+            VStack(spacing: 12) {
+                // Active filters display (only show if category or transaction type filters are active)
+                if filterState.transactionType != .all || !filterState.selectedCategories.isEmpty {
+                    activeFiltersView
                 }
                 
-                // Category spending breakdown
-                categorySpendingSection
+                // Time navigation and filters
+                timeNavigationView
             }
-            .padding()
+            .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Summary cards
+                    summaryCards
+                    
+                    // Chart type selector
+                    chartTypeSelector
+                    
+                    // Chart view based on selected type
+                    if !hasDataForCurrentView {
+                        noDataView
+                    } else {
+                        if selectedChartStyle == "Pie" {
+                            if #available(iOS 16.0, *) {
+                                categoryPieChart
+                            } else {
+                                Text("Pie charts require iOS 16")
+                                    .foregroundColor(.secondary)
+                                    .padding()
+                            }
+                        } else if selectedChartStyle == "Bar" {
+                            if #available(iOS 16.0, *) {
+                                categoryBarChart
+                            } else {
+                                Text("Bar charts require iOS 16")
+                                    .foregroundColor(.secondary)
+                                    .padding()
+                            }
+                        } else if selectedChartStyle == "Line" {
+                            if #available(iOS 16.0, *) {
+                                timelineChart
+                            } else {
+                                Text("Line charts require iOS 16")
+                                    .foregroundColor(.secondary)
+                                    .padding()
+                            }
+                        }
+                    }
+                    
+                    // Category spending breakdown
+                    categorySpendingSection
+                }
+                .padding()
+            }
         }
         .navigationTitle("Spending Analytics")
+        .navigationBarItems(trailing: filterButton)
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
-        .sheet(isPresented: $showCategoryFilter) {
-            CategoryFilterSheet(
-                availableCategories: availableCategories,
-                selectedCategories: $selectedCategoryIds
-            )
-        }
-        .onAppear {
-            // Initialize selected categories with all available categories
-            if selectedCategoryIds.isEmpty {
-                selectedCategoryIds = Set(availableCategories.map { $0.id })
+        .sheet(isPresented: $showFilterSheet) {
+            NavigationView {
+                AnalyticsFilterView(filterState: $filterState)
             }
         }
     }
     
     // MARK: - Component Views
     
-    // Time navigation view
-    private var timeNavigationView: some View {
-        VStack(spacing: 16) {
-            // Period title with navigation arrows
-            HStack {
-                Button(action: {
-                    timeOffset -= 1
-                }) {
-                    Image(systemName: "chevron.left")
-                        .foregroundColor(viewModel.adaptiveThemeColor)
-                        .padding(8)
-                        .background(
-                            Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
-                        )
+    // Filter button for navigation bar
+    private var filterButton: some View {
+        Button(action: {
+            showFilterSheet = true
+        }) {
+            HStack(spacing: 5) {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                if activeFilterCount > 0 {
+                    Text("\(activeFilterCount)")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(viewModel.themeColor)
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
                 }
-                
-                Spacer()
-                
-                Text(timePeriodTitle)
-                    .font(.headline)
-                
-                Spacer()
-                
-                Button(action: {
-                    if timeOffset < 0 {
-                        timeOffset += 1
-                    }
-                }) {
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(viewModel.adaptiveThemeColor)
-                        .padding(8)
-                        .background(
-                            Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
-                        )
-                }
-                .disabled(timeOffset == 0)
-                .opacity(timeOffset == 0 ? 0.5 : 1.0)
-            }
-            .padding(.vertical, 4)
-            
-            // Time filter buttons
-            HStack(spacing: 8) {
-                ForEach(TimeFilter.allCases, id: \.self) { filter in
-                    TimeFilterButton(
-                        title: filter.rawValue,
-                        isSelected: selectedTimeFilter == filter,
-                        themeColor: viewModel.adaptiveThemeColor,
-                        colorScheme: colorScheme
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedTimeFilter = filter
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                // Category filter button
-                Button(action: {
-                    showCategoryFilter = true
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(.system(size: 14))
-                        
-                        Text("Filter")
-                            .font(.subheadline)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
-                    .foregroundColor(viewModel.adaptiveThemeColor)
-                    .cornerRadius(20)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
-                    )
-                }
-                .buttonStyle(PlainButtonStyle())
             }
         }
+    }
+    
+    // Helper to count active filters (only category and transaction type)
+    private var activeFilterCount: Int {
+        var count = 0
+        
+        if filterState.transactionType != .all { count += 1 }
+        if !filterState.selectedCategories.isEmpty { count += 1 }
+        
+        return count
+    }
+    
+    // Check if there's data for the current view
+    private var hasDataForCurrentView: Bool {
+        switch filterState.transactionType {
+        case .all:
+            return !combinedCategoryData.isEmpty
+        case .income:
+            return !incomeByCategory.isEmpty
+        case .expense:
+            return !expensesByCategory.isEmpty
+        }
+    }
+    
+    // Active filters display (only shows category and transaction type)
+    private var activeFiltersView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    if filterState.transactionType != .all {
+                        filterTag(
+                            icon: filterState.transactionType == .income ? "arrow.down.circle" : "arrow.up.circle",
+                            text: filterState.transactionType.rawValue,
+                            color: filterState.transactionType == .income ? .green : .red
+                        )
+                    }
+                    
+                    if !filterState.selectedCategories.isEmpty {
+                        filterTag(
+                            icon: "tag",
+                            text: "\(filterState.selectedCategories.count) Categories",
+                            color: .orange
+                        )
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+            }
+            
+            Divider()
+        }
+    }
+    
+    // Filter tag component
+    private func filterTag(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+            Text(text)
+                .font(.system(size: 13, weight: .medium))
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(color.opacity(colorScheme == .dark ? 0.25 : 0.15))
+        )
+        .foregroundColor(color)
+    }
+    
+    // Time navigation view with more padding
+    private var timeNavigationView: some View {
+        HStack {
+            Button(action: {
+                filterState.timeOffset -= 1
+            }) {
+                Image(systemName: "chevron.left")
+                    .foregroundColor(viewModel.adaptiveThemeColor)
+                    .font(.system(size: 18, weight: .semibold))
+                    .padding(12)
+                    .background(
+                        Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                    )
+            }
+            
+            Spacer()
+            
+            Text(timePeriodTitle)
+                .font(.system(size: 18, weight: .semibold))
+            
+            Spacer()
+            
+            Button(action: {
+                if filterState.timeOffset < 0 {
+                    filterState.timeOffset += 1
+                }
+            }) {
+                Image(systemName: "chevron.right")
+                    .foregroundColor(viewModel.adaptiveThemeColor)
+                    .font(.system(size: 18, weight: .semibold))
+                    .padding(12)
+                    .background(
+                        Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                    )
+            }
+            .disabled(filterState.timeOffset == 0)
+            .opacity(filterState.timeOffset == 0 ? 0.5 : 1.0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
     
     // Chart type selector
     private var chartTypeSelector: some View {
         HStack(spacing: 12) {
-            Button(action: { selectedChartStyle = "Pie" }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "chart.pie.fill")
-                        .font(.system(size: 14))
-                    
-                    Text("Pie")
-                        .font(.subheadline)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    selectedChartStyle == "Pie"
-                    ? viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2)
-                    : Color(UIColor.tertiarySystemFill)
-                )
-                .foregroundColor(
-                    selectedChartStyle == "Pie"
-                    ? viewModel.adaptiveThemeColor
-                    : Color(UIColor.secondaryLabel)
-                )
-                .cornerRadius(10)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            Button(action: { selectedChartStyle = "Bar" }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "chart.bar.fill")
-                        .font(.system(size: 14))
-                    
-                    Text("Bar")
-                        .font(.subheadline)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    selectedChartStyle == "Bar"
-                    ? viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2)
-                    : Color(UIColor.tertiarySystemFill)
-                )
-                .foregroundColor(
-                    selectedChartStyle == "Bar"
-                    ? viewModel.adaptiveThemeColor
-                    : Color(UIColor.secondaryLabel)
-                )
-                .cornerRadius(10)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            Button(action: { selectedChartStyle = "Line" }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.system(size: 14))
-                    
-                    Text("Line")
-                        .font(.subheadline)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    selectedChartStyle == "Line"
-                    ? viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2)
-                    : Color(UIColor.tertiarySystemFill)
-                )
-                .foregroundColor(
-                    selectedChartStyle == "Line"
-                    ? viewModel.adaptiveThemeColor
-                    : Color(UIColor.secondaryLabel)
-                )
-                .cornerRadius(10)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
+            chartTypeButton(type: "Pie", icon: "chart.pie.fill")
+            chartTypeButton(type: "Bar", icon: "chart.bar.fill")
+            chartTypeButton(type: "Line", icon: "chart.line.uptrend.xyaxis")
             Spacer()
         }
+    }
+    
+    private func chartTypeButton(type: String, icon: String) -> some View {
+        Button(action: { selectedChartStyle = type }) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                
+                Text(type)
+                    .font(.subheadline)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                selectedChartStyle == type
+                ? viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2)
+                : Color(UIColor.tertiarySystemFill)
+            )
+            .foregroundColor(
+                selectedChartStyle == type
+                ? viewModel.adaptiveThemeColor
+                : Color(UIColor.secondaryLabel)
+            )
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
     
     // Summary metrics cards
@@ -508,16 +568,16 @@ struct TransactionAnalyticsView: View {
                 .font(.system(size: 42))
                 .foregroundColor(.secondary)
             
-            Text("No expense data for this period")
+            Text("No \(filterState.transactionType == .all ? "" : filterState.transactionType.rawValue.lowercased()) data for this period")
                 .font(.headline)
                 .foregroundColor(.secondary)
             
-            if !selectedCategoryIds.isEmpty && selectedCategoryIds.count != availableCategories.count {
+            if filterState.hasActiveFilters {
                 Button(action: {
-                    // Reset category filters
-                    selectedCategoryIds = Set(availableCategories.map { $0.id })
+                    // Reset filters
+                    filterState = AnalyticsFilterState()
                 }) {
-                    Text("Reset Category Filters")
+                    Text("Reset Filters")
                         .font(.subheadline)
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
@@ -539,21 +599,21 @@ struct TransactionAnalyticsView: View {
     @available(iOS 16.0, *)
     private var categoryPieChart: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Spending by Category")
+            Text(chartTitle)
                 .font(.headline)
                 .foregroundColor(.secondary)
             
             Chart {
-                ForEach(expensesByCategory) { category in
+                ForEach(chartData) { category in
                     SectorMark(
-                        angle: .value("Spent", category.amount),
+                        angle: .value("Amount", category.amount),
                         innerRadius: .ratio(0.6),
                         angularInset: 1.5
                     )
                     .foregroundStyle(by: .value("Category", category.category.name))
                     .annotation(position: .overlay) {
-                        if category.amount / totalExpenses > 0.1 {
-                            Text("\(Int(category.amount / totalExpenses * 100))%")
+                        if category.amount / totalForChart > 0.1 {
+                            Text("\(Int(category.amount / totalForChart * 100))%")
                                 .font(.caption)
                                 .bold()
                                 .foregroundColor(.white)
@@ -574,17 +634,17 @@ struct TransactionAnalyticsView: View {
     @available(iOS 16.0, *)
     private var categoryBarChart: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Spending by Category")
+            Text(chartTitle)
                 .font(.headline)
                 .foregroundColor(.secondary)
             
             Chart {
-                ForEach(expensesByCategory) { category in
+                ForEach(chartData) { category in
                     BarMark(
                         x: .value("Amount", category.amount),
                         y: .value("Category", category.category.name)
                     )
-                    .foregroundStyle(by: .value("Category", category.category.name))
+                    .foregroundStyle(by: .value("Type", category.category.type.rawValue))
                     .annotation(position: .trailing) {
                         Text(formatCurrency(category.amount))
                             .font(.caption)
@@ -592,8 +652,11 @@ struct TransactionAnalyticsView: View {
                     }
                 }
             }
-            .chartForegroundStyleScale(range: ChartColors.adaptiveColorArray(for: colorScheme))
-            .frame(height: min(CGFloat(expensesByCategory.count * 50), 300))
+            .chartForegroundStyleScale([
+                "income": Color.green,
+                "expense": Color.red
+            ])
+            .frame(height: min(CGFloat(chartData.count * 50), 300))
         }
         .padding()
         .background(viewModel.cardBackgroundColor(for: colorScheme))
@@ -605,12 +668,12 @@ struct TransactionAnalyticsView: View {
     @available(iOS 16.0, *)
     private var timelineChart: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Spending Over Time")
+            Text("Cash Flow Over Time")
                 .font(.headline)
                 .foregroundColor(.secondary)
             
             Chart {
-                ForEach(expensesByDate, id: \.date) { dataPoint in
+                ForEach(transactionsByDate, id: \.date) { dataPoint in
                     LineMark(
                         x: .value("Date", dataPoint.date),
                         y: .value("Amount", dataPoint.amount)
@@ -667,17 +730,17 @@ struct TransactionAnalyticsView: View {
     // Category spending breakdown section
     private var categorySpendingSection: some View {
         VStack(spacing: 16) {
-            if !expensesByCategory.isEmpty {
+            if !chartData.isEmpty {
                 Text("Category Breakdown")
                     .font(.headline)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
                 // List of categories with amounts
-                ForEach(expensesByCategory) { categorySpending in
+                ForEach(chartData) { categorySpending in
                     CategorySpendingRowView(
                         categorySpending: categorySpending,
-                        totalAmount: totalExpenses,
+                        totalAmount: totalForChart,
                         formatCurrency: formatCurrency,
                         colorScheme: colorScheme
                     )
@@ -685,156 +748,54 @@ struct TransactionAnalyticsView: View {
             }
         }
     }
+    
+    // MARK: - Helper Properties for Charts
+    
+    private var chartData: [CategorySpending] {
+        switch filterState.transactionType {
+        case .all:
+            return combinedCategoryData
+        case .income:
+            return incomeByCategory
+        case .expense:
+            return expensesByCategory
+        }
+    }
+    
+    private var totalForChart: Double {
+        switch filterState.transactionType {
+        case .all:
+            return combinedCategoryData.reduce(0) { $0 + $1.amount }
+        case .income:
+            return totalIncome
+        case .expense:
+            return totalExpenses
+        }
+    }
+    
+    private var chartTitle: String {
+        switch filterState.transactionType {
+        case .all:
+            return "All Transactions by Category"
+        case .income:
+            return "Income by Category"
+        case .expense:
+            return "Expenses by Category"
+        }
+    }
+    
+    private func filterIcon(for timeFilter: AnalyticsTimeFilter) -> String {
+        switch timeFilter {
+        case .week: return "calendar.badge.clock"
+        case .month: return "calendar"
+        case .yearToDate: return "calendar.badge.exclamationmark"
+        case .pastYear: return "calendar.circle"
+        case .year: return "calendar.badge.clock.rtl"
+        }
+    }
 }
 
 // MARK: - Supporting Structs
-
-struct CategoryFilterSheet: View {
-    let availableCategories: [Category]
-    @Binding var selectedCategories: Set<UUID>
-    @Environment(\.presentationMode) var presentationMode
-    @Environment(\.colorScheme) var colorScheme
-    @EnvironmentObject var viewModel: FinanceViewModel
-    
-    // Split categories by type
-    private var expenseCategories: [Category] {
-        availableCategories.filter { $0.type == .expense }
-    }
-    
-    private var incomeCategories: [Category] {
-        availableCategories.filter { $0.type == .income }
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Expense categories
-                    if !expenseCategories.isEmpty {
-                        categorySection(
-                            title: "Expense Categories",
-                            categories: expenseCategories,
-                            color: .red
-                        )
-                    }
-                    
-                    // Income categories
-                    if !incomeCategories.isEmpty {
-                        categorySection(
-                            title: "Income Categories",
-                            categories: incomeCategories,
-                            color: .green
-                        )
-                    }
-                    
-                    // Actions
-                    HStack(spacing: 16) {
-                        Button(action: {
-                            // Clear all selected categories
-                            selectedCategories.removeAll()
-                            presentationMode.wrappedValue.dismiss()
-                        }) {
-                            Text("Clear All")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color(UIColor.systemGray))
-                                .cornerRadius(12)
-                                .shadow(color: colorScheme == .dark ? Color.clear : Color.gray.opacity(0.4), radius: 8, x: 0, y: 4)
-                        }
-                        
-                        Button(action: {
-                            // Select all categories
-                            selectedCategories = Set(availableCategories.map { $0.id })
-                            presentationMode.wrappedValue.dismiss()
-                        }) {
-                            Text("Select All")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(viewModel.adaptiveThemeColor)
-                                .cornerRadius(12)
-                                .shadow(color: colorScheme == .dark ? Color.clear : viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
-                        }
-                    }
-                    .padding(.top, 12)
-                }
-                .padding()
-            }
-            .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle("Filter Categories")
-            .navigationBarItems(trailing: Button("Done") {
-                presentationMode.wrappedValue.dismiss()
-            })
-        }
-    }
-    
-    // Category section view
-    private func categorySection(title: String, categories: [Category], color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.secondary)
-            
-            LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 12)
-            ], spacing: 12) {
-                ForEach(categories) { category in
-                    categoryButton(category: category, color: color)
-                }
-            }
-        }
-    }
-    
-    // Category selection button
-    private func categoryButton(category: Category, color: Color) -> some View {
-        let isSelected = selectedCategories.contains(category.id)
-        let adaptiveColor = colorScheme == .dark ? color.opacity(0.9) : color
-        
-        return Button(action: {
-            // Toggle selection
-            if isSelected {
-                selectedCategories.remove(category.id)
-            } else {
-                selectedCategories.insert(category.id)
-            }
-        }) {
-            VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ?
-                              adaptiveColor.opacity(colorScheme == .dark ? 0.25 : 0.2) :
-                              Color.gray.opacity(colorScheme == .dark ? 0.2 : 0.1))
-                        .frame(width: 44, height: 44)
-                    
-                    Image(systemName: category.iconName)
-                        .font(.system(size: 20))
-                        .foregroundColor(isSelected ? adaptiveColor : Color.gray)
-                }
-                
-                Text(category.name)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .foregroundColor(isSelected ? .primary : .secondary)
-            }
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ?
-                          adaptiveColor.opacity(colorScheme == .dark ? 0.15 : 0.1) :
-                          viewModel.cardBackgroundColor(for: colorScheme))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? adaptiveColor.opacity(colorScheme == .dark ? 0.5 : 1.0) : Color.clear, lineWidth: 1)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-        .frame(height: 100)
-    }
-}
 
 struct CategorySpending: Identifiable {
     let id: UUID
