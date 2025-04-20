@@ -16,40 +16,104 @@ struct TransactionAnalyticsView: View {
     
     // Date range based on selected time filter and offset
     private var dateRange: (start: Date, end: Date) {
+        // We’ll need to mutate both start & end
+        var startDate: Date
+        var endDate: Date
         let calendar = Calendar.current
-        let endDate = Date().addingTimeInterval(Double(filterState.timeOffset) * getTimeIntervalForFilter())
+        let now = Date()
         
-        let startDate: Date
         switch filterState.timeFilter {
         case .week:
-            startDate = calendar.date(byAdding: .day, value: -7, to: endDate)!
+            // 1. Find this week’s Monday
+            var weekCal = calendar
+            weekCal.firstWeekday = 2      // 1 = Sunday, 2 = Monday
+            guard let thisWeekStart = weekCal.dateInterval(of: .weekOfYear, for: now)?.start else {
+                // Fallback to “past 7 days”
+                endDate   = now
+                startDate = weekCal.date(byAdding: .day, value: -6, to: now)!
+                break
+            }
+            // 2. Shift that Monday by offset weeks
+            startDate = weekCal.date(
+                byAdding: .weekOfYear,
+                value: filterState.timeOffset,
+                to: thisWeekStart
+            )!
+            // 3. Sunday is 6 days later
+            endDate = weekCal.date(byAdding: .day, value: 6, to: startDate)!
+            
         case .month:
-            startDate = calendar.date(byAdding: .month, value: -1, to: endDate)!
+            // 1. Find the 1st of this month
+            guard let thisMonthStart = calendar.dateInterval(of: .month, for: now)?.start else {
+                // Fallback to “past 30 days”
+                endDate   = now
+                startDate = calendar.date(byAdding: .day, value: -29, to: now)!
+                break
+            }
+            // 2. Shift that 1st by offset months
+            startDate = calendar.date(
+                byAdding: .month,
+                value: filterState.timeOffset,
+                to: thisMonthStart
+            )!
+            if filterState.timeOffset == 0 {
+                // “Current day” of the *current* month
+                endDate = now
+            } else {
+                // For past/future months, show the *entire* month
+                let nextMonthStart = calendar.date(
+                    byAdding: .month,
+                    value: 1,
+                    to: startDate
+                )!
+                endDate = nextMonthStart.addingTimeInterval(-1) // last moment of that month
+            }
+            
         case .yearToDate:
-            // Year to date: from January 1st of current year to now
-            var components = calendar.dateComponents([.year], from: endDate)
-            components.month = 1
-            components.day = 1
-            startDate = calendar.date(from: components)!
+            // end = now shifted by offset*year‑length
+            endDate = now.addingTimeInterval(
+                Double(filterState.timeOffset) * getTimeIntervalForFilter()
+            )
+            // start = 1 Jan of that year
+            var comps = calendar.dateComponents([.year], from: endDate)
+            comps.month = 1
+            comps.day   = 1
+            startDate = calendar.date(from: comps)!
+            
         case .pastYear:
-            // Past year: from 1st of current month last year to 1st of current month this year
-            let components = calendar.dateComponents([.year, .month], from: endDate)
-            startDate = calendar.date(byAdding: .year, value: -1, to: calendar.date(from: components)!)!
+            endDate = now.addingTimeInterval(
+                Double(filterState.timeOffset) * getTimeIntervalForFilter()
+            )
+            let comps = calendar.dateComponents([.year, .month], from: endDate)
+            let monthStart = calendar.date(from: comps)!
+            startDate = calendar.date(
+                byAdding: .year,
+                value: -1,
+                to: monthStart
+            )!
+            
         case .year:
-            startDate = calendar.date(byAdding: .year, value: -1, to: endDate)!
+            endDate   = now.addingTimeInterval(
+                Double(filterState.timeOffset) * getTimeIntervalForFilter()
+            )
+            startDate = calendar.date(
+                byAdding: .year,
+                value: -1,
+                to: endDate
+            )!
         }
         
         return (start: startDate, end: endDate)
     }
-    
+
     // Helper to get time interval in seconds for the selected filter
     private func getTimeIntervalForFilter() -> TimeInterval {
         switch filterState.timeFilter {
-        case .week: return 7 * 24 * 60 * 60
-        case .month: return 30 * 24 * 60 * 60
-        case .yearToDate: return 365 * 24 * 60 * 60 // Approximate for navigation
-        case .pastYear: return 365 * 24 * 60 * 60
-        case .year: return 365 * 24 * 60 * 60
+        case .week:       return 7 * 24 * 60 * 60
+        case .month:      return 30 * 24 * 60 * 60
+        case .yearToDate: return 365 * 24 * 60 * 60   // Approximate
+        case .pastYear:   return 365 * 24 * 60 * 60
+        case .year:       return 365 * 24 * 60 * 60
         }
     }
     
