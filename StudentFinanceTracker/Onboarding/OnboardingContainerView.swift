@@ -1,18 +1,15 @@
-//
-//  OnboardingContainerView.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/20/25.
-//
-
-
 import SwiftUI
 
 struct OnboardingContainerView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @State private var currentPage = 0
+    @Environment(\.presentationMode) var presentationMode
     
-    let pages = ["welcome", "categories", "accounts", "personalize", "finish"]
+    // This flag determines if the onboarding is opened from settings
+    // or if it's the initial app onboarding
+    var isFromSettings: Bool = false
+    
+    let pages = ["welcome", "categories", "accounts", "personalise", "finish"]
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -48,8 +45,19 @@ struct OnboardingContainerView: View {
                 
                 // Navigation buttons
                 HStack {
+                    // Cancel button (only shown when opened from settings)
+                    if isFromSettings {
+                        Button(action: {
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            Text("Cancel")
+                                .foregroundColor(.secondary)
+                                .padding()
+                        }
+                    }
+                    
                     // Back button (hidden on first page)
-                    if currentPage > 0 {
+                    if currentPage > 0 && !isFromSettings {
                         Button(action: {
                             withAnimation {
                                 currentPage -= 1
@@ -62,7 +70,7 @@ struct OnboardingContainerView: View {
                             .foregroundColor(viewModel.themeColor)
                             .padding()
                         }
-                    } else {
+                    } else if !isFromSettings {
                         Spacer()
                     }
                     
@@ -74,12 +82,18 @@ struct OnboardingContainerView: View {
                             if currentPage < pages.count - 1 {
                                 currentPage += 1
                             } else {
-                                viewModel.completeOnboarding()
+                                if isFromSettings {
+                                    // Just dismiss if opened from settings
+                                    presentationMode.wrappedValue.dismiss()
+                                } else {
+                                    // Complete onboarding if it's initial setup
+                                    viewModel.completeOnboarding()
+                                }
                             }
                         }
                     }) {
                         HStack {
-                            Text(currentPage < pages.count - 1 ? "Next" : "Get Started")
+                            Text(currentPage < pages.count - 1 ? "Next" : (isFromSettings ? "Done" : "Get Started"))
                             Image(systemName: "chevron.right")
                         }
                         .foregroundColor(.white)
@@ -94,5 +108,13 @@ struct OnboardingContainerView: View {
             .padding(.bottom, 30)
         }
         .ignoresSafeArea(edges: .bottom)
+    }
+}
+
+// Preview for SwiftUI canvas
+struct OnboardingContainerView_Previews: PreviewProvider {
+    static var previews: some View {
+        OnboardingContainerView()
+            .environmentObject(FinanceViewModel())
     }
 }

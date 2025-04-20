@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.presentationMode) var presentationMode
     @Environment(\.colorScheme) var colorScheme
+    @State private var showOnboardingSheet = false
 
     
     // For editing account settings
@@ -210,21 +211,18 @@ struct SettingsView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         
-                    }
-                }
-                
-                // Data management section
-                settingsSection(title: "Data Management", icon: "externaldrive.fill") {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Button(action: { showingExportOptions = true }) {
+                        // Show onboarding again button
+                        Button(action: {
+                            showOnboardingSheet = true
+                        }) {
                             HStack {
-                                Image(systemName: "square.and.arrow.up.fill")
+                                Image(systemName: "rectangle.and.pencil.and.ellipsis")
                                     .foregroundColor(.white)
                                     .padding(8)
-                                    .background(Color.blue)
+                                    .background(viewModel.themeColor)
                                     .cornerRadius(8)
                                 
-                                Text("Export Data")
+                                Text("Show Onboarding Again")
                                     .fontWeight(.semibold)
                                 
                                 Spacer()
@@ -238,32 +236,9 @@ struct SettingsView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
-                        Button(action: resetAllData) {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.white)
-                                    .padding(8)
-                                    .background(Color.red)
-                                    .cornerRadius(8)
-                                
-                                Text("Reset All Data")
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.red)
-                                
-                                Spacer()
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        }
-                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 
-                // Add these sections to the existing SettingsView inside the body (right before the About section)
-
                 // Data management section
                 settingsSection(title: "Data Management", icon: "externaldrive.fill") {
                     VStack(alignment: .leading, spacing: 16) {
@@ -382,7 +357,7 @@ struct SettingsView: View {
                             Text("Last Updated")
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text("April 15, 2025")
+                            Text("April 20, 2025")
                         }
                         
                         Button(action: {
@@ -439,24 +414,9 @@ struct SettingsView: View {
         .sheet(isPresented: $showEditAccountSheet) {
             editAccountSheet
         }
-        .alert(isPresented: $showDeleteConfirmation) {
-            Alert(
-                title: Text("Delete Account"),
-                message: Text("Are you sure you want to delete this account? This will not delete transactions associated with this account."),
-                primaryButton: .destructive(Text("Delete")) {
-                    if let id = accountToDelete {
-                        deleteAccount(id: id)
-                    }
-                },
-                secondaryButton: .cancel()
-            )
-        }
-        .alert(isPresented: $showTestDataAlert) {
-            Alert(
-                title: Text("Test Data Generated"),
-                message: Text("6 months of sample transactions have been added to your account."),
-                dismissButton: .default(Text("OK"))
-            )
+        .sheet(isPresented: $showOnboardingSheet) {
+            OnboardingContainerView(isFromSettings: true)
+                .environmentObject(viewModel)
         }
         .alert(isPresented: $showDeleteConfirmation) {
             Alert(
@@ -466,6 +426,13 @@ struct SettingsView: View {
                     viewModel.deleteAllTransactions()
                 },
                 secondaryButton: .cancel()
+            )
+        }
+        .alert(isPresented: $showTestDataAlert) {
+            Alert(
+                title: Text("Test Data Generated"),
+                message: Text("6 months of sample transactions have been added to your account."),
+                dismissButton: .default(Text("OK"))
             )
         }
     }
@@ -936,8 +903,8 @@ struct SettingsView: View {
     private func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
+        formatter.currencySymbol = viewModel.userPreferences.currencySymbol
+        formatter.locale = Locale(identifier: viewModel.userPreferences.locale)
         formatter.maximumFractionDigits = 2
         formatter.minimumFractionDigits = 2
         return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
