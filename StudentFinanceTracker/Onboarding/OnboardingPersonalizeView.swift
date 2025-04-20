@@ -1,20 +1,12 @@
-//
-//  OnboardingPersonalizeView.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/20/25.
-//
-
-
 import SwiftUI
 
 struct OnboardingPersonalizeView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @State private var animateElements = false
     @State private var selectedThemeColor: String
-    @State private var addBudgets = false
+    @Environment(\.colorScheme) var colorScheme
     
-    // Available theme colors with their visual representations
+    // Available theme colours with their visual representations
     let themeOptions = [
         "Blue": Color(red: 0.20, green: 0.40, blue: 0.70),
         "Green": Color(red: 0.20, green: 0.55, blue: 0.30),
@@ -25,25 +17,25 @@ struct OnboardingPersonalizeView: View {
     ]
     
     init() {
-        // Get the current theme color from the view model
+        // Get the current theme colour from the view model
         let viewModel = FinanceViewModel()
         _selectedThemeColor = State(initialValue: viewModel.themeColorName)
     }
     
     var body: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             VStack(spacing: 30) {
                 // Section title
-                Text("Personalize Your App")
-                    .font(.largeTitle)
+                Text("Personalise Your App")
+                    .font(.title)
                     .fontWeight(.bold)
                     .foregroundColor(viewModel.themeColor)
-                    .padding(.top, 40)
+                    .padding(.top, 30)
                     .opacity(animateElements ? 1 : 0)
                     .offset(y: animateElements ? 0 : 20)
                 
                 // Description text
-                Text("Choose your preferred theme color and set up optional features")
+                Text("Choose your preferred theme colour to customise your experience")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
@@ -51,8 +43,8 @@ struct OnboardingPersonalizeView: View {
                     .offset(y: animateElements ? 0 : 20)
                     .animation(.easeOut.delay(0.1), value: animateElements)
                 
-                // Theme color selection
-                VStack(alignment: .leading, spacing: 12) {
+                // Theme colour selection
+                VStack(alignment: .leading, spacing: 15) {
                     Text("App Theme")
                         .font(.headline)
                         .padding(.horizontal)
@@ -75,35 +67,51 @@ struct OnboardingPersonalizeView: View {
                         }
                     }
                     .padding(.horizontal)
-                }
-                
-                // Optional budget setup
-                VStack(alignment: .leading, spacing: 20) {
-                    Toggle(isOn: $addBudgets) {
-                        Text("Set up budgets")
-                            .font(.headline)
+                    
+                    // Preview card with selected theme
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Preview")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        RoundedRectangle(cornerRadius: 15)
+                            .fill(getThemeColor(name: selectedThemeColor))
+                            .frame(height: 60)
+                            .overlay(
+                                HStack {
+                                    Image(systemName: "creditcard.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .padding(.leading)
+                                    
+                                    Text("Theme Preview")
+                                        .foregroundColor(.white)
+                                        .fontWeight(.semibold)
+                                    
+                                    Spacer()
+                                }
+                            )
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
                     .padding(.horizontal)
                     .opacity(animateElements ? 1 : 0)
                     .animation(.easeOut.delay(0.4), value: animateElements)
-                    
-                    if addBudgets {
-                        // Simple budget setup form appears when toggled
-                        OnboardingBudgetSetup()
-                            .opacity(animateElements ? 1 : 0)
-                            .animation(.easeOut.delay(0.5), value: animateElements)
-                    }
                 }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(colorScheme == .dark ? Color(.systemGray6).opacity(0.2) : Color(.systemBackground))
+                        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                )
+                .padding(.horizontal)
                 
+                // Extra padding at the bottom to avoid the navigation controls
                 Spacer()
+                    .frame(height: 150)
             }
-            .padding(.bottom, 80)
+            .frame(minHeight: UIScreen.main.bounds.height - 100)
         }
         .onAppear {
-            // Set initial theme color from view model
+            // Set initial theme colour from view model
             selectedThemeColor = viewModel.themeColorName
             
             // Animate appearance
@@ -112,14 +120,36 @@ struct OnboardingPersonalizeView: View {
             }
         }
     }
+    
+    // Helper function to get theme colour
+    private func getThemeColor(name: String) -> Color {
+        // Match the same colour calculation as in the ViewModel
+        switch name {
+        case "Blue":
+            return Color(red: 0.20, green: 0.40, blue: 0.70)
+        case "Green":
+            return Color(red: 0.20, green: 0.55, blue: 0.30)
+        case "Orange":
+            return Color(red: 0.80, green: 0.40, blue: 0.20)
+        case "Purple":
+            return Color(red: 0.50, green: 0.25, blue: 0.70)
+        case "Red":
+            return Color(red: 0.70, green: 0.20, blue: 0.20)
+        case "Teal":
+            return Color(red: 0.20, green: 0.50, blue: 0.60)
+        default:
+            return Color(red: 0.20, green: 0.40, blue: 0.70)
+        }
+    }
 }
 
-// Theme color selection button
+// Theme colour selection button
 struct ThemeColorButton: View {
     let colorName: String
     let color: Color
     let isSelected: Bool
     let onTap: () -> Void
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         Button(action: onTap) {
@@ -129,7 +159,7 @@ struct ThemeColorButton: View {
                     .frame(width: 50, height: 50)
                     .overlay(
                         Circle()
-                            .stroke(Color.white, lineWidth: isSelected ? 3 : 0)
+                            .stroke(colorScheme == .dark ? Color.white : Color.white, lineWidth: isSelected ? 3 : 0)
                             .padding(2)
                     )
                     .overlay(
@@ -140,7 +170,7 @@ struct ThemeColorButton: View {
                 
                 Text(colorName)
                     .font(.caption)
-                    .foregroundColor(isSelected ? color : .primary)
+                    .foregroundColor(isSelected ? color : (colorScheme == .dark ? .white : .primary))
                     .fontWeight(isSelected ? .bold : .regular)
             }
         }
@@ -150,79 +180,16 @@ struct ThemeColorButton: View {
     }
 }
 
-// Simple budget setup form
-struct OnboardingBudgetSetup: View {
-    @EnvironmentObject var viewModel: FinanceViewModel
-    @State private var overallBudget: String = ""
-    @State private var timePeriod: TimePeriod = .monthly
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Quick Budget Setup")
-                .font(.headline)
-                .padding(.horizontal)
+struct OnboardingPersonalizeView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            OnboardingPersonalizeView()
+                .environmentObject(FinanceViewModel())
+                .preferredColorScheme(.light)
             
-            VStack(spacing: 16) {
-                // Overall budget amount
-                HStack {
-                    Text("Monthly Budget Amount")
-                        .font(.subheadline)
-                    
-                    Spacer()
-                    
-                    HStack {
-                        Text("£")
-                            .foregroundColor(.secondary)
-                        
-                        TextField("0.00", text: $overallBudget)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 100)
-                    }
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-                
-                // Budget period
-                HStack {
-                    Text("Budget Period")
-                        .font(.subheadline)
-                    
-                    Spacer()
-                    
-                    Picker("Period", selection: $timePeriod) {
-                        ForEach(TimePeriod.allCases, id: \.self) { period in
-                            Text(period.displayName()).tag(period)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .frame(width: 200)
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-            }
-            .padding(.horizontal)
+            OnboardingPersonalizeView()
+                .environmentObject(FinanceViewModel())
+                .preferredColorScheme(.dark)
         }
-        .onDisappear {
-            // Create budget when leaving this view if amount is entered
-            createBudget()
-        }
-    }
-    
-    private func createBudget() {
-        guard let amount = Double(overallBudget), amount > 0 else { return }
-        
-        // Create an overall budget
-        let newBudget = Budget(
-            name: "Overall \(timePeriod.displayName()) Budget",
-            amount: amount,
-            type: .overall,
-            timePeriod: timePeriod,
-            startDate: Date()
-        )
-        
-        viewModel.addBudget(newBudget)
     }
 }

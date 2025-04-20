@@ -4,6 +4,7 @@ struct OnboardingContainerView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @State private var currentPage = 0
     @Environment(\.presentationMode) var presentationMode
+    @Environment(\.colorScheme) var colorScheme
     
     // This flag determines if the onboarding is opened from settings
     // or if it's the initial app onboarding
@@ -16,23 +17,28 @@ struct OnboardingContainerView: View {
             TabView(selection: $currentPage) {
                 OnboardingWelcomeView()
                     .tag(0)
+                    .padding(.bottom, 100) // Add bottom padding to all content
                 
                 OnboardingCategoriesView()
                     .tag(1)
+                    .padding(.bottom, 100)
                 
                 OnboardingAccountsView()
                     .tag(2)
+                    .padding(.bottom, 100)
                 
                 OnboardingPersonalizeView()
                     .tag(3)
+                    .padding(.bottom, 100)
                 
                 OnboardingFinishView()
                     .tag(4)
+                    .padding(.bottom, 100)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             .animation(.easeInOut, value: currentPage)
             
-            // Page control and navigation buttons
+            // Navigation controls with dedicated space
             VStack(spacing: 20) {
                 // Page indicators
                 HStack(spacing: 8) {
@@ -105,6 +111,22 @@ struct OnboardingContainerView: View {
                 }
                 .padding(.horizontal)
             }
+            .padding(.vertical)
+            .background(
+                // Semi-transparent background that works in both light and dark mode
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        colorScheme == .dark ?
+                            Color.black.opacity(0.7) :
+                            Color(.systemBackground).opacity(0.8),
+                        colorScheme == .dark ?
+                            Color.black.opacity(0.9) :
+                            Color(.systemBackground)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .padding(.bottom, 30)
         }
         .ignoresSafeArea(edges: .bottom)
@@ -114,7 +136,14 @@ struct OnboardingContainerView: View {
 // Preview for SwiftUI canvas
 struct OnboardingContainerView_Previews: PreviewProvider {
     static var previews: some View {
-        OnboardingContainerView()
-            .environmentObject(FinanceViewModel())
+        Group {
+            OnboardingContainerView()
+                .environmentObject(FinanceViewModel())
+                .preferredColorScheme(.light)
+            
+            OnboardingContainerView()
+                .environmentObject(FinanceViewModel())
+                .preferredColorScheme(.dark)
+        }
     }
 }

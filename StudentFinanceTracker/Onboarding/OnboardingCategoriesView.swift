@@ -1,11 +1,3 @@
-//
-//  OnboardingCategoriesView.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/20/25.
-//
-
-
 import SwiftUI
 
 struct OnboardingCategoriesView: View {
@@ -13,83 +5,44 @@ struct OnboardingCategoriesView: View {
     @State private var animateElements = false
     @State private var selectedIncomeCategories: Set<UUID> = []
     @State private var selectedExpenseCategories: Set<UUID> = []
+    @Environment(\.colorScheme) var colorScheme
     
+    // Square grid layout with 3 items per row
     private let columns = [
-        GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 16)
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        GridItem(.flexible())
     ]
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 30) {
-                // Section title
-                Text("Customize Categories")
-                    .font(.largeTitle)
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 25) {
+                // Section title with more padding
+                Text("Customise Categories")
+                    .font(.title)
                     .fontWeight(.bold)
                     .foregroundColor(viewModel.themeColor)
-                    .padding(.top, 40)
+                    .padding(.top, 30)
+                    .padding(.bottom, 5)
                 
-                // Description text
+                // Description text with better padding
                 Text("Select the categories that are relevant to your finances. You can add more later.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
+                    .padding(.bottom, 15)
                 
-                // Income Categories
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Income Categories")
-                        .font(.headline)
-                        .padding(.horizontal)
-                    
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(viewModel.incomeCategories) { category in
-                            OnboardingCategoryButton(
-                                category: category,
-                                isSelected: selectedIncomeCategories.contains(category.id),
-                                onTap: {
-                                    if selectedIncomeCategories.contains(category.id) {
-                                        selectedIncomeCategories.remove(category.id)
-                                    } else {
-                                        selectedIncomeCategories.insert(category.id)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .opacity(animateElements ? 1 : 0)
-                .offset(y: animateElements ? 0 : 20)
+                // Income Categories Section
+                incomeCategoriesSection
                 
-                // Expense Categories
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Expense Categories")
-                        .font(.headline)
-                        .padding(.horizontal)
-                    
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(viewModel.expenseCategories) { category in
-                            OnboardingCategoryButton(
-                                category: category,
-                                isSelected: selectedExpenseCategories.contains(category.id),
-                                onTap: {
-                                    if selectedExpenseCategories.contains(category.id) {
-                                        selectedExpenseCategories.remove(category.id)
-                                    } else {
-                                        selectedExpenseCategories.insert(category.id)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .opacity(animateElements ? 1 : 0)
-                .offset(y: animateElements ? 0 : 20)
-                .animation(.easeOut.delay(0.2), value: animateElements)
+                // Expense Categories Section
+                expenseCategoriesSection
                 
+                // Extra padding at the bottom to avoid the navigation controls
                 Spacer()
+                    .frame(height: 120)
             }
-            .padding(.bottom, 80)
+            .padding(.horizontal)
         }
         .onAppear {
             // Initially select all categories
@@ -102,55 +55,211 @@ struct OnboardingCategoriesView: View {
             }
         }
     }
+    
+    // Helper function to toggle category selection
+    private func toggleCategory(_ id: UUID, in categories: inout Set<UUID>) {
+        if categories.contains(id) {
+            categories.remove(id)
+        } else {
+            categories.insert(id)
+        }
+    }
+    
+    // MARK: - UI Components
+    
+    private var incomeCategoriesSection: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack {
+                Image(systemName: "arrow.down.circle.fill")
+                    .foregroundColor(.green)
+                
+                Text("Income Categories")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.leading, 5)
+            .padding(.bottom, 5)
+            
+            if viewModel.incomeCategories.isEmpty {
+                Text("No categories found")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                incomeCategoriesGrid
+            }
+        }
+        .padding()
+        .background(categoryBackgroundStyle)
+        .opacity(animateElements ? 1 : 0)
+        .offset(y: animateElements ? 0 : 20)
+        .padding(.bottom, 20)
+    }
+    
+    private var incomeCategoriesGrid: some View {
+        LazyVGrid(columns: columns, spacing: 15) {
+            ForEach(viewModel.incomeCategories) { category in
+                categoryButton(for: category, isIncome: true)
+            }
+        }
+    }
+    
+    private var expenseCategoriesSection: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack {
+                Image(systemName: "arrow.up.circle.fill")
+                    .foregroundColor(.red)
+                
+                Text("Expense Categories")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.leading, 5)
+            .padding(.bottom, 5)
+            
+            if viewModel.expenseCategories.isEmpty {
+                Text("No categories found")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                expenseCategoriesGrid
+            }
+        }
+        .padding()
+        .background(categoryBackgroundStyle)
+        .opacity(animateElements ? 1 : 0)
+        .offset(y: animateElements ? 0 : 20)
+    }
+    
+    private var expenseCategoriesGrid: some View {
+        LazyVGrid(columns: columns, spacing: 15) {
+            ForEach(viewModel.expenseCategories) { category in
+                categoryButton(for: category, isIncome: false)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func categoryButton(for category: Category, isIncome: Bool) -> some View {
+        let isSelected = isIncome
+            ? selectedIncomeCategories.contains(category.id)
+            : selectedExpenseCategories.contains(category.id)
+        
+        SquareCategoryButton(
+            category: category,
+            isSelected: isSelected
+        ) {
+            if isIncome {
+                toggleCategory(category.id, in: &selectedIncomeCategories)
+            } else {
+                toggleCategory(category.id, in: &selectedExpenseCategories)
+            }
+        }
+    }
+    
+    private var categoryBackgroundStyle: some View {
+        RoundedRectangle(cornerRadius: 15)
+            .fill(colorScheme == .dark
+                  ? Color(.systemGray6).opacity(0.2)
+                  : Color(.systemBackground))
+            .shadow(color: colorScheme == .dark
+                    ? Color.clear
+                    : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+    }
 }
 
-// Custom category selection button for onboarding
-struct OnboardingCategoryButton: View {
+// Square category selection button for onboarding
+struct SquareCategoryButton: View {
     let category: Category
     let isSelected: Bool
     let onTap: () -> Void
     
-    @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
+                // Icon in colored square
                 ZStack {
-                    Circle()
-                        .fill(isSelected ?
-                              (category.type == .income ? Color.green.opacity(0.2) : Color.red.opacity(0.2)) :
-                              Color.gray.opacity(0.1))
-                        .frame(width: 60, height: 60)
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(backgroundColorFill)
+                        .aspectRatio(1, contentMode: .fit)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(backgroundColorStroke, lineWidth: isSelected ? 2 : 0)
+                        )
                     
                     Image(systemName: category.iconName)
-                        .font(.system(size: 28))
-                        .foregroundColor(isSelected ?
-                                        (category.type == .income ? .green : .red) :
-                                        .gray)
+                        .font(.system(size: 22))
+                        .foregroundColor(iconColor)
                 }
                 
+                // Category name with text wrapping
                 Text(category.name)
-                    .font(.callout)
-                    .foregroundColor(isSelected ? .primary : .secondary)
+                    .font(.caption)
+                    .fontWeight(isSelected ? .semibold : .regular)
+                    .foregroundColor(textColor)
                     .lineLimit(1)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .truncationMode(.tail)
             }
-            .padding(.vertical, 8)
-            .frame(width: 100)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ?
-                          (category.type == .income ? Color.green.opacity(0.1) : Color.red.opacity(0.1)) :
-                          Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ?
-                            (category.type == .income ? Color.green : Color.red) :
-                            Color.clear,
-                            lineWidth: 2)
-            )
+            .contentShape(Rectangle())
+            .padding(5)
         }
         .buttonStyle(PlainButtonStyle())
+        .scaleEffect(isSelected ? 1.05 : 1.0)
+        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
+    }
+    
+    // MARK: - Computed Properties for Colors
+    
+    private var backgroundColorFill: Color {
+        if isSelected {
+            return category.type == .income
+                ? Color.green.opacity(colorScheme == .dark ? 0.3 : 0.15)
+                : Color.red.opacity(colorScheme == .dark ? 0.3 : 0.15)
+        } else {
+            return colorScheme == .dark
+                ? Color(.systemGray5).opacity(0.3)
+                : Color(.systemGray6).opacity(0.8)
+        }
+    }
+    
+    private var backgroundColorStroke: Color {
+        if isSelected {
+            return category.type == .income ? .green : .red
+        } else {
+            return .clear
+        }
+    }
+    
+    private var iconColor: Color {
+        if isSelected {
+            return category.type == .income ? .green : .red
+        } else {
+            return colorScheme == .dark ? Color.gray.opacity(0.8) : .gray
+        }
+    }
+    
+    private var textColor: Color {
+        if isSelected {
+            return category.type == .income ? .green : .red
+        } else {
+            return colorScheme == .dark ? .white.opacity(0.7) : .secondary
+        }
+    }
+}
+
+struct OnboardingCategoriesView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            OnboardingCategoriesView()
+                .environmentObject(FinanceViewModel())
+                .preferredColorScheme(.light)
+            
+            OnboardingCategoriesView()
+                .environmentObject(FinanceViewModel())
+                .preferredColorScheme(.dark)
+        }
     }
 }
