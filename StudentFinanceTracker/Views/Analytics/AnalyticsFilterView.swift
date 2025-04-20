@@ -174,8 +174,8 @@ struct AnalyticsFilterView: View {
     
     private func filterDescription(for timeFilter: AnalyticsTimeFilter) -> String {
         switch timeFilter {
-        case .week: return "Last 7 days"
-        case .month: return "Last 30 days"
+        case .week: return "Monday to today"
+        case .month: return "1st to today"
         case .yearToDate: return "January 1st to today"
         case .pastYear: return "Last 12 months from the 1st"
         case .year: return "Last 365 days from today"
