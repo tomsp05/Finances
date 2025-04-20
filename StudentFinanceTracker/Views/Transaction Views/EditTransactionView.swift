@@ -4,7 +4,7 @@ struct EditTransactionView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
-    
+
     let transaction: Transaction
     
     // Transaction fields
@@ -29,7 +29,9 @@ struct EditTransactionView: View {
     
     // UI state
     @State private var expandedSection: ExpandableSection? = .basicInfo
+    @State private var previousExpandedSection: ExpandableSection? = nil // Track previous section for smoother animations
     @State private var showDeleteAlert: Bool = false
+    @State private var isAnimating: Bool = false // Control animation timing
     
     // For recurring series management
     private var isRecurringSeries: Bool {
@@ -89,6 +91,7 @@ struct EditTransactionView: View {
             VStack(spacing: 20) {
                 // Transaction summary header
                 transactionHeader
+                    .transition(.opacity)
                 
                 // Expandable sections
                 ForEach(ExpandableSection.allCases, id: \.self) { section in
@@ -122,6 +125,12 @@ struct EditTransactionView: View {
                     } : .cancel()
             )
         }
+        .onAppear {
+            // Add a brief delay before enabling animations to ensure smooth rendering
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                isAnimating = true
+            }
+        }
     }
     
     // MARK: - UI Components
@@ -135,7 +144,7 @@ struct EditTransactionView: View {
                 .fontWeight(.bold)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(transactionTypeColor.opacity(0.2))
+                .background(transactionTypeColor.opacity(colorScheme == .dark ? 0.3 : 0.2))
                 .foregroundColor(transactionTypeColor)
                 .cornerRadius(15)
             
@@ -189,7 +198,9 @@ struct EditTransactionView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
-                    category.type == .income ? Color.green.opacity(0.2) : Color.red.opacity(0.2)
+                    category.type == .income
+                    ? Color.green.opacity(colorScheme == .dark ? 0.3 : 0.2)
+                    : Color.red.opacity(colorScheme == .dark ? 0.3 : 0.2)
                 )
                 .foregroundColor(category.type == .income ? .green : .red)
                 .cornerRadius(15)
@@ -199,11 +210,10 @@ struct EditTransactionView: View {
         .padding()
         .frame(maxWidth: .infinity)
         .background(
-            colorScheme == .dark
-                ? Color(UIColor.secondarySystemBackground)
-                : Color(UIColor.systemBackground)
-        )        .cornerRadius(15)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 15)
+                .fill(Color(UIColor.secondarySystemBackground))
+                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+        )
     }
     
     // Expandable section container
@@ -211,8 +221,13 @@ struct EditTransactionView: View {
         VStack(spacing: 0) {
             // Section header button
             Button(action: {
-                withAnimation {
-                    expandedSection = expandedSection == section ? nil : section
+                if isAnimating {
+                    // Remember previous section for proper animation
+                    previousExpandedSection = expandedSection
+                    
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        expandedSection = expandedSection == section ? nil : section
+                    }
                 }
             }) {
                 HStack {
@@ -228,13 +243,12 @@ struct EditTransactionView: View {
                 }
                 .padding()
                 .background(
-                    colorScheme == .dark
-                        ? Color(UIColor.secondarySystemBackground)
-                        : Color(UIColor.systemBackground)
-                )                .cornerRadius(expandedSection == section ? 15 : 15)
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(Color(UIColor.secondarySystemBackground))
+                )
             }
             .buttonStyle(PlainButtonStyle())
-            .disabled(transaction.isSplit) // Disable editing for split transactions
+            .disabled(transaction.isSplit || !isAnimating) // Disable editing for split transactions or during initial load
             
             // Section content
             if expandedSection == section {
@@ -253,7 +267,7 @@ struct EditTransactionView: View {
                     
                     // Save button for the section
                     Button(action: {
-                        withAnimation {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             saveTransaction()
                             expandedSection = nil
                         }
@@ -269,23 +283,15 @@ struct EditTransactionView: View {
                     .padding(.top, 8)
                 }
                 .padding()
-                .background(
-                    colorScheme == .dark
-                        ? Color(UIColor.secondarySystemBackground)
-                        : Color(UIColor.systemBackground)
-                )                .cornerRadius(15)
-                .transition(.opacity)
+                .background(Color(UIColor.secondarySystemBackground))
             }
         }
         .background(
             RoundedRectangle(cornerRadius: 15)
-                .fill(
-                    colorScheme == .dark
-                        ? Color(UIColor.secondarySystemBackground)
-                        : Color(UIColor.systemBackground)
-                )
-                .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                .fill(Color(UIColor.secondarySystemBackground))
+                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
         )
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: expandedSection)
     }
     
     // Basic info section content
@@ -336,7 +342,7 @@ struct EditTransactionView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding()
-                .background(Color(.systemGray6))
+                .background(Color(UIColor.tertiarySystemFill))
                 .cornerRadius(10)
             }
             
@@ -348,7 +354,7 @@ struct EditTransactionView: View {
                 
                 TextField("Enter description", text: $description)
                     .padding()
-                    .background(Color(.systemGray6))
+                    .background(Color(UIColor.tertiarySystemFill))
                     .cornerRadius(10)
             }
             
@@ -361,8 +367,9 @@ struct EditTransactionView: View {
                 DatePicker("", selection: $date, displayedComponents: .date)
                     .datePickerStyle(CompactDatePickerStyle())
                     .padding()
-                    .background(Color(.systemGray6))
+                    .background(Color(UIColor.tertiarySystemFill))
                     .cornerRadius(10)
+                    .accentColor(viewModel.themeColor)
             }
         }
     }
@@ -447,6 +454,7 @@ struct EditTransactionView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Toggle("Future Transaction", isOn: $isFutureTransaction)
                     .padding(.bottom, 5)
+                    .accentColor(viewModel.themeColor)
                 
                 if isFutureTransaction {
                     DatePicker(
@@ -457,8 +465,9 @@ struct EditTransactionView: View {
                     )
                     .datePickerStyle(CompactDatePickerStyle())
                     .padding()
-                    .background(Color(.systemGray6))
+                    .background(Color(UIColor.tertiarySystemFill))
                     .cornerRadius(10)
+                    .accentColor(viewModel.themeColor)
                 }
             }
             
@@ -469,6 +478,7 @@ struct EditTransactionView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Toggle("Recurring Transaction", isOn: $isRecurring)
                         .padding(.bottom, 5)
+                        .accentColor(viewModel.themeColor)
                     
                     if isRecurring {
                         // Recurrence interval picker
@@ -484,14 +494,16 @@ struct EditTransactionView: View {
                             }
                             .pickerStyle(MenuPickerStyle())
                             .padding()
-                            .background(Color(.systemGray6))
+                            .background(Color(UIColor.tertiarySystemFill))
                             .cornerRadius(10)
+                            .accentColor(viewModel.themeColor)
                         }
                         
                         // End date toggle and picker
                         VStack(alignment: .leading, spacing: 8) {
                             Toggle("End Date", isOn: $hasEndDate)
                                 .padding(.bottom, 5)
+                                .accentColor(viewModel.themeColor)
                             
                             if hasEndDate {
                                 DatePicker(
@@ -502,8 +514,9 @@ struct EditTransactionView: View {
                                 )
                                 .datePickerStyle(CompactDatePickerStyle())
                                 .padding()
-                                .background(Color(.systemGray6))
+                                .background(Color(UIColor.tertiarySystemFill))
                                 .cornerRadius(10)
+                                .accentColor(viewModel.themeColor)
                             }
                         }
                         
@@ -513,6 +526,7 @@ struct EditTransactionView: View {
                             
                             Toggle("Update All Future Occurrences", isOn: $updateAllFutureInstances)
                                 .padding(.vertical, 5)
+                                .accentColor(viewModel.themeColor)
                         }
                     }
                 }
@@ -539,9 +553,11 @@ struct EditTransactionView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.red.opacity(0.1))
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.red.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                )
                 .foregroundColor(.red)
-                .cornerRadius(10)
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -555,7 +571,7 @@ struct EditTransactionView: View {
             .font(.system(size: 10, weight: .bold))
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(color.opacity(0.2))
+            .background(color.opacity(colorScheme == .dark ? 0.3 : 0.2))
             .foregroundColor(color)
             .cornerRadius(6)
     }
@@ -604,6 +620,10 @@ struct EditTransactionView: View {
             updatedTransaction.recurrenceEndDate = hasEndDate ? recurrenceEndDate : nil
             
             viewModel.updateTransaction(updatedTransaction)
+            
+            // Add haptic feedback on success
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
             return
         }
         
