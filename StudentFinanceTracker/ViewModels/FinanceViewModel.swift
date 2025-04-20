@@ -510,6 +510,35 @@ extension FinanceViewModel {
         saveBudgets()
     }
     
+    // Add these methods to your FinanceViewModel class
+
+    func deleteAllTransactions() {
+        // Remove all transactions
+        transactions = []
+        
+        // Reset account balances to their initial values
+        for i in 0..<accounts.count {
+            accounts[i].balance = accounts[i].initialBalance
+        }
+        
+        // Save if you have persistence methods
+        // saveData()
+    }
+
+    func resetAllData() {
+        // Clear all data
+        transactions = []
+        accounts = []
+        
+        // Reset theme to default if needed
+        themeColorName = "Blue"
+        
+        // Reset any other state as needed
+        
+        // Save if you have persistence methods
+        // saveData()
+    }
+    
     // Recalculate all budget spending based on transactions
     func recalculateBudgetSpending() {
         // Reset all budgets' current spent amount
@@ -910,12 +939,5 @@ extension FinanceViewModel {
         var components = calendar.dateComponents([.year, .month], from: date)
         components.day = min(day, calendar.range(of: .day, in: .month, for: date)?.count ?? 28)
         return calendar.date(from: components) ?? date
-    }
-    
-    // Delete all transactions
-    func deleteAllTransactions() {
-        transactions.removeAll()
-        DataService.shared.saveTransactions([])
-        recalcAccounts()
     }
 }

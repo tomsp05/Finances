@@ -6,6 +6,8 @@ struct SettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var showOnboardingSheet = false
 
+    @State private var showDeleteConfirmation = false
+    @State private var showResetConfirmation = false
     
     // For editing account settings
     @State private var accountNames: [UUID: String] = [:]
@@ -14,7 +16,10 @@ struct SettingsView: View {
     @State private var editingAccount: Account? = nil
     @State private var showEditAccountSheet = false
     @State private var showTestDataAlert = false
-    @State private var showDeleteConfirmation = false
+
+    
+    // Add state variable to track which action is being confirmed
+    @State private var confirmationAction: ConfirmationAction = .deleteTransactions
     
     // Theme options
     let themeOptions = ["Blue", "Green", "Orange", "Purple", "Red", "Teal"]
@@ -29,6 +34,13 @@ struct SettingsView: View {
     @State private var newAccountType: AccountType = .savings
     @State private var newAccountBalance = ""
     @State private var accountToDelete: UUID? = nil
+    
+    // Enum to track which confirmation is being shown
+    enum ConfirmationAction {
+        case deleteTransactions
+        case resetAllData
+        case deleteAccount
+    }
     
     var body: some View {
         ScrollView {
@@ -211,6 +223,14 @@ struct SettingsView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         
+                        
+                    }
+                }
+                
+                // Data management section
+                settingsSection(title: "Data Management", icon: "externaldrive.fill") {
+                    VStack(alignment: .leading, spacing: 16) {
+                        
                         // Show onboarding again button
                         Button(action: {
                             showOnboardingSheet = true
@@ -223,34 +243,6 @@ struct SettingsView: View {
                                     .cornerRadius(8)
                                 
                                 Text("Show Onboarding Again")
-                                    .fontWeight(.semibold)
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-                
-                // Data management section
-                settingsSection(title: "Data Management", icon: "externaldrive.fill") {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Button(action: { showingExportOptions = true }) {
-                            HStack {
-                                Image(systemName: "square.and.arrow.up.fill")
-                                    .foregroundColor(.white)
-                                    .padding(8)
-                                    .background(Color.blue)
-                                    .cornerRadius(8)
-                                
-                                Text("Export Data")
                                     .fontWeight(.semibold)
                                 
                                 Spacer()
@@ -289,9 +281,10 @@ struct SettingsView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         
-                        // Delete all transactions button
+                        // Delete All Transactions button
                         Button(action: {
                             showDeleteConfirmation = true
+                            viewModel.deleteAllTransactions()
                         }) {
                             HStack {
                                 Image(systemName: "trash.fill")
@@ -312,8 +305,22 @@ struct SettingsView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
-                        Button(action: resetAllData) {
+                        .alert(isPresented: $showDeleteConfirmation) {
+                            Alert(
+                                title: Text("Delete All Transactions"),
+                                message: Text("Are you sure you want to delete all transactions? This action cannot be undone."),
+                                primaryButton: .destructive(Text("Delete")) {
+                                    viewModel.deleteAllTransactions()
+                                },
+                                secondaryButton: .cancel()
+                            )
+                        }
+
+                        // Reset All Data button
+                        Button(action: {
+                            showResetConfirmation = true
+                            viewModel.resetAllData()
+                        }) {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.white)
@@ -333,6 +340,16 @@ struct SettingsView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .alert(isPresented: $showResetConfirmation) {
+                            Alert(
+                                title: Text("Reset All Data"),
+                                message: Text("Are you sure you want to reset all data? This will delete all accounts, transactions, categories, and settings. This action cannot be undone."),
+                                primaryButton: .destructive(Text("Reset Everything")) {
+                                    viewModel.resetAllData()
+                                },
+                                secondaryButton: .cancel()
+                            )
+                        }
                     }
                 }
                 
@@ -419,14 +436,37 @@ struct SettingsView: View {
                 .environmentObject(viewModel)
         }
         .alert(isPresented: $showDeleteConfirmation) {
-            Alert(
-                title: Text("Delete All Transactions"),
-                message: Text("Are you sure you want to delete all transactions? This action cannot be undone."),
-                primaryButton: .destructive(Text("Delete")) {
-                    viewModel.deleteAllTransactions()
-                },
-                secondaryButton: .cancel()
-            )
+            switch confirmationAction {
+            case .deleteTransactions:
+                return Alert(
+                    title: Text("Delete All Transactions"),
+                    message: Text("Are you sure you want to delete all transactions? This action cannot be undone."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        viewModel.deleteAllTransactions()
+                    },
+                    secondaryButton: .cancel()
+                )
+            case .resetAllData:
+                return Alert(
+                    title: Text("Reset All Data"),
+                    message: Text("Are you sure you want to reset all data? This will delete all accounts, transactions, categories, and settings. This action cannot be undone."),
+                    primaryButton: .destructive(Text("Reset Everything")) {
+                        resetAllData()
+                    },
+                    secondaryButton: .cancel()
+                )
+            case .deleteAccount:
+                return Alert(
+                    title: Text("Delete Account"),
+                    message: Text("Are you sure you want to delete this account? All associated transactions will be deleted as well."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        if let id = accountToDelete {
+                            deleteAccount(id: id)
+                        }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
         .alert(isPresented: $showTestDataAlert) {
             Alert(
@@ -598,6 +638,7 @@ struct SettingsView: View {
                             // Delete button
                             Button(action: {
                                 accountToDelete = account.id
+                                confirmationAction = .deleteAccount
                                 showEditAccountSheet = false
                                 showDeleteConfirmation = true
                             }) {
@@ -888,9 +929,29 @@ struct SettingsView: View {
         // Show success feedback - in a real app, you would add a toast or notification here
     }
     
+    // Replace just the resetAllData() function in the SettingsView:
+
     private func resetAllData() {
-        // This would reset all user data after confirmation
-        // For a real implementation, we'd show another confirmation alert
+        // Reset accounts
+        viewModel.accounts = []
+        
+        // Reset transactions
+        viewModel.transactions = []
+        
+        // Reset to default theme
+        viewModel.updateThemeColor(newColorName: "Blue")
+        
+        // Reset local state variables
+        selectedTheme = "Blue"
+        accountNames = [:]
+        accountPresets = [:]
+        accountTypes = [:]
+        
+        // If the viewModel has methods to reset categories and preferences, call them
+        // Otherwise, you can add methods to your ViewModel or handle it directly here
+        
+        // Show success feedback (optional)
+        // In a real app, you would show a toast or notification
     }
     
     private func exportData(format: String) {
