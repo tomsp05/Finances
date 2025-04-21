@@ -12,11 +12,17 @@ struct TransactionAnalyticsView: View {
     // Chart type
     @State private var selectedChartStyle: String = "Pie" // "Pie", "Bar", or "Line"
     
+    // Scroll state tracking
+    @State private var scrollOffset: CGFloat = 0
+    @State private var lastScrollOffset: CGFloat = 0
+    @State private var headerHeight: CGFloat = 80
+    @State private var filterHeight: CGFloat = 40
+    
     // MARK: - Computed Properties
     
     // Date range based on selected time filter and offset
     private var dateRange: (start: Date, end: Date) {
-        // We’ll need to mutate both start & end
+        // We'll need to mutate both start & end
         var startDate: Date
         var endDate: Date
         let calendar = Calendar.current
@@ -24,11 +30,11 @@ struct TransactionAnalyticsView: View {
         
         switch filterState.timeFilter {
         case .week:
-            // 1. Find this week’s Monday
+            // 1. Find this week's Monday
             var weekCal = calendar
             weekCal.firstWeekday = 2      // 1 = Sunday, 2 = Monday
             guard let thisWeekStart = weekCal.dateInterval(of: .weekOfYear, for: now)?.start else {
-                // Fallback to “past 7 days”
+                // Fallback to "past 7 days"
                 endDate   = now
                 startDate = weekCal.date(byAdding: .day, value: -6, to: now)!
                 break
@@ -45,7 +51,7 @@ struct TransactionAnalyticsView: View {
         case .month:
             // 1. Find the 1st of this month
             guard let thisMonthStart = calendar.dateInterval(of: .month, for: now)?.start else {
-                // Fallback to “past 30 days”
+                // Fallback to "past 30 days"
                 endDate   = now
                 startDate = calendar.date(byAdding: .day, value: -29, to: now)!
                 break
@@ -57,7 +63,7 @@ struct TransactionAnalyticsView: View {
                 to: thisMonthStart
             )!
             if filterState.timeOffset == 0 {
-                // “Current day” of the *current* month
+                // "Current day" of the *current* month
                 endDate = now
             } else {
                 // For past/future months, show the *entire* month
@@ -307,67 +313,74 @@ struct TransactionAnalyticsView: View {
     // MARK: - Body
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with filters
-            VStack(spacing: 12) {
-                // Active filters display (only show if category or transaction type filters are active)
-                if filterState.transactionType != .all || !filterState.selectedCategories.isEmpty {
-                    activeFiltersView
-                }
-                
-                // Time navigation and filters
-                timeNavigationView
-            }
-            .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
+        ZStack(alignment: .top) {
+            // Background
+            viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Summary cards
-                    summaryCards
-                    
-                    // Chart type selector
-                    chartTypeSelector
-                    
-                    // Chart view based on selected type
-                    if !hasDataForCurrentView {
-                        noDataView
-                    } else {
-                        if selectedChartStyle == "Pie" {
-                            if #available(iOS 16.0, *) {
-                                categoryPieChart
+            // Content with static header
+            VStack(spacing: 0) {
+                // Time navigation view (always visible)
+                timeNavigationView
+                    .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                    .zIndex(2)
+                
+                // Main content
+                ZStack(alignment: .top) {
+                    // Offset tracking view
+                    OffsetObservingScrollView(offset: $scrollOffset) {
+                        VStack(spacing: 24) {
+                            // Summary cards
+                            summaryCards
+                                .padding(.top, 8)
+                            
+                            // Chart type selector
+                            chartTypeSelector
+                            
+                            // Chart view based on selected type
+                            if !hasDataForCurrentView {
+                                noDataView
                             } else {
-                                Text("Pie charts require iOS 16")
-                                    .foregroundColor(.secondary)
-                                    .padding()
+                                if selectedChartStyle == "Pie" {
+                                    if #available(iOS 16.0, *) {
+                                        categoryPieChart
+                                    } else {
+                                        Text("Pie charts require iOS 16")
+                                            .foregroundColor(.secondary)
+                                            .padding()
+                                    }
+                                } else if selectedChartStyle == "Bar" {
+                                    if #available(iOS 16.0, *) {
+                                        categoryBarChart
+                                    } else {
+                                        Text("Bar charts require iOS 16")
+                                            .foregroundColor(.secondary)
+                                            .padding()
+                                    }
+                                } else if selectedChartStyle == "Line" {
+                                    if #available(iOS 16.0, *) {
+                                        timelineChart
+                                    } else {
+                                        Text("Line charts require iOS 16")
+                                            .foregroundColor(.secondary)
+                                            .padding()
+                                    }
+                                }
                             }
-                        } else if selectedChartStyle == "Bar" {
-                            if #available(iOS 16.0, *) {
-                                categoryBarChart
-                            } else {
-                                Text("Bar charts require iOS 16")
-                                    .foregroundColor(.secondary)
-                                    .padding()
-                            }
-                        } else if selectedChartStyle == "Line" {
-                            if #available(iOS 16.0, *) {
-                                timelineChart
-                            } else {
-                                Text("Line charts require iOS 16")
-                                    .foregroundColor(.secondary)
-                                    .padding()
-                            }
+                            
+                            // Category spending breakdown
+                            categorySpendingSection
+                            
+                            // Bottom padding
+                            Spacer().frame(height: 50)
                         }
+                        .padding(.horizontal)
                     }
-                    
-                    // Category spending breakdown
-                    categorySpendingSection
+                    .zIndex(1)
                 }
-                .padding()
             }
         }
         .navigationTitle("Spending Analytics")
         .navigationBarItems(trailing: filterButton)
-        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .sheet(isPresented: $showFilterSheet) {
             NavigationView {
                 AnalyticsFilterView(filterState: $filterState)
@@ -375,23 +388,54 @@ struct TransactionAnalyticsView: View {
         }
     }
     
+    // Custom offset-tracking ScrollView
+    struct OffsetObservingScrollView<Content: View>: View {
+        @Binding var offset: CGFloat
+        let content: Content
+        
+        init(offset: Binding<CGFloat>, @ViewBuilder content: () -> Content) {
+            self._offset = offset
+            self.content = content()
+        }
+        
+        var body: some View {
+            ScrollView {
+                VStack(spacing: 0) {
+                    GeometryReader { geo in
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: geo.frame(in: .global).minY)
+                    }
+                    .frame(height: 0)
+                    
+                    content
+                }
+            }
+            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                offset = value
+            }
+        }
+    }
+    
     // MARK: - Component Views
     
-    // Filter button for navigation bar
+    // Filter button for navigation bar with active filters count
     private var filterButton: some View {
         Button(action: {
             showFilterSheet = true
         }) {
             HStack(spacing: 5) {
                 Image(systemName: "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 22))
+                
+                // Show count of active filters
                 if activeFilterCount > 0 {
                     Text("\(activeFilterCount)")
                         .font(.caption)
-                        .fontWeight(.medium)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(viewModel.themeColor)
-                        .foregroundColor(.white)
                         .clipShape(Capsule())
                 }
             }
@@ -422,7 +466,7 @@ struct TransactionAnalyticsView: View {
     
     // Active filters display (only shows category and transaction type)
     private var activeFiltersView: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     if filterState.transactionType != .all {
@@ -442,11 +486,13 @@ struct TransactionAnalyticsView: View {
                     }
                 }
                 .padding(.horizontal)
-                .padding(.vertical, 12)
+                .padding(.vertical, 8)
             }
             
             Divider()
+                .opacity(0.7)
         }
+        .background(Color.clear) // Ensure background is clear for smooth animation
     }
     
     // Filter tag component
@@ -466,7 +512,7 @@ struct TransactionAnalyticsView: View {
         .foregroundColor(color)
     }
     
-    // Time navigation view with more padding
+    // Time navigation view with adaptive layout
     private var timeNavigationView: some View {
         HStack {
             Button(action: {
@@ -475,7 +521,7 @@ struct TransactionAnalyticsView: View {
                 Image(systemName: "chevron.left")
                     .foregroundColor(viewModel.adaptiveThemeColor)
                     .font(.system(size: 18, weight: .semibold))
-                    .padding(12)
+                    .padding(10)
                     .background(
                         Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
                     )
@@ -485,6 +531,9 @@ struct TransactionAnalyticsView: View {
             
             Text(timePeriodTitle)
                 .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(colorScheme == .dark ? .white : .primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             
             Spacer()
             
@@ -496,7 +545,7 @@ struct TransactionAnalyticsView: View {
                 Image(systemName: "chevron.right")
                     .foregroundColor(viewModel.adaptiveThemeColor)
                     .font(.system(size: 18, weight: .semibold))
-                    .padding(12)
+                    .padding(10)
                     .background(
                         Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
                     )
@@ -504,7 +553,7 @@ struct TransactionAnalyticsView: View {
             .disabled(filterState.timeOffset == 0)
             .opacity(filterState.timeOffset == 0 ? 0.5 : 1.0)
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
     
@@ -860,6 +909,15 @@ struct TransactionAnalyticsView: View {
 }
 
 // MARK: - Supporting Structs
+
+// Preference key to track scroll position
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
 
 struct CategorySpending: Identifiable {
     let id: UUID

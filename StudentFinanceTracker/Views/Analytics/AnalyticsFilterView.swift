@@ -123,36 +123,6 @@ struct AnalyticsFilterView: View {
                     }
                 }
                 .padding(.bottom, 8)
-                
-                // Apply and Reset buttons with more padding
-                HStack(spacing: 16) {
-                    Button(action: {
-                        filterState = AnalyticsFilterState()
-                    }) {
-                        Text("Reset Filters")
-                            .fontWeight(.medium)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 18)
-                            .background(Color(UIColor.systemGray))
-                            .cornerRadius(15)
-                            .shadow(color: colorScheme == .dark ? Color.clear : Color.gray.opacity(0.4), radius: 8, x: 0, y: 4)
-                    }
-                    
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Text("Apply Filters")
-                            .fontWeight(.medium)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 18)
-                            .background(viewModel.themeColor)
-                            .cornerRadius(15)
-                            .shadow(color: colorScheme == .dark ? Color.clear : viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
-                    }
-                }
-                .padding(.top, 24)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 24)
@@ -160,6 +130,23 @@ struct AnalyticsFilterView: View {
         }
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Filter Analytics")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Reset") {
+                    filterState = AnalyticsFilterState()
+                }
+                .foregroundColor(viewModel.themeColor)
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Apply") {
+                    dismiss()
+                }
+                .foregroundColor(viewModel.themeColor)
+                .fontWeight(.bold)
+            }
+        }
     }
     
     private func filterIcon(for timeFilter: AnalyticsTimeFilter) -> String {
@@ -174,7 +161,7 @@ struct AnalyticsFilterView: View {
     
     private func filterDescription(for timeFilter: AnalyticsTimeFilter) -> String {
         switch timeFilter {
-        case .week: return "Monday to today"
+        case .week: return "Monday to Sunday"
         case .month: return "1st to today"
         case .yearToDate: return "January 1st to today"
         case .pastYear: return "Last 12 months from the 1st"
