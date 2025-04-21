@@ -365,28 +365,9 @@ struct SettingsView: View {
                             Text("Last Updated")
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text("April 20, 2025")
+                            Text("April 21, 2025")
                         }
                         
-                        Button(action: {
-                            // Open feedback link
-                        }) {
-                            HStack {
-                                Image(systemName: "envelope.fill")
-                                    .foregroundColor(viewModel.themeColor)
-                                Text("Send Feedback")
-                                    .fontWeight(.medium)
-                                    .foregroundColor(viewModel.themeColor)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(viewModel.themeColor, lineWidth: 1)
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.top, 8)
                     }
                 }
             }
@@ -469,6 +450,8 @@ struct SettingsView: View {
     }
     
     // MARK: - Helper Views
+    
+    
     
     private var editAccountSheet: some View {
         NavigationView {
