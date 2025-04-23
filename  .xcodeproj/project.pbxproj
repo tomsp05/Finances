@@ -214,7 +214,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 7A9B394F2DAD883100A7693B /* Build configuration list for PBXProject "StudentFinanceTracker" */;
+			buildConfigurationList = 7A9B394F2DAD883100A7693B /* Build configuration list for PBXProject " " */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -557,7 +557,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7A9B394F2DAD883100A7693B /* Build configuration list for PBXProject "StudentFinanceTracker" */ = {
+		7A9B394F2DAD883100A7693B /* Build configuration list for PBXProject " " */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7A9B39762DAD883400A7693B /* Debug */,
