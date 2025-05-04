@@ -7,8 +7,6 @@ struct AccountsListView: View {
     // Animation state
     @State private var isAppearing: Bool = false
     
-    /// Computes the net current balance:
-    /// (Current account balance) minus (sum of credit card balances)
     private var netCurrentBalance: Double {
         let currentBalance = viewModel.accounts.first(where: { $0.type == .current })?.balance ?? 0.0
         let creditCards = viewModel.accounts.filter { $0.type == .credit }
@@ -16,8 +14,6 @@ struct AccountsListView: View {
         return currentBalance - creditTotal
     }
     
-    /// Computes the total net worth:
-    /// Sum of all savings and current accounts, minus credit card debt
     private var netWorth: Double {
         let savingsTotal = viewModel.accounts.filter { $0.type == .savings }
             .reduce(0.0) { $0 + $1.balance }
@@ -29,7 +25,6 @@ struct AccountsListView: View {
         return savingsTotal + currentTotal - creditTotal
     }
     
-    // Split accounts by type for better organization
     private var savingsAccounts: [Account] {
         viewModel.accounts.filter { $0.type == .savings }
     }
@@ -42,7 +37,6 @@ struct AccountsListView: View {
         viewModel.accounts.filter { $0.type == .credit }
     }
     
-    // Helper function to format currency
     private func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -56,9 +50,7 @@ struct AccountsListView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Financial summary section with net worth and net balance side by side
                 HStack(spacing: 12) {
-                    // Net Worth card - using the app's theme color
                     VStack(spacing: 8) {
                         Text("Net Worth")
                             .font(.headline)
@@ -89,7 +81,6 @@ struct AccountsListView: View {
                     .cornerRadius(20)
                     .shadow(color: viewModel.themeColor.opacity(0.5), radius: 10, x: 0, y: 5)
                     
-                    // Net Balance card - using a slightly darker variant of the theme color
                     VStack(spacing: 8) {
                         Text("Net Balance")
                             .font(.headline)
@@ -126,7 +117,6 @@ struct AccountsListView: View {
                 .opacity(isAppearing ? 1.0 : 0.0)
                 .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1), value: isAppearing)
                 
-                // Account breakdown section
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Account Breakdown")
                         .font(.headline)
@@ -135,7 +125,6 @@ struct AccountsListView: View {
                         .opacity(isAppearing ? 1.0 : 0.0)
                         .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.3), value: isAppearing)
                     
-                    // Pie chart representation of accounts
                     if !viewModel.accounts.isEmpty {
                         accountDistributionView()
                             .frame(height: 150)
@@ -147,7 +136,6 @@ struct AccountsListView: View {
                 }
                 .padding(.top, 5)
                 
-                // Current Accounts Section
                 if !currentAccounts.isEmpty {
                     accountSection(title: "Current Accounts", accounts: currentAccounts, iconName: "banknote.fill", delay: 0.5)
                 }
@@ -162,7 +150,6 @@ struct AccountsListView: View {
                     accountSection(title: "Credit Cards", accounts: creditAccounts, iconName: "creditcard.fill", delay: 0.7)
                 }
                 
-                // Add Account Button
                 NavigationLink(destination: SettingsView()) {
                     HStack {
                         Image(systemName: "plus.circle.fill")
@@ -194,16 +181,13 @@ struct AccountsListView: View {
         }
     }
     
-    // Account distribution visualization
     private func accountDistributionView() -> some View {
         HStack(alignment: .center, spacing: 20) {
-            // Simplified pie chart visualization
             ZStack {
                 Circle()
                     .stroke(Color.gray.opacity(0.2), lineWidth: 15)
                     .frame(width: 120, height: 120)
                 
-                // Savings segment
                 if netWorth != 0 {
                     let savingsTotal = viewModel.accounts.filter { $0.type == .savings }.reduce(0.0) { $0 + $1.balance }
                     let savingsPortion = abs(savingsTotal) / (abs(savingsTotal) + abs(netCurrentBalance) + abs(viewModel.accounts.filter { $0.type == .credit }.reduce(0.0) { $0 + $1.balance }))
@@ -213,7 +197,6 @@ struct AccountsListView: View {
                         .frame(width: 120, height: 120)
                         .rotationEffect(.degrees(-90))
                 
-                    // Current account segment
                     let currentPortion = abs(netCurrentBalance) / (abs(savingsTotal) + abs(netCurrentBalance) + abs(viewModel.accounts.filter { $0.type == .credit }.reduce(0.0) { $0 + $1.balance }))
                     Circle()
                         .trim(from: 0, to: currentPortion)
@@ -221,7 +204,6 @@ struct AccountsListView: View {
                         .frame(width: 120, height: 120)
                         .rotationEffect(.degrees(-90 + 360 * savingsPortion))
                 
-                    // Credit segment
                     let creditTotal = viewModel.accounts.filter { $0.type == .credit }.reduce(0.0) { $0 + $1.balance }
                     let creditPortion = abs(creditTotal) / (abs(savingsTotal) + abs(netCurrentBalance) + abs(creditTotal))
                     Circle()
@@ -232,9 +214,7 @@ struct AccountsListView: View {
                 }
             }
             
-            // Legend
             VStack(alignment: .leading, spacing: 8) {
-                // Savings indicator
                 HStack(spacing: 8) {
                     Circle()
                         .fill(getAccountColor(.savings))
@@ -251,7 +231,6 @@ struct AccountsListView: View {
                         .foregroundColor(savingsTotal >= 0 ? .primary : .red)
                 }
                 
-                // Current indicator
                 HStack(spacing: 8) {
                     Circle()
                         .fill(getAccountColor(.current))
@@ -268,7 +247,6 @@ struct AccountsListView: View {
                         .foregroundColor(currentTotal >= 0 ? .primary : .red)
                 }
                 
-                // Credit indicator
                 HStack(spacing: 8) {
                     Circle()
                         .fill(getAccountColor(.credit))
@@ -297,7 +275,6 @@ struct AccountsListView: View {
         .padding(.horizontal)
     }
     
-    // Helper function to create account sections with delay parameter
     private func accountSection(title: String, accounts: [Account], iconName: String, delay: Double = 0) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // Section header
@@ -320,11 +297,9 @@ struct AccountsListView: View {
             .opacity(isAppearing ? 1.0 : 0.0)
             .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay), value: isAppearing)
             
-            // Account cards in this section - now styled like transaction cards
             ForEach(Array(accounts.enumerated()), id: \.1.id) { index, account in
                 VStack(spacing: 0) {
                     HStack(alignment: .center, spacing: 12) {
-                        // Icon with colored background - matching transaction card style
                         ZStack {
                             Circle()
                                 .fill(
@@ -347,13 +322,11 @@ struct AccountsListView: View {
                         .scaleEffect(isAppearing ? 1.0 : 0.8)
                         .opacity(isAppearing ? 1.0 : 0.0)
                         
-                        // Account details
                         VStack(alignment: .leading, spacing: 4) {
                             Text(account.name)
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.primary)
                             
-                            // Account type pill
                             Text(accountTypeName(account.type))
                                 .font(.system(size: 12, weight: .medium))
                                 .padding(.horizontal, 8)
@@ -367,9 +340,7 @@ struct AccountsListView: View {
                         
                         Spacer()
                         
-                        // Balance with styling matching transaction cards
                         VStack(alignment: .trailing, spacing: 4) {
-                            // Initial balance as pill
                             Text("Initial: \(formatCurrency(account.initialBalance))")
                                 .font(.system(size: 12, weight: .medium))
                                 .padding(.horizontal, 8)
@@ -378,12 +349,10 @@ struct AccountsListView: View {
                                 .cornerRadius(4)
                                 .foregroundColor(.secondary)
                             
-                            // Current balance with better styling
                             Text(formatCurrency(account.balance))
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(getBalanceColor(account))
                             
-                            // Balance change indicator
                             if account.balance != account.initialBalance {
                                 let difference = account.balance - account.initialBalance
                                 HStack(spacing: 4) {
@@ -408,7 +377,6 @@ struct AccountsListView: View {
                         .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.07), radius: 8, x: 0, y: 2)
                 )
                 .overlay(
-                    // Add a subtle accent border based on account type
                     RoundedRectangle(cornerRadius: 15)
                         .stroke(getAccountColor(account.type).opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
                 )
@@ -424,7 +392,6 @@ struct AccountsListView: View {
         }
     }
     
-    // Helper functions for account display
     private func getAccountIcon(_ type: AccountType) -> String {
         switch type {
         case .savings: return "building.columns.fill"

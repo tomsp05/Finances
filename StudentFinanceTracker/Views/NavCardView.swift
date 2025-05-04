@@ -6,22 +6,15 @@ struct NavCardView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
     
-    /// The main text (e.g. for net balance, this is the £ sign and value).
     var title: String
-    /// An optional subtitle.
     var subtitle: String
-    /// The background colour for the card.
     var cardColor: Color?
-    /// The horizontal alignment of the content.
     var textAlignment: Alignment = .leading
-    /// Optional flag to indicate if this card should have enlarged styling.
     var isProminent: Bool = false
-    /// Icon name to display (SF Symbols)
     var iconName: String? = nil
 
     var body: some View {
         HStack(spacing: adaptiveSpacing(16)) {
-            // Optional icon
             if let icon = iconName {
                 Image(systemName: icon)
                     .font(.system(size: adaptiveIconSize()))
@@ -51,13 +44,10 @@ struct NavCardView: View {
         .padding(adaptivePadding())
         .background(
             ZStack {
-                // Use theme color if no specific color is provided
                 let backgroundColor = cardColor ?? viewModel.themeColor
                 
-                // Base color with improved dark mode appearance
                 backgroundColor.opacity(colorScheme == .dark ? 0.95 : 1.0)
                 
-                // Gradient overlay for more depth - adjusted for dark mode
                 LinearGradient(
                     gradient: Gradient(colors: [
                         backgroundColor.opacity(colorScheme == .dark ? 0.7 : 0.8),
@@ -67,7 +57,6 @@ struct NavCardView: View {
                     endPoint: .bottomTrailing
                 )
                 
-                // Optional pattern overlay for texture - enhanced for dark mode
                 if isProminent {
                     GeometryReader { geo in
                         Path { path in
@@ -88,7 +77,6 @@ struct NavCardView: View {
             x: 0,
             y: colorScheme == .dark ? 2 : 4
         )
-        // Add a subtle border in dark mode for better definition
         .overlay(
             RoundedRectangle(cornerRadius: 20)
                 .stroke(
@@ -98,7 +86,6 @@ struct NavCardView: View {
         )
     }
     
-    // Helper functions for responsive design
     private func adaptiveSpacing(_ defaultSpacing: CGFloat) -> CGFloat {
         horizontalSizeClass == .compact ? defaultSpacing : defaultSpacing * 1.2
     }

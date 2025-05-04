@@ -1,11 +1,3 @@
-//
-//  SplitPaymentView.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/15/25.
-//
-
-
 import SwiftUI
 
 struct SplitPaymentView: View {
@@ -20,7 +12,6 @@ struct SplitPaymentView: View {
     
     @EnvironmentObject var viewModel: FinanceViewModel
     
-    // For formatting currency
     private func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -31,7 +22,6 @@ struct SplitPaymentView: View {
         return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
     }
     
-    // Get formatted amount for display
     private var formattedFriendAmount: String {
         guard let amountValue = Double(friendAmount) else { return "£0.00" }
         return formatCurrency(amountValue)
@@ -48,12 +38,10 @@ struct SplitPaymentView: View {
                 .font(.headline)
                 .foregroundColor(.secondary)
             
-            // Toggle for split payment
             Toggle("Split with a friend", isOn: $isSplit)
                 .padding(.vertical, 5)
             
             if isSplit {
-                // Friend name input
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 15)
                         .fill(Color(.systemBackground))
@@ -64,7 +52,6 @@ struct SplitPaymentView: View {
                 }
                 .frame(height: 60)
                 
-                // Friend amount input
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 15)
                         .fill(Color(.systemBackground))
@@ -88,7 +75,6 @@ struct SplitPaymentView: View {
                 }
                 .frame(height: 60)
                 
-                // Your amount input
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 15)
                         .fill(Color(.systemBackground))
@@ -112,7 +98,6 @@ struct SplitPaymentView: View {
                 }
                 .frame(height: 60)
                 
-                // New section for where the friend's payment went
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 15)
                         .fill(Color(.systemBackground))
@@ -132,7 +117,6 @@ struct SplitPaymentView: View {
                         .padding(.top, 8)
                         
                         if friendPaymentIsAccount {
-                            // Show account picker if payment went to user's account
                             HStack {
                                 Spacer()
                                 
@@ -147,8 +131,7 @@ struct SplitPaymentView: View {
                             .padding(.horizontal)
                             .padding(.bottom, 8)
                         } else {
-                            // Show text field for other destinations (e.g. "Cash", "Venmo", etc)
-                            TextField("Enter destination (Cash, Venmo, etc)", text: $friendPaymentDestination)
+                            TextField("Enter destination (Cash, etc)", text: $friendPaymentDestination)
                                 .padding(.horizontal)
                                 .padding(.bottom, 8)
                         }
@@ -156,7 +139,6 @@ struct SplitPaymentView: View {
                 }
                 .frame(height: 110)
                 
-                // Split calculation info
                 HStack {
                     Text("Total amount:")
                         .font(.subheadline)
@@ -179,15 +161,12 @@ struct SplitPaymentView: View {
         .padding(.horizontal)
         .onChange(of: isSplit) { newValue in
             if newValue {
-                // When splitting is enabled, update amounts
                 if let totalAmountDouble = Double(totalAmount) {
-                    // Default 50/50 split
                     let halfAmount = totalAmountDouble / 2
                     userAmount = String(format: "%.2f", halfAmount)
                     friendAmount = String(format: "%.2f", halfAmount)
                 }
             } else {
-                // When splitting is disabled, reset values
                 friendName = ""
                 friendAmount = "0.00"
                 userAmount = totalAmount
@@ -198,9 +177,7 @@ struct SplitPaymentView: View {
         }
         .onChange(of: totalAmount) { newValue in
             if isSplit {
-                // Update split amounts when total changes
                 if let totalAmountDouble = Double(newValue) {
-                    // Maintain current proportions if possible
                     let userAmountDouble = Double(userAmount) ?? 0
                     let friendAmountDouble = Double(friendAmount) ?? 0
                     let currentTotal = userAmountDouble + friendAmountDouble
@@ -212,7 +189,6 @@ struct SplitPaymentView: View {
                         userAmount = String(format: "%.2f", totalAmountDouble * userRatio)
                         friendAmount = String(format: "%.2f", totalAmountDouble * friendRatio)
                     } else {
-                        // Default 50/50 split
                         let halfAmount = totalAmountDouble / 2
                         userAmount = String(format: "%.2f", halfAmount)
                         friendAmount = String(format: "%.2f", halfAmount)
@@ -224,7 +200,6 @@ struct SplitPaymentView: View {
         }
         .onChange(of: friendPaymentIsAccount) { newValue in
             if newValue {
-                // Set a default account if none is selected
                 if friendPaymentAccountId == nil && !viewModel.accounts.isEmpty {
                     friendPaymentAccountId = viewModel.accounts.first?.id
                 }

@@ -6,19 +6,12 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
     
-    /// State to track previous balance for animation
     @State private var previousBalance: Double = 0.0
-    /// Animation trigger state
     @State private var isAnimating: Bool = false
-    /// Animation scale value
     @State private var animationScale: CGFloat = 1.0
-    /// Show change amount
     @State private var showChangeAmount: Bool = false
-    /// Track when the view appears or becomes active
     @State private var viewDidAppear = false
     
-    /// Computes the net current balance:
-    /// (Current account balance) minus (sum of credit card balances)
     var netCurrentBalance: Double {
         let currentBalance = viewModel.accounts.first(where: { $0.type == .current })?.balance ?? 0.0
         let creditCards = viewModel.accounts.filter { $0.type == .credit }
@@ -26,7 +19,6 @@ struct ContentView: View {
         return currentBalance - creditTotal
     }
     
-    // Helper function to format currency
     private func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -37,7 +29,6 @@ struct ContentView: View {
         return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
     }
     
-    // Compute the recent transactions (limit to the most recent 5) and group them by day (start of day)
     private var recentGroupedTransactions: [(date: Date, transactions: [Transaction])] {
         let recentTransactions = viewModel.transactions.sorted { $0.date > $1.date }.prefix(5)
         let groups = Dictionary(grouping: recentTransactions) { transaction in
@@ -47,38 +38,30 @@ struct ContentView: View {
         return sortedGroups.map { (date: $0.key, transactions: $0.value.sorted { $0.date > $1.date }) }
     }
     
-    // Helper to format a date header
     private func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium  // e.g., "Apr 14, 2025"
+        formatter.dateStyle = .medium
         return formatter.string(from: date)
     }
     
-    // Get appropriate font size based on device size class
     private var balanceFontSize: CGFloat {
         if horizontalSizeClass == .compact {
-            return verticalSizeClass == .compact ? 32 : 42 // Phone landscape vs portrait
+            return verticalSizeClass == .compact ? 32 : 42
         } else {
             return 50 // iPad
         }
     }
     
-    // Determine appropriate padding based on screen size
     private var horizontalPadding: CGFloat {
         horizontalSizeClass == .compact ? 16 : 24
     }
     
-    // Enhanced refreshBalanceDisplay method
     func refreshBalanceDisplay() {
-        // Force view model to recalculate all accounts first
         viewModel.recalcAccounts()
         
-        // Get the latest balance value after recalculation
         let currentBalance = netCurrentBalance
         
-        // Compare with previous balance
         if previousBalance != currentBalance {
-            // Trigger animation
             withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                 animationScale = 1.1
                 isAnimating = true
@@ -100,7 +83,6 @@ struct ContentView: View {
                 previousBalance = currentBalance
             }
         } else {
-            // Even if the balance hasn't changed, update the display
             previousBalance = currentBalance
         }
     }
@@ -109,7 +91,6 @@ struct ContentView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: adaptiveSpacing(24)) {
-                    // Header with current balance
                     NavigationLink(destination: AccountsListView()) {
                         VStack(spacing: 8) {
                             Text("Net Balance")
@@ -117,7 +98,6 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                             
                             ZStack(alignment: .center) {
-                                // Main balance with counting animation
                                 CountingValueView(
                                     value: netCurrentBalance,
                                     fromValue: previousBalance,
@@ -132,7 +112,6 @@ struct ContentView: View {
                                     isDarkMode: colorScheme == .dark
                                 ))
                                 
-                                // Change amount badge
                                 if showChangeAmount && previousBalance != netCurrentBalance {
                                     let difference = netCurrentBalance - previousBalance
                                     VStack {
@@ -158,7 +137,6 @@ struct ContentView: View {
                                 }
                             }
                             
-                            // Visual cue that this is tappable
                             HStack(spacing: 4) {
                                 Text("View Accounts")
                                     .font(.caption)
@@ -190,10 +168,8 @@ struct ContentView: View {
                         .padding(.top)
                     }
                     
-                    // Navigation cards in a grid layout that adapts to device size
                     adaptiveNavCardsView()
                     
-                    // Recent Transactions Section
                     VStack(alignment: .leading, spacing: 12) {
                         if viewModel.transactions.isEmpty {
                             VStack(spacing: 12) {
@@ -252,17 +228,13 @@ struct ContentView: View {
             .navigationTitle("Finance")
             .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
             .onAppear {
-                // Store initial balance value when view appears
                 previousBalance = netCurrentBalance
                 viewDidAppear = true // Mark view as appearing
                 
-                // Force refresh the balance
                 DispatchQueue.main.async {
-                    // Force a refresh after a short delay to ensure the view is fully loaded
                     self.refreshBalanceDisplay()
                 }
             }
-            // Add this onReceive modifier to ensure balance updates when returning from another view
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 if viewDidAppear {
                     // Only refresh if the view has previously appeared (to avoid duplicate animations on first load)
@@ -271,46 +243,37 @@ struct ContentView: View {
                     }
                 }
             }
-            // Watch for balance changes through the ViewModel's trigger property
             .onChange(of: viewModel.balanceDidChange) { oldValue, newValue in
-                // Get the updated value after the change
                 let newBalanceValue = netCurrentBalance
                 
-                // Trigger animation when balance changes
-                // Start the animations
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                     animationScale = 1.1
                     isAnimating = true
                     showChangeAmount = true
                 }
                 
-                // Scale back to normal after small delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                         animationScale = 1.0
                     }
                 }
                 
-                // Remove the indicator after animation completes
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     withAnimation {
                         isAnimating = false
                         showChangeAmount = false
                     }
-                    // Update previous balance for next comparison
                     previousBalance = newBalanceValue
                 }
             }
         }
-        .navigationViewStyle(StackNavigationViewStyle()) // Ensures proper navigation style on all devices
+        .navigationViewStyle(StackNavigationViewStyle())
     }
     
-    // Helper function to create adaptive spacing based on size class
     private func adaptiveSpacing(_ defaultSpacing: CGFloat) -> CGFloat {
         horizontalSizeClass == .compact ? defaultSpacing : defaultSpacing * 1.3
     }
     
-    // Adaptive grid layout for navigation cards
     @ViewBuilder
     private func adaptiveNavCardsView() -> some View {
         if horizontalSizeClass == .compact && verticalSizeClass == .regular {
@@ -328,7 +291,6 @@ struct ContentView: View {
             }
             .padding(.horizontal, horizontalPadding)
         } else if horizontalSizeClass == .compact && verticalSizeClass == .compact {
-            // Landscape phone layout - single row
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     navCardBudgets
@@ -343,7 +305,6 @@ struct ContentView: View {
                 .padding(.horizontal, horizontalPadding)
             }
         } else {
-            // iPad layout - adaptive grid
             let columns = [
                 GridItem(.adaptive(minimum: 200, maximum: 300), spacing: 16)
             ]
@@ -358,7 +319,6 @@ struct ContentView: View {
         }
     }
     
-    // Extract nav card views for reuse
     private var navCardBudgets: some View {
         NavigationLink(destination: BudgetListView()) {
             NavCardView(
@@ -400,7 +360,6 @@ struct ContentView: View {
     }
 }
 
-// Custom shimmer effect modifier for balance animation
 struct ShimmerEffect: ViewModifier {
     var isAnimating: Bool
     var isDarkMode: Bool
@@ -421,11 +380,11 @@ struct ShimmerEffect: ViewModifier {
                             startPoint: .leading,
                             endPoint: .trailing
                         )
-                        .mask(content) // Apply the content as mask
+                        .mask(content)
                         .frame(width: geo.size.width * 2)
                         .offset(x: -geo.size.width + (geo.size.width * 2) * phase)
                     }
-                    .mask(content) // Apply content as mask again
+                    .mask(content)
                 )
                 .onAppear {
                     withAnimation(Animation.linear(duration: 1.0).repeatCount(2)) {

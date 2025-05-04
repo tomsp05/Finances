@@ -8,9 +8,6 @@
 
 import SwiftUI
 
-// Collection of responsive design modifiers for use throughout the app
-
-// Modifier to make text scale appropriately on different devices
 struct ResponsiveText: ViewModifier {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     
