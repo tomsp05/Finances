@@ -341,6 +341,29 @@ struct SettingsView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
 
+                        // Import data button
+                        NavigationLink(destination: ImportDataView()) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down.fill")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(viewModel.themeColor)
+                                    .cornerRadius(8)
+                                
+                                Text("Import Data")
+                                    .fontWeight(.semibold)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
 
                         // Export data button
                         NavigationLink(destination: ExportDataView()) {

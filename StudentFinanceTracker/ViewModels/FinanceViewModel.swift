@@ -1084,3 +1084,534 @@ extension FinanceViewModel {
         }
     }
 }
+
+// Add to FinanceViewModel.swift
+extension FinanceViewModel {
+    // Import data from a file
+    func importData(from url: URL) -> (success: Bool, message: String) {
+        let fileExtension = url.pathExtension.lowercased()
+        
+        switch fileExtension {
+        case "json":
+            return importFromJSON(url: url)
+        case "csv":
+            return importFromCSV(url: url)
+        default:
+            return (false, "Unsupported file format. Please use JSON or CSV files exported from this app.")
+        }
+    }
+    
+    // Import data from JSON file
+    private func importFromJSON(url: URL) -> (success: Bool, message: String) {
+        do {
+            // First check if the file exists and is accessible
+            let fileManager = FileManager.default
+            guard fileManager.fileExists(atPath: url.path) else {
+                return (false, "File does not exist at the specified location.")
+            }
+            
+            // Try to read the file
+            let data: Data
+            do {
+                data = try Data(contentsOf: url)
+            } catch {
+                return (false, "Could not read file: \(error.localizedDescription). This may be a permissions issue.")
+            }
+            
+            let decoder = JSONDecoder()
+            
+            // Create a container to hold the decoded data
+            struct ImportContainer: Codable {
+                var accounts: [Account]?
+                var transactions: [Transaction]?
+                var incomeCategories: [Category]?
+                var expenseCategories: [Category]?
+                var budgets: [Budget]?
+                var userPreferences: UserPreferences?
+            }
+            
+            // Try to decode the data
+            let importedData: ImportContainer
+            do {
+                importedData = try decoder.decode(ImportContainer.self, from: data)
+            } catch {
+                return (false, "Error decoding JSON file: \(error.localizedDescription). The file may be corrupted or in an invalid format.")
+            }
+            
+            // Count how many items we'll import
+            var accountsCount = 0
+            var transactionsCount = 0
+            var incomeCategoriesCount = 0
+            var expenseCategoriesCount = 0
+            var budgetsCount = 0
+            
+            // Import accounts
+            if let importedAccounts = importedData.accounts {
+                // Create a mapping of old IDs to new IDs for proper referencing
+                var accountIdMapping = [UUID: UUID]()
+                
+                for importedAccount in importedAccounts {
+                    // Check if this account already exists (by name and type)
+                    if !accounts.contains(where: { $0.name == importedAccount.name && $0.type == importedAccount.type }) {
+                        // Create new account with a new ID
+                        let newId = UUID()
+                        accountIdMapping[importedAccount.id] = newId
+                        
+                        var newAccount = importedAccount
+                        newAccount.id = newId
+                        accounts.append(newAccount)
+                        accountsCount += 1
+                    }
+                }
+                
+                DataService.shared.saveAccounts(accounts)
+                
+                // Import categories first (needed for transactions)
+                if let importedIncomeCategories = importedData.incomeCategories {
+                    var categoryIdMapping = [UUID: UUID]()
+                    
+                    for importedCategory in importedIncomeCategories {
+                        if !incomeCategories.contains(where: { $0.name == importedCategory.name }) {
+                            let newId = UUID()
+                            categoryIdMapping[importedCategory.id] = newId
+                            
+                            var newCategory = importedCategory
+                            newCategory.id = newId
+                            incomeCategories.append(newCategory)
+                            incomeCategoriesCount += 1
+                        }
+                    }
+                    
+                    DataService.shared.saveCategories(incomeCategories, type: .income)
+                }
+                
+                if let importedExpenseCategories = importedData.expenseCategories {
+                    var categoryIdMapping = [UUID: UUID]()
+                    
+                    for importedCategory in importedExpenseCategories {
+                        if !expenseCategories.contains(where: { $0.name == importedCategory.name }) {
+                            let newId = UUID()
+                            categoryIdMapping[importedCategory.id] = newId
+                            
+                            var newCategory = importedCategory
+                            newCategory.id = newId
+                            expenseCategories.append(newCategory)
+                            expenseCategoriesCount += 1
+                        }
+                    }
+                    
+                    DataService.shared.saveCategories(expenseCategories, type: .expense)
+                }
+                
+                // Import transactions with proper account references
+                if let importedTransactions = importedData.transactions {
+                    for importedTransaction in importedTransactions {
+                        // Skip if we already have this transaction (by date, amount, and description)
+                        if transactions.contains(where: {
+                            $0.date == importedTransaction.date &&
+                            $0.amount == importedTransaction.amount &&
+                            $0.description == importedTransaction.description
+                        }) {
+                            continue
+                        }
+                        
+                        var newTransaction = importedTransaction
+                        newTransaction.id = UUID() // Generate new ID
+                        
+                        // Update account references if needed
+                        if let fromAccountId = importedTransaction.fromAccountId,
+                           let mappedId = accountIdMapping[fromAccountId] {
+                            newTransaction.fromAccountId = mappedId
+                        }
+                        
+                        if let toAccountId = importedTransaction.toAccountId,
+                           let mappedId = accountIdMapping[toAccountId] {
+                            newTransaction.toAccountId = mappedId
+                        }
+                        
+                        // Add the transaction
+                        transactions.append(newTransaction)
+                        transactionsCount += 1
+                    }
+                    
+                    DataService.shared.saveTransactions(transactions)
+                }
+                
+                // Import budgets with proper account and category references
+                if let importedBudgets = importedData.budgets {
+                    for importedBudget in importedBudgets {
+                        // Skip if we already have this budget (by name and amount)
+                        if budgets.contains(where: { $0.name == importedBudget.name && $0.amount == importedBudget.amount }) {
+                            continue
+                        }
+                        
+                        var newBudget = importedBudget
+                        newBudget.id = UUID() // Generate new ID
+                        
+                        // Add the budget
+                        budgets.append(newBudget)
+                        budgetsCount += 1
+                    }
+                    
+                    DataService.shared.saveBudgets(budgets)
+                }
+                
+                // Import user preferences if provided
+                if let importedPreferences = importedData.userPreferences {
+                    // Only update preferences if explicitly requested
+                    // For now, we'll skip this to avoid overwriting current preferences
+                }
+                
+                // Recalculate account balances after importing transactions
+                recalcAccounts()
+                recalculateBudgetSpending()
+                
+                // Success message with counts
+                let successMessage = """
+                Import completed successfully:
+                • \(accountsCount) accounts added
+                • \(transactionsCount) transactions imported
+                • \(incomeCategoriesCount + expenseCategoriesCount) categories added
+                • \(budgetsCount) budgets imported
+                """
+                
+                return (true, successMessage)
+            }
+            
+            return (false, "File did not contain valid account data.")
+            
+        } catch {
+            print("Import error: \(error)")
+            return (false, "Error reading file: \(error.localizedDescription)")
+        }
+    }
+    // Import data from CSV file
+    private func importFromCSV(url: URL) -> (success: Bool, message: String) {
+        do {
+            let csvString = try String(contentsOf: url, encoding: .utf8)
+            var lines = csvString.components(separatedBy: .newlines)
+            
+            // Variables for counting imported items
+            var accountsCount = 0
+            var transactionsCount = 0
+            var categoriesCount = 0
+            var budgetsCount = 0
+            
+            // Maps to store ID mappings from old to new
+            var accountIdMapping = [String: UUID]()
+            var categoryIdMapping = [String: UUID]()
+            
+            // Process accounts section
+            if let accountsStartIndex = lines.firstIndex(of: "ACCOUNTS") {
+                var currentLine = accountsStartIndex + 2 // Skip header
+                
+                while currentLine < lines.count && !lines[currentLine].isEmpty && lines[currentLine] != "TRANSACTIONS" {
+                    let line = lines[currentLine]
+                    let components = parseCSVLine(line)
+                    
+                    if components.count >= 5 {
+                        let idString = components[0]
+                        let name = components[1].replacingOccurrences(of: "\"", with: "")
+                        let typeString = components[2]
+                        let initialBalanceString = components[3]
+                        let currentBalanceString = components[4]
+                        
+                        // Only create if account doesn't already exist by name and type
+                        if let type = AccountType(rawValue: typeString),
+                           let initialBalance = Double(initialBalanceString),
+                           let currentBalance = Double(currentBalanceString),
+                           !accounts.contains(where: { $0.name == name && $0.type == type }) {
+                            
+                            let newId = UUID()
+                            accountIdMapping[idString] = newId
+                            
+                            let newAccount = Account(
+                                id: newId,
+                                name: name,
+                                type: type,
+                                initialBalance: initialBalance,
+                                balance: currentBalance
+                            )
+                            
+                            accounts.append(newAccount)
+                            accountsCount += 1
+                        }
+                    }
+                    
+                    currentLine += 1
+                }
+                
+                // Save accounts
+                DataService.shared.saveAccounts(accounts)
+            }
+            
+            // Process categories section
+            if let categoriesStartIndex = lines.firstIndex(of: "CATEGORIES") {
+                var currentLine = categoriesStartIndex + 2 // Skip header
+                
+                while currentLine < lines.count && !lines[currentLine].isEmpty && !lines[currentLine].contains("BUDGETS") {
+                    let line = lines[currentLine]
+                    let components = parseCSVLine(line)
+                    
+                    if components.count >= 4 {
+                        let idString = components[0]
+                        let name = components[1].replacingOccurrences(of: "\"", with: "")
+                        let typeString = components[2]
+                        let iconName = components[3]
+                        
+                        if let type = CategoryType(rawValue: typeString) {
+                            let newId = UUID()
+                            categoryIdMapping[idString] = newId
+                            
+                            let newCategory = Category(
+                                id: newId,
+                                name: name,
+                                type: type,
+                                iconName: iconName
+                            )
+                            
+                            if type == .income {
+                                if !incomeCategories.contains(where: { $0.name == name }) {
+                                    incomeCategories.append(newCategory)
+                                    categoriesCount += 1
+                                }
+                            } else {
+                                if !expenseCategories.contains(where: { $0.name == name }) {
+                                    expenseCategories.append(newCategory)
+                                    categoriesCount += 1
+                                }
+                            }
+                        }
+                    }
+                    
+                    currentLine += 1
+                }
+                
+                // Save categories
+                DataService.shared.saveCategories(incomeCategories, type: .income)
+                DataService.shared.saveCategories(expenseCategories, type: .expense)
+            }
+            
+            // Process transactions section
+            if let transactionsStartIndex = lines.firstIndex(of: "TRANSACTIONS") {
+                var currentLine = transactionsStartIndex + 2 // Skip header
+                
+                while currentLine < lines.count && !lines[currentLine].isEmpty && !lines[currentLine].contains("CATEGORIES") {
+                    let line = lines[currentLine]
+                    let components = parseCSVLine(line)
+                    
+                    if components.count >= 15 {
+                        let idString = components[0]
+                        let dateString = components[1]
+                        let amountString = components[2]
+                        let description = components[3].replacingOccurrences(of: "\"", with: "")
+                        let fromAccountString = components[4]
+                        let toAccountString = components[5]
+                        let fromAccountIdString = components[6]
+                        let toAccountIdString = components[7]
+                        let typeString = components[8]
+                        let categoryIdString = components[9]
+                        let isSplitString = components[10]
+                        let friendName = components[11].replacingOccurrences(of: "\"", with: "")
+                        let friendAmountString = components[12]
+                        let userAmountString = components[13]
+                        let friendPaymentDestination = components[14].replacingOccurrences(of: "\"", with: "")
+                        
+                        // Convert date
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateFormat = "yyyy-MM-dd"
+                        if let date = dateFormatter.date(from: dateString),
+                           let amount = Double(amountString),
+                           let type = TransactionType(rawValue: typeString) {
+                            
+                            // Skip if we already have a similar transaction
+                            if transactions.contains(where: {
+                                $0.date == date &&
+                                $0.amount == amount &&
+                                $0.description == description
+                            }) {
+                                currentLine += 1
+                                continue
+                            }
+                            
+                            // Map account types and IDs
+                            var fromAccount: AccountType? = nil
+                            if !fromAccountString.isEmpty {
+                                fromAccount = AccountType(rawValue: fromAccountString)
+                            }
+                            
+                            var toAccount: AccountType? = nil
+                            if !toAccountString.isEmpty {
+                                toAccount = AccountType(rawValue: toAccountString)
+                            }
+                            
+                            var fromAccountId: UUID? = nil
+                            if !fromAccountIdString.isEmpty {
+                                fromAccountId = accountIdMapping[fromAccountIdString]
+                            }
+                            
+                            var toAccountId: UUID? = nil
+                            if !toAccountIdString.isEmpty {
+                                toAccountId = accountIdMapping[toAccountIdString]
+                            }
+                            
+                            // Map category ID
+                            var categoryId: UUID = UUID() // Default as fallback
+                            if let mappedCategoryId = categoryIdMapping[categoryIdString] {
+                                categoryId = mappedCategoryId
+                            } else if let category = (type == .income ? incomeCategories : expenseCategories).first {
+                                // Use first available category if mapping fails
+                                categoryId = category.id
+                            }
+                            
+                            // Split payment info
+                            let isSplit = isSplitString.lowercased() == "true"
+                            let friendAmount = Double(friendAmountString) ?? 0.0
+                            let userAmount = Double(userAmountString) ?? 0.0
+                            
+                            // Create the transaction
+                            let newTransaction = Transaction(
+                                id: UUID(), // Generate new ID
+                                date: date,
+                                amount: amount,
+                                description: description,
+                                fromAccount: fromAccount,
+                                toAccount: toAccount,
+                                fromAccountId: fromAccountId,
+                                toAccountId: toAccountId,
+                                type: type,
+                                categoryId: categoryId,
+                                isSplit: isSplit,
+                                friendName: friendName,
+                                friendAmount: friendAmount,
+                                userAmount: userAmount,
+                                friendPaymentDestination: friendPaymentDestination
+                            )
+                            
+                            transactions.append(newTransaction)
+                            transactionsCount += 1
+                        }
+                    }
+                    
+                    currentLine += 1
+                }
+                
+                // Save transactions
+                DataService.shared.saveTransactions(transactions)
+            }
+            
+            // Process budgets section
+            if let budgetsStartIndex = lines.firstIndex(of: "BUDGETS") {
+                var currentLine = budgetsStartIndex + 2 // Skip header
+                
+                while currentLine < lines.count && !lines[currentLine].isEmpty {
+                    let line = lines[currentLine]
+                    let components = parseCSVLine(line)
+                    
+                    if components.count >= 8 {
+                        let idString = components[0]
+                        let name = components[1].replacingOccurrences(of: "\"", with: "")
+                        let amountString = components[2]
+                        let typeString = components[3]
+                        let timePeriodString = components[4]
+                        let categoryIdString = components[5]
+                        let accountIdString = components[6]
+                        let startDateString = components[7]
+                        let currentSpentString = components.count > 8 ? components[8] : "0"
+                        
+                        // Convert types
+                        if let amount = Double(amountString),
+                           let budgetType = BudgetType(rawValue: typeString),
+                           let timePeriod = TimePeriod(rawValue: timePeriodString) {
+                            
+                            // Skip if budget already exists
+                            if budgets.contains(where: { $0.name == name && $0.amount == amount }) {
+                                currentLine += 1
+                                continue
+                            }
+                            
+                            // Parse date
+                            let dateFormatter = DateFormatter()
+                            dateFormatter.dateFormat = "yyyy-MM-dd"
+                            let startDate = dateFormatter.date(from: startDateString) ?? Date()
+                            let currentSpent = Double(currentSpentString) ?? 0.0
+                            
+                            // Map category and account IDs
+                            var categoryId: UUID? = nil
+                            if !categoryIdString.isEmpty {
+                                categoryId = categoryIdMapping[categoryIdString]
+                            }
+                            
+                            var accountId: UUID? = nil
+                            if !accountIdString.isEmpty {
+                                accountId = accountIdMapping[accountIdString]
+                            }
+                            
+                            // Create the budget
+                            let newBudget = Budget(
+                                id: UUID(), // Generate new ID
+                                name: name,
+                                amount: amount,
+                                type: budgetType,
+                                timePeriod: timePeriod,
+                                categoryId: categoryId,
+                                accountId: accountId,
+                                startDate: startDate,
+                                currentSpent: currentSpent
+                            )
+                            
+                            budgets.append(newBudget)
+                            budgetsCount += 1
+                        }
+                    }
+                    
+                    currentLine += 1
+                }
+                
+                // Save budgets
+                DataService.shared.saveBudgets(budgets)
+            }
+            
+            // Recalculate account balances after importing transactions
+            recalcAccounts()
+            recalculateBudgetSpending()
+            
+            let successMessage = """
+            Import completed successfully:
+            • \(accountsCount) accounts added
+            • \(transactionsCount) transactions imported
+            • \(categoriesCount) categories added
+            • \(budgetsCount) budgets imported
+            """
+            
+            return (true, successMessage)
+            
+        } catch {
+            print("Import error: \(error)")
+            return (false, "Error reading CSV file: \(error.localizedDescription)")
+        }
+    }
+    
+    // Helper function to parse CSV lines properly (handling quotes)
+    private func parseCSVLine(_ line: String) -> [String] {
+        var result: [String] = []
+        var currentValue = ""
+        var insideQuotes = false
+        
+        for char in line {
+            if char == "\"" {
+                insideQuotes.toggle()
+            } else if char == "," && !insideQuotes {
+                result.append(currentValue)
+                currentValue = ""
+            } else {
+                currentValue.append(char)
+            }
+        }
+        
+        // Add the last component
+        result.append(currentValue)
+        
+        return result
+    }
+}
