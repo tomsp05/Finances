@@ -1,12 +1,3 @@
-//
-//  ExportDataView.swift
-//   
-//
-//  Created by Tom Speake on 5/4/25.
-//
-
-
-// Create a new file called ExportDataView.swift
 import SwiftUI
 
 struct ExportDataView: View {
