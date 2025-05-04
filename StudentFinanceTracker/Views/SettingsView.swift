@@ -340,6 +340,46 @@ struct SettingsView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                         .buttonStyle(PlainButtonStyle())
+
+
+                        // Export data button
+                        NavigationLink(destination: ExportDataView()) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up.fill")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(viewModel.themeColor)
+                                    .cornerRadius(8)
+                                
+                                Text("Export Data")
+                                    .fontWeight(.semibold)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .actionSheet(isPresented: $showingExportOptions) {
+                            ActionSheet(
+                                title: Text("Export Data"),
+                                message: Text("Choose an export format"),
+                                buttons: [
+                                    .default(Text("CSV")) {
+                                        exportData(format: "csv")
+                                    },
+                                    .default(Text("JSON")) {
+                                        exportData(format: "json")
+                                    },
+                                    .cancel()
+                                ]
+                            )
+                        }
                         
                     }
                 }
@@ -929,8 +969,19 @@ struct SettingsView: View {
     }
     
     private func exportData(format: String) {
-        // This would handle exporting the user's data in the chosen format
-        // In a real implementation, this would create the file and show a share sheet
+        guard let fileURL = viewModel.exportData(format: format) else {
+            // Show error
+            return
+        }
+        
+        // Present share sheet to allow user to save or share the file
+        let activityVC = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+        
+        // Present the activity view controller
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            rootViewController.present(activityVC, animated: true, completion: nil)
+        }
     }
     
     // MARK: - Helper Functions

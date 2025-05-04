@@ -941,3 +941,146 @@ extension FinanceViewModel {
         return calendar.date(from: components) ?? date
     }
 }
+
+
+// Add to FinanceViewModel.swift
+extension FinanceViewModel {
+    // Export data to a file
+    func exportData(format: String) -> URL? {
+        var fileURL: URL? = nil
+        
+        switch format.lowercased() {
+        case "csv":
+            fileURL = exportToCSV()
+        case "json":
+            fileURL = exportToJSON()
+        default:
+            return nil
+        }
+        
+        return fileURL
+    }
+    
+    // Export data to CSV format
+    private func exportToCSV() -> URL? {
+        let fileName = "finance_export_\(Date().timeIntervalSince1970).csv"
+        let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName)
+        
+        var csvText = "ACCOUNTS\n"
+        csvText += "ID,Name,Type,Initial Balance,Current Balance\n"
+        
+        for account in accounts {
+            let line = "\(account.id),\"\(account.name)\",\(account.type.rawValue),\(account.initialBalance),\(account.balance)\n"
+            csvText += line
+        }
+        
+        csvText += "\nTRANSACTIONS\n"
+        csvText += "ID,Date,Amount,Description,From Account,To Account,From Account ID,To Account ID,Type,Category ID,Is Split,Friend Name,Friend Amount,User Amount,Friend Payment Destination,Is Recurring,Recurrence Interval\n"
+        
+        for transaction in transactions {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            let dateString = dateFormatter.string(from: transaction.date)
+            
+            let line = "\(transaction.id),\(dateString),\(transaction.amount),\"\(transaction.description)\",\(transaction.fromAccount?.rawValue ?? ""),\(transaction.toAccount?.rawValue ?? ""),\(transaction.fromAccountId?.uuidString ?? ""),\(transaction.toAccountId?.uuidString ?? ""),\(transaction.type.rawValue),\(transaction.categoryId),\(transaction.isSplit),\"\(transaction.friendName)\",\(transaction.friendAmount),\(transaction.userAmount),\"\(transaction.friendPaymentDestination)\",\(transaction.isRecurring),\(transaction.recurrenceInterval.rawValue)\n"
+            csvText += line
+        }
+        
+        csvText += "\nCATEGORIES\n"
+        csvText += "ID,Name,Type,Icon Name\n"
+        
+        for category in incomeCategories + expenseCategories {
+            let line = "\(category.id),\"\(category.name)\",\(category.type.rawValue),\(category.iconName)\n"
+            csvText += line
+        }
+        
+        csvText += "\nBUDGETS\n"
+        csvText += "ID,Name,Amount,Type,Time Period,Category ID,Account ID,Start Date,Current Spent\n"
+        
+        for budget in budgets {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            let dateString = dateFormatter.string(from: budget.startDate)
+            
+            let line = "\(budget.id),\"\(budget.name)\",\(budget.amount),\(budget.type.rawValue),\(budget.timePeriod.rawValue),\(budget.categoryId?.uuidString ?? ""),\(budget.accountId?.uuidString ?? ""),\(dateString),\(budget.currentSpent)\n"
+            csvText += line
+        }
+        
+        do {
+            try csvText.write(to: path, atomically: true, encoding: .utf8)
+            return path
+        } catch {
+            print("Error saving CSV file: \(error)")
+            return nil
+        }
+    }
+    
+    // Export data to JSON format
+    private func exportToJSON() -> URL? {
+        let fileName = "finance_export_\(Date().timeIntervalSince1970).json"
+        let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName)
+        
+        // Create a dictionary with all the data
+        let exportData: [String: Any] = [
+            "accounts": accounts,
+            "transactions": transactions,
+            "incomeCategories": incomeCategories,
+            "expenseCategories": expenseCategories,
+            "budgets": budgets,
+            "userPreferences": userPreferences
+        ]
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            
+            // Because our top-level structure isn't directly Codable,
+            // we need to encode each component separately and build a JSON string
+            var jsonString = "{\n"
+            
+            // Encode accounts
+            if let accountsData = try? encoder.encode(accounts),
+               let accountsString = String(data: accountsData, encoding: .utf8) {
+                jsonString += "  \"accounts\": \(accountsString),\n"
+            }
+            
+            // Encode transactions
+            if let transactionsData = try? encoder.encode(transactions),
+               let transactionsString = String(data: transactionsData, encoding: .utf8) {
+                jsonString += "  \"transactions\": \(transactionsString),\n"
+            }
+            
+            // Encode income categories
+            if let incomeCategoriesData = try? encoder.encode(incomeCategories),
+               let incomeCategoriesString = String(data: incomeCategoriesData, encoding: .utf8) {
+                jsonString += "  \"incomeCategories\": \(incomeCategoriesString),\n"
+            }
+            
+            // Encode expense categories
+            if let expenseCategoriesData = try? encoder.encode(expenseCategories),
+               let expenseCategoriesString = String(data: expenseCategoriesData, encoding: .utf8) {
+                jsonString += "  \"expenseCategories\": \(expenseCategoriesString),\n"
+            }
+            
+            // Encode budgets
+            if let budgetsData = try? encoder.encode(budgets),
+               let budgetsString = String(data: budgetsData, encoding: .utf8) {
+                jsonString += "  \"budgets\": \(budgetsString),\n"
+            }
+            
+            // Encode user preferences
+            if let preferencesData = try? encoder.encode(userPreferences),
+               let preferencesString = String(data: preferencesData, encoding: .utf8) {
+                jsonString += "  \"userPreferences\": \(preferencesString)\n"
+            }
+            
+            jsonString += "}"
+            
+            try jsonString.write(to: path, atomically: true, encoding: .utf8)
+            return path
+        } catch {
+            print("Error saving JSON file: \(error)")
+            return nil
+        }
+    }
+}
