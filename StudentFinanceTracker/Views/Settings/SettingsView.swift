@@ -956,17 +956,21 @@ struct SettingsView: View {
             if let newPresetString = accountPresets[account.id],
                let newPreset = Double(newPresetString) {
                 updatedAccounts[i].initialBalance = newPreset
+                
+                // If initial balance changes, adjust pools proportionally if needed
+                if newPreset != account.initialBalance {
+                    let ratio = newPreset / account.initialBalance
+                    for j in 0..<updatedAccounts[i].pools.count {
+                        updatedAccounts[i].pools[j].amount *= ratio
+                    }
+                }
             }
         }
         viewModel.updateAccountsSettings(updatedAccounts: updatedAccounts)
         
         // Save theme color
         viewModel.updateThemeColor(newColorName: selectedTheme)
-        
-        // Show success feedback - in a real app, you would add a toast or notification here
     }
-    
-    // Replace just the resetAllData() function in the SettingsView:
 
     private func resetAllData() {
         // Reset accounts
@@ -977,18 +981,6 @@ struct SettingsView: View {
         
         // Reset to default theme
         viewModel.updateThemeColor(newColorName: "Blue")
-        
-        // Reset local state variables
-        selectedTheme = "Blue"
-        accountNames = [:]
-        accountPresets = [:]
-        accountTypes = [:]
-        
-        // If the viewModel has methods to reset categories and preferences, call them
-        // Otherwise, you can add methods to your ViewModel or handle it directly here
-        
-        // Show success feedback (optional)
-        // In a real app, you would show a toast or notification
     }
     
     private func exportData(format: String) {

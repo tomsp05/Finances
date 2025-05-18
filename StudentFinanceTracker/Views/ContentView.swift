@@ -30,7 +30,7 @@ struct ContentView: View {
     }
     
     private var recentGroupedTransactions: [(date: Date, transactions: [Transaction])] {
-        let recentTransactions = viewModel.transactions.sorted { $0.date > $1.date }.prefix(5)
+        let recentTransactions = viewModel.transactions.sorted { $0.date > $1.date }.prefix(10) //change prefix number to change how many transactions are shown on home page
         let groups = Dictionary(grouping: recentTransactions) { transaction in
             Calendar.current.startOfDay(for: transaction.date)
         }

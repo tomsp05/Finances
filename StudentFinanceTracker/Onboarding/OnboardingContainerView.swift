@@ -10,7 +10,8 @@ struct OnboardingContainerView: View {
     // or if it's the initial app onboarding
     var isFromSettings: Bool = false
     
-    let pages = ["welcome", "categories", "accounts", "personalise", "finish"]
+    // Updated pages array to include pools
+    let pages = ["welcome", "categories", "pools", "accounts", "personalise", "finish"]
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -23,16 +24,21 @@ struct OnboardingContainerView: View {
                     .tag(1)
                     .padding(.bottom, 100)
                 
-                OnboardingAccountsView()
+                // New Pools onboarding page
+                PoolsOnboardingView()
                     .tag(2)
                     .padding(.bottom, 100)
                 
-                OnboardingPersonalizeView()
+                OnboardingAccountsView()
                     .tag(3)
                     .padding(.bottom, 100)
                 
-                OnboardingFinishView()
+                OnboardingPersonalizeView()
                     .tag(4)
+                    .padding(.bottom, 100)
+                
+                OnboardingFinishView()
+                    .tag(5)
                     .padding(.bottom, 100)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))

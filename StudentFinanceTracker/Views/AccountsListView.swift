@@ -298,88 +298,107 @@ struct AccountsListView: View {
             .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay), value: isAppearing)
             
             ForEach(Array(accounts.enumerated()), id: \.1.id) { index, account in
-                VStack(spacing: 0) {
-                    HStack(alignment: .center, spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            getAccountColor(account.type).opacity(colorScheme == .dark ? 0.8 : 0.7),
-                                            getAccountColor(account.type).opacity(colorScheme == .dark ? 0.6 : 0.5)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                NavigationLink(destination: AccountPoolsView(account: account)) {
+                    VStack(spacing: 0) {
+                        HStack(alignment: .center, spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                getAccountColor(account.type).opacity(colorScheme == .dark ? 0.8 : 0.7),
+                                                getAccountColor(account.type).opacity(colorScheme == .dark ? 0.6 : 0.5)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
                                     )
-                                )
-                                .frame(width: 42, height: 42)
-                        
-                            Image(systemName: getAccountIcon(account.type))
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                        .shadow(color: getAccountColor(account.type).opacity(colorScheme == .dark ? 0.2 : 0.3), radius: 3, x: 0, y: 2)
-                        .scaleEffect(isAppearing ? 1.0 : 0.8)
-                        .opacity(isAppearing ? 1.0 : 0.0)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(account.name)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
+                                    .frame(width: 42, height: 42)
                             
-                            Text(accountTypeName(account.type))
-                                .font(.system(size: 12, weight: .medium))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.25 : 0.15))
-                                .foregroundColor(viewModel.themeColor)
-                                .cornerRadius(4)
-                        }
-                        .opacity(isAppearing ? 1.0 : 0.0)
-                        .offset(x: isAppearing ? 0 : -10)
-                        
-                        Spacer()
-                        
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("Initial: \(formatCurrency(account.initialBalance))")
-                                .font(.system(size: 12, weight: .medium))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color(UIColor.tertiarySystemFill))
-                                .cornerRadius(4)
-                                .foregroundColor(.secondary)
-                            
-                            Text(formatCurrency(account.balance))
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(getBalanceColor(account))
-                            
-                            if account.balance != account.initialBalance {
-                                let difference = account.balance - account.initialBalance
-                                HStack(spacing: 4) {
-                                    Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                        .font(.system(size: 10))
-                                    
-                                    Text(formatCurrency(abs(difference)))
-                                        .font(.system(size: 12))
-                                }
-                                .foregroundColor(difference >= 0 ? .green : .red)
+                                Image(systemName: getAccountIcon(account.type))
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
                             }
+                            .shadow(color: getAccountColor(account.type).opacity(colorScheme == .dark ? 0.2 : 0.3), radius: 3, x: 0, y: 2)
+                            .scaleEffect(isAppearing ? 1.0 : 0.8)
+                            .opacity(isAppearing ? 1.0 : 0.0)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(account.name)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.primary)
+                                
+                                HStack(spacing: 6) {
+                                    Text(accountTypeName(account.type))
+                                        .font(.system(size: 12, weight: .medium))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                        .foregroundColor(viewModel.themeColor)
+                                        .cornerRadius(4)
+                                    
+                                    if !account.pools.isEmpty {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "drop.fill")
+                                                .font(.system(size: 8))
+                                            Text("\(account.pools.count) pools")
+                                                .font(.system(size: 12, weight: .medium))
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(Color.blue.opacity(0.2))
+                                        .foregroundColor(.blue)
+                                        .cornerRadius(4)
+                                    }
+                                }
+                            }
+                            .opacity(isAppearing ? 1.0 : 0.0)
+                            .offset(x: isAppearing ? 0 : -10)
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Initial: \(formatCurrency(account.initialBalance))")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color(UIColor.tertiarySystemFill))
+                                    .cornerRadius(4)
+                                    .foregroundColor(.secondary)
+                                
+                                Text(formatCurrency(account.balance))
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(getBalanceColor(account))
+                                
+                                if account.balance != account.initialBalance {
+                                    let difference = account.balance - account.initialBalance
+                                    HStack(spacing: 4) {
+                                        Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                            .font(.system(size: 10))
+                                        
+                                        Text(formatCurrency(abs(difference)))
+                                            .font(.system(size: 12))
+                                    }
+                                    .foregroundColor(difference >= 0 ? .green : .red)
+                                }
+                            }
+                            .scaleEffect(isAppearing ? 1.0 : 1.1)
+                            .opacity(isAppearing ? 1.0 : 0.0)
                         }
-                        .scaleEffect(isAppearing ? 1.0 : 1.1)
-                        .opacity(isAppearing ? 1.0 : 0.0)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 15)
+                            .fill(Color(UIColor.secondarySystemBackground))
+                            .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.07), radius: 8, x: 0, y: 2)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 15)
+                            .stroke(getAccountColor(account.type).opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
+                    )
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(UIColor.secondarySystemBackground))
-                        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.07), radius: 8, x: 0, y: 2)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 15)
-                        .stroke(getAccountColor(account.type).opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
-                )
+                .buttonStyle(PlainButtonStyle())
                 .padding(.horizontal)
                 .offset(y: isAppearing ? 0 : 20)
                 .opacity(isAppearing ? 1.0 : 0.0)

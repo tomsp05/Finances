@@ -301,16 +301,27 @@ class FinanceViewModel: ObservableObject {
         }
     }
     
-    // Replace the existing recalcAccounts method with this updated version:
-    
-    /// Resets each account's balance to its preset initialBalance and then applies all transactions.
     func recalcAccounts() {
+        // Store old balances to compare after recalculation
+        let oldBalances = accounts.map { $0.balance }
+        
+        // Reset balances to initial values
         for i in accounts.indices {
             accounts[i].balance = accounts[i].initialBalance
         }
+        
+        // Apply all transactions
         for transaction in transactions {
             apply(transaction)
         }
+        
+        // Adjust pools based on balance changes
+        for i in accounts.indices {
+            if i < oldBalances.count && accounts[i].balance != oldBalances[i] {
+                adjustPoolsAfterBalanceChange(oldBalance: oldBalances[i], newBalance: accounts[i].balance, accountIndex: i)
+            }
+        }
+        
         DataService.shared.saveAccounts(accounts)
         
         // Always signal the balance change regardless of whether the balance actually changed
@@ -357,6 +368,27 @@ class FinanceViewModel: ObservableObject {
                     accounts[toIndex].balance -= transaction.amount // Paying off credit card
                 } else {
                     accounts[toIndex].balance += transaction.amount // Adding to other accounts
+                }
+            }
+        }
+    }
+    
+    // Add this after the updateAccounts or updateAccountsSettings function
+    private func adjustPoolsAfterBalanceChange(oldBalance: Double, newBalance: Double, accountIndex: Int) {
+        // Skip if balance didn't change or the account has no pools
+        if oldBalance == newBalance || accounts[accountIndex].pools.isEmpty {
+            return
+        }
+        
+        // If balance decreased, reduce pools proportionally if needed
+        if newBalance < oldBalance {
+            let allocatedAmount = accounts[accountIndex].pools.reduce(0.0) { $0 + $1.amount }
+            
+            // If the allocated amount is now more than the total balance, adjust pools proportionally
+            if allocatedAmount > newBalance {
+                let ratio = newBalance / allocatedAmount
+                for i in 0..<accounts[accountIndex].pools.count {
+                    accounts[accountIndex].pools[i].amount *= ratio
                 }
             }
         }
