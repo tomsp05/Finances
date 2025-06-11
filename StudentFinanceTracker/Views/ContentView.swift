@@ -396,3 +396,7 @@ struct ShimmerEffect: ViewModifier {
         }
     }
 }
+
+#Preview {
+    ContentView()
+}
