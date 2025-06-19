@@ -22,7 +22,8 @@ struct Budget: Identifiable, Codable {
     var timePeriod: TimePeriod
     var categoryId: UUID?    // For category-based budgets
     var accountId: UUID?     // For account-based budgets
-    var startDate: Date
+    var startDate: Date      // The original creation date of the budget
+    var periodStartDate: Date? // The start date of the current period (week, month, year)
     var currentSpent: Double = 0.0
     
     var remainingAmount: Double {
