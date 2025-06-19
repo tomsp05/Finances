@@ -5,14 +5,12 @@
 //  Created by Tom Speake on 4/17/25.
 //
 
-
 import SwiftUI
 
 // Extension to handle budget-related functionality
 extension FinanceViewModel {
     // CRUD operations for budgets
     func addBudget(_ budget: Budget) {
-        // When adding a budget, ensure the periodStartDate is set correctly
         var newBudget = budget
         newBudget.periodStartDate = getCurrentPeriodStartDate(for: budget.timePeriod, from: budget.startDate)
         budgets.append(newBudget)
@@ -24,9 +22,10 @@ extension FinanceViewModel {
         if let index = budgets.firstIndex(where: { $0.id == budget.id }) {
             var updatedBudget = budget
             
-            // If time period changed, we need to recalculate the period start date
+            // If time period changed, recalculate the period start date
             if updatedBudget.timePeriod != budgets[index].timePeriod {
                 updatedBudget.periodStartDate = getCurrentPeriodStartDate(for: updatedBudget.timePeriod, from: Date())
+                updatedBudget.currentSpent = 0.0 // Reset spending when period changes
             } else {
                 // Keep existing period start date
                 updatedBudget.periodStartDate = budgets[index].periodStartDate
@@ -49,140 +48,111 @@ extension FinanceViewModel {
     
     func loadBudgets() {
         if let loadedBudgets = DataService.shared.loadBudgets() {
-            // Ensure all budgets have their periodStartDate set correctly
-            var updatedBudgets = loadedBudgets
-            var needsUpdate = false
-            
-            for i in 0..<updatedBudgets.count {
-                // Check if we need to update the periodStartDate
-                let currentPeriodStart = getCurrentPeriodStartDate(
-                    for: updatedBudgets[i].timePeriod,
-                    from: updatedBudgets[i].startDate
-                )
-                
-                // If periodStartDate is nil or it's not the current period start
-                if updatedBudgets[i].periodStartDate == nil ||
-                   (updatedBudgets[i].periodStartDate != nil &&
-                   !Calendar.current.isDate(updatedBudgets[i].periodStartDate!, inSameDayAs: currentPeriodStart)) {
-                    
-                    updatedBudgets[i].periodStartDate = currentPeriodStart
-                    needsUpdate = true
-                }
-            }
-            
-            budgets = updatedBudgets
-            
-            if needsUpdate {
-                saveBudgets()
-            }
-            
+            budgets = loadedBudgets
+            // Check for period resets after loading
+            checkAndResetBudgetPeriods()
             recalculateBudgetSpending()
         } else {
             budgets = []
         }
     }
     
-    // Check and update the period start date for all budgets
-    func checkBudgetPeriods() {
+    // FIXED: Proper period checking and resetting
+    func checkAndResetBudgetPeriods() {
         let currentDate = Date()
         var budgetsUpdated = false
         
         for i in 0..<budgets.count {
             let budget = budgets[i]
-            
-            // Calculate the current period start date
             let currentPeriodStart = getCurrentPeriodStartDate(for: budget.timePeriod, from: budget.startDate)
             
-            // If the period start date is different than what's stored, update it
-            if budget.periodStartDate == nil ||
-               !Calendar.current.isDate(budget.periodStartDate!, inSameDayAs: currentPeriodStart) {
-                
+            // Check if we need to reset the budget period
+            if shouldResetBudgetPeriod(budget: budget, currentPeriodStart: currentPeriodStart) {
                 var updatedBudget = budget
                 updatedBudget.periodStartDate = currentPeriodStart
-                updatedBudget.currentSpent = 0.0 // Reset spending for the new period
+                updatedBudget.currentSpent = 0.0 // Reset spending for new period
                 budgets[i] = updatedBudget
                 budgetsUpdated = true
+                
+                print("Budget '\(budget.name)' period reset. New period starts: \(currentPeriodStart)")
             }
         }
         
         if budgetsUpdated {
             saveBudgets()
-            recalculateBudgetSpending() // Recalculate spending for the new periods
         }
     }
     
-    // Calculate the start date of the current period for a given time period type
-    func getCurrentPeriodStartDate(for timePeriod: TimePeriod, from referenceDate: Date) -> Date {
-        let currentDate = Date()
+    // FIXED: Better logic for determining if a budget period should reset
+    private func shouldResetBudgetPeriod(budget: Budget, currentPeriodStart: Date) -> Bool {
+        guard let budgetPeriodStart = budget.periodStartDate else {
+            return true // First time setup
+        }
+        
         let calendar = Calendar.current
+        
+        switch budget.timePeriod {
+        case .weekly:
+            // Check if we're in a different week
+            let budgetWeek = calendar.component(.weekOfYear, from: budgetPeriodStart)
+            let currentWeek = calendar.component(.weekOfYear, from: currentPeriodStart)
+            let budgetYear = calendar.component(.yearForWeekOfYear, from: budgetPeriodStart)
+            let currentYear = calendar.component(.yearForWeekOfYear, from: currentPeriodStart)
+            return budgetWeek != currentWeek || budgetYear != currentYear
+            
+        case .monthly:
+            // Check if we're in a different month
+            let budgetMonth = calendar.component(.month, from: budgetPeriodStart)
+            let currentMonth = calendar.component(.month, from: currentPeriodStart)
+            let budgetYear = calendar.component(.year, from: budgetPeriodStart)
+            let currentYear = calendar.component(.year, from: currentPeriodStart)
+            return budgetMonth != currentMonth || budgetYear != currentYear
+            
+        case .yearly:
+            // Check if we're in a different year
+            let budgetYear = calendar.component(.year, from: budgetPeriodStart)
+            let currentYear = calendar.component(.year, from: currentPeriodStart)
+            return budgetYear != currentYear
+        }
+    }
+    
+    // FIXED: More accurate period start date calculation
+    func getCurrentPeriodStartDate(for timePeriod: TimePeriod, from referenceDate: Date) -> Date {
+        let calendar = Calendar.current
+        let currentDate = Date()
         
         switch timePeriod {
         case .weekly:
-            // Find the start of the current week
-            let startOfWeek = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: currentDate)
-            return calendar.date(from: startOfWeek) ?? currentDate
+            // Get the start of the current week (Monday)
+            var components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: currentDate)
+            components.weekday = 2 // Monday
+            return calendar.date(from: components) ?? currentDate
             
         case .monthly:
-            // Find the start of the current month
+            // Get the start of the current month
             let components = calendar.dateComponents([.year, .month], from: currentDate)
             return calendar.date(from: components) ?? currentDate
             
         case .yearly:
-            // Find the start of the current year
+            // Get the start of the current year
             let components = calendar.dateComponents([.year], from: currentDate)
             return calendar.date(from: components) ?? currentDate
         }
     }
     
-    // When a new transaction is added, update the relevant budgets
-    func updateBudgetsWithTransaction(_ transaction: Transaction) {
-        // Only track expenses for budgets
-        guard transaction.type == .expense else { return }
-        
-        // Check and update budget periods before processing the transaction
-        checkBudgetPeriods()
-        
-        let transactionDate = transaction.date
-        
-        // Update budgets
-        for i in 0..<budgets.count {
-            var budget = budgets[i]
-            
-            // Only count transactions that are within the current period
-            guard let periodStart = budget.periodStartDate, transactionDate >= periodStart else { continue }
-            
-            // Check if budget applies to this transaction
-            switch budget.type {
-            case .overall:
-                // All expenses count toward overall budget
-                budget.currentSpent += transaction.amount
-                budgets[i] = budget
-                
-            case .category:
-                // Only count if transaction matches the budget category
-                if let budgetCategoryId = budget.categoryId, budgetCategoryId == transaction.categoryId {
-                    budget.currentSpent += transaction.amount
-                    budgets[i] = budget
-                }
-                
-            case .account:
-                // Only count if transaction is from the budget account
-                if let budgetAccountId = budget.accountId,
-                   let accountIndex = accounts.firstIndex(where: { $0.id == budgetAccountId }),
-                   accounts[accountIndex].type == transaction.fromAccount {
-                    budget.currentSpent += transaction.amount
-                    budgets[i] = budget
-                }
-            }
-        }
-        
-        saveBudgets()
+    // FIXED: This should be called whenever transactions are modified
+    func handleTransactionChange() {
+        checkAndResetBudgetPeriods()
+        recalculateBudgetSpending()
     }
     
-    // Recalculate all budget spending based on transactions
+    // FIXED: Simplified transaction handling - remove this method as it's redundant
+    // The recalculateBudgetSpending method handles everything properly
+    
+    // FIXED: More robust budget spending calculation
     func recalculateBudgetSpending() {
-        // Check and update budget periods first
-        checkBudgetPeriods()
+        // First check for period resets
+        checkAndResetBudgetPeriods()
         
         // Reset all budgets' current spent amount
         for i in 0..<budgets.count {
@@ -192,38 +162,20 @@ extension FinanceViewModel {
         // Get all expense transactions
         let expenseTransactions = transactions.filter { $0.type == .expense }
         
-        // For each budget, find matching transactions and sum them
+        // Calculate spending for each budget
         for i in 0..<budgets.count {
             let budget = budgets[i]
             guard let periodStartDate = budget.periodStartDate else { continue }
             
-            // Get transactions that fall within the current budget period
-            let relevantTransactions = expenseTransactions.filter { $0.date >= periodStartDate }
-            
             var totalSpent: Double = 0.0
             
-            for transaction in relevantTransactions {
-                let amountToCount = transaction.amount
+            for transaction in expenseTransactions {
+                // Only count transactions within the current budget period
+                guard transaction.date >= periodStartDate else { continue }
                 
-                switch budget.type {
-                case .overall:
-                    // All expenses count toward overall budget
-                    totalSpent += amountToCount
-                    
-                case .category:
-                    // Only count if transaction matches the budget category
-                    if let budgetCategoryId = budget.categoryId,
-                       budgetCategoryId == transaction.categoryId {
-                        totalSpent += amountToCount
-                    }
-                    
-                case .account:
-                    // Only count if transaction is from the budget account
-                    if let budgetAccountId = budget.accountId,
-                       let accountIndex = accounts.firstIndex(where: { $0.id == budgetAccountId }),
-                       accounts[accountIndex].type == transaction.fromAccount {
-                        totalSpent += amountToCount
-                    }
+                let shouldCount = shouldTransactionCountForBudget(transaction: transaction, budget: budget)
+                if shouldCount {
+                    totalSpent += transaction.amount
                 }
             }
             
@@ -231,5 +183,43 @@ extension FinanceViewModel {
         }
         
         saveBudgets()
+    }
+    
+    // FIXED: Cleaner transaction matching logic
+    private func shouldTransactionCountForBudget(transaction: Transaction, budget: Budget) -> Bool {
+        switch budget.type {
+        case .overall:
+            return true // All expenses count
+            
+        case .category:
+            guard let budgetCategoryId = budget.categoryId else { return false }
+            return budgetCategoryId == transaction.categoryId
+            
+        case .account:
+            guard let budgetAccountId = budget.accountId else { return false }
+            guard let account = accounts.first(where: { $0.id == budgetAccountId }) else { return false }
+            return account.type == transaction.fromAccount
+        }
+    }
+    
+    // FIXED: Call this method from your transaction add/edit/delete methods
+    func addTransaction(_ transaction: Transaction) {
+        transactions.append(transaction)
+        saveTransactions() // Your existing save method
+        handleTransactionChange() // This will update budgets
+    }
+    
+    func updateTransaction(_ transaction: Transaction) {
+        if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
+            transactions[index] = transaction
+            saveTransactions() // Your existing save method
+            handleTransactionChange() // This will update budgets
+        }
+    }
+    
+    func deleteTransaction(_ transaction: Transaction) {
+        transactions.removeAll { $0.id == transaction.id }
+        saveTransactions() // Your existing save method
+        handleTransactionChange() // This will update budgets
     }
 }
