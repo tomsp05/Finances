@@ -150,11 +150,8 @@ struct SettingsView: View {
                             ForEach(viewModel.accounts) { account in
                                 Button(action: {
                                     // Pre-populate account details for editing
-                                    accountNames[account.id] = account.name
-                                    accountPresets[account.id] = String(format: "%.2f", account.initialBalance)
-                                    accountTypes[account.id] = account.type
-                                    editingAccount = account
-                                    showEditAccountSheet = true
+                                    // Ensure dictionaries are populated before showing the sheet
+                                    prepareEditAccount(account)
                                 }) {
                                     HStack(spacing: 16) {
                                         // Account type indicator
@@ -438,12 +435,8 @@ struct SettingsView: View {
         }
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .onAppear {
-            // Populate account edits
-            for account in viewModel.accounts {
-                accountNames[account.id] = account.name
-                accountPresets[account.id] = String(format: "%.2f", account.initialBalance)
-                accountTypes[account.id] = account.type
-            }
+            // Initialize dictionaries for all accounts when the view appears
+            initializeAccountDictionaries()
             
             // Set the initial theme selection
             selectedTheme = viewModel.themeColorName
@@ -514,7 +507,29 @@ struct SettingsView: View {
     
     // MARK: - Helper Views
     
+    // New method to initialize all account dictionaries
+    private func initializeAccountDictionaries() {
+        // Ensure dictionaries are populated for all accounts
+        for account in viewModel.accounts {
+            accountNames[account.id] = account.name
+            accountPresets[account.id] = String(format: "%.2f", account.initialBalance)
+            accountTypes[account.id] = account.type
+        }
+    }
     
+    // New method to prepare for editing an account
+    private func prepareEditAccount(_ account: Account) {
+        // Ensure this specific account's data is in the dictionaries
+        accountNames[account.id] = account.name
+        accountPresets[account.id] = String(format: "%.2f", account.initialBalance)
+        accountTypes[account.id] = account.type
+        
+        // Set the editing account
+        editingAccount = account
+        
+        // Now show the sheet
+        showEditAccountSheet = true
+    }
     
     private var editAccountSheet: some View {
         NavigationView {
@@ -526,12 +541,12 @@ struct SettingsView: View {
                             // Account icon
                             ZStack {
                                 Circle()
-                                    .fill(getAccountColor(account.type).opacity(0.2))
+                                    .fill(getAccountColor(accountTypes[account.id] ?? account.type).opacity(0.2))
                                     .frame(width: 80, height: 80)
                                 
-                                Image(systemName: getAccountIcon(account.type))
+                                Image(systemName: getAccountIcon(accountTypes[account.id] ?? account.type))
                                     .font(.system(size: 36))
-                                    .foregroundColor(getAccountColor(account.type))
+                                    .foregroundColor(getAccountColor(accountTypes[account.id] ?? account.type))
                             }
                             .padding(.top, 12)
                             
@@ -637,7 +652,7 @@ struct SettingsView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 
-                                if account.type == .credit {
+                                if (accountTypes[account.id] ?? account.type) == .credit {
                                     HStack(alignment: .top, spacing: 12) {
                                         Image(systemName: "creditcard.fill")
                                             .foregroundColor(viewModel.themeColor)
@@ -696,6 +711,20 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.bottom, 30)
+                .onAppear {
+                    // Make sure the account data is available when the sheet appears
+                    if let account = editingAccount {
+                        if accountNames[account.id] == nil {
+                            accountNames[account.id] = account.name
+                        }
+                        if accountPresets[account.id] == nil {
+                            accountPresets[account.id] = String(format: "%.2f", account.initialBalance)
+                        }
+                        if accountTypes[account.id] == nil {
+                            accountTypes[account.id] = account.type
+                        }
+                    }
+                }
             }
             .navigationTitle("Edit Account")
             .navigationBarItems(
@@ -922,6 +951,11 @@ struct SettingsView: View {
         var updatedAccounts = viewModel.accounts
         updatedAccounts.append(newAccount)
         viewModel.updateAccountsSettings(updatedAccounts: updatedAccounts)
+        
+        // Add this account to the dictionaries
+        accountNames[newAccount.id] = newAccount.name
+        accountPresets[newAccount.id] = String(format: "%.2f", newAccount.initialBalance)
+        accountTypes[newAccount.id] = newAccount.type
         
         // Reset the form
         newAccountName = ""
