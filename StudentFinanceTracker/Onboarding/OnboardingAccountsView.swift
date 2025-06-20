@@ -115,7 +115,6 @@ struct OnboardingAccountsView: View {
             .frame(minHeight: UIScreen.main.bounds.height - 100)
         }
         .onAppear {
-            // Populate with existing accounts if available
             if !viewModel.accounts.isEmpty {
                 accounts = []
                 for account in viewModel.accounts {
@@ -128,22 +127,18 @@ struct OnboardingAccountsView: View {
                 }
             }
             
-            // Animate appearance
             withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
                 animateElements = true
             }
         }
         .onDisappear {
-            // Save the accounts when navigating away
             saveAccounts()
         }
     }
     
     private func saveAccounts() {
-        // Clear existing accounts
         viewModel.accounts = []
         
-        // Add all enabled accounts with their initial balances
         for accountSetup in accounts where accountSetup.isEnabled {
             let newAccount = Account(
                 name: accountSetup.name,
@@ -154,7 +149,6 @@ struct OnboardingAccountsView: View {
             viewModel.accounts.append(newAccount)
         }
         
-        // Save the accounts
         DataService.shared.saveAccounts(viewModel.accounts)
     }
 }
@@ -177,14 +171,12 @@ struct ImprovedAccountRow: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Main account row with toggle
             Button(action: {
-                withAnimation {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     isExpanded.toggle()
                 }
             }) {
                 HStack(spacing: 16) {
-                    // Account type icon
                     ZStack {
                         Circle()
                             .fill(getAccountColor().opacity(colorScheme == .dark ? 0.3 : 0.2))
@@ -195,28 +187,23 @@ struct ImprovedAccountRow: View {
                             .foregroundColor(getAccountColor())
                     }
                     
-                    // Account name (editable field if expanded)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isExpanded ? "Account Name" : account.name)
-                            .font(isExpanded ? .caption : .headline)
-                            .foregroundColor(isExpanded ? .secondary : .primary)
-                            .frame(alignment: .leading)
+                        Text(account.name)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
                         
-                        if !isExpanded {
-                            Text(account.type.rawValue.capitalized)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                        Text(account.type.rawValue.capitalized)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                     
                     Spacer()
                     
-                    // Toggle to enable/disable
                     Toggle("", isOn: $account.isEnabled)
                         .labelsHidden()
                         .toggleStyle(SwitchToggleStyle(tint: viewModel.themeColor))
                     
-                    // Expand/collapse chevron
                     Image(systemName: "chevron.\(isExpanded ? "up" : "down")")
                         .font(.caption)
                         .foregroundColor(.gray)
@@ -227,13 +214,11 @@ struct ImprovedAccountRow: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            // Expanded details
             if isExpanded && account.isEnabled {
                 VStack(spacing: 15) {
                     Divider()
                         .padding(.horizontal)
                     
-                    // Account name field
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Account Name")
                             .font(.caption)
@@ -247,14 +232,12 @@ struct ImprovedAccountRow: View {
                             .padding(.horizontal)
                     }
                     
-                    // Account type selector
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Account Type")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)
                         
-                        // Improved account type buttons
                         HStack(spacing: 10) {
                             ForEach(AccountType.allCases, id: \.self) { type in
                                 ImprovedAccountTypeButton(
@@ -271,13 +254,22 @@ struct ImprovedAccountRow: View {
                         .padding(.horizontal)
                     }
                     
-                    // Initial balance field
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Initial Balance")
+                        HStack {
+                            Text("Initial Balance")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            // *** NEW: DONE BUTTON IS HERE ***
+                            Button("Done") {
+                                hideKeyboard()
+                            }
                             .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal)
-                        
+                            .fontWeight(.bold)
+                            .foregroundColor(viewModel.themeColor)
+                        }
+                        .padding(.horizontal)
+
                         HStack {
                             Text(viewModel.userPreferences.currencySymbol)
                                 .foregroundColor(.secondary)
@@ -293,7 +285,6 @@ struct ImprovedAccountRow: View {
                         .padding(.horizontal)
                     }
                     
-                    // Info about initial balance for credit cards
                     if account.type == .credit {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: "creditcard.fill")
@@ -317,14 +308,12 @@ struct ImprovedAccountRow: View {
         )
     }
     
-    // Helper functions for icon and color
-    private func getAccountIcon() -> String {
-        return getTypeIcon(account.type)
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     
-    private func getAccountColor() -> Color {
-        return getTypeColor(account.type)
-    }
+    private func getAccountIcon() -> String { getTypeIcon(account.type) }
+    private func getAccountColor() -> Color { getTypeColor(account.type) }
     
     private func getTypeIcon(_ type: AccountType) -> String {
         switch type {
@@ -353,7 +342,6 @@ struct ImprovedAccountTypeButton: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 10) {
-                // Icon in colored circle
                 ZStack {
                     Circle()
                         .fill(isSelected ?
@@ -372,7 +360,6 @@ struct ImprovedAccountTypeButton: View {
                                             Color(.systemGray2))
                 }
                 
-                // Type name
                 Text(getTypeName(type))
                     .font(.footnote)
                     .fontWeight(isSelected ? .semibold : .regular)

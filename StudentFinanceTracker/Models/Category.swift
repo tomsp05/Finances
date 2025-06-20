@@ -1,11 +1,3 @@
-//
-//  CategoryType.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/14/25.
-//
-
-
 import Foundation
 import SwiftUI
 
@@ -25,7 +17,6 @@ struct Category: Identifiable, Codable, Equatable {
     }
 }
 
-// Default category collections
 extension Category {
     static let defaultIncomeCategories: [Category] = [
         Category(name: "Salary", type: .income, iconName: "dollarsign.circle"),

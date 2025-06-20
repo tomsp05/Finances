@@ -29,9 +29,11 @@ struct OnboardingContainerView: View {
                     .tag(2)
                     .padding(.bottom, 100)
                 
-                OnboardingAccountsView()
-                    .tag(3)
-                    .padding(.bottom, 100)
+                NavigationStack {
+                    OnboardingAccountsView()
+                }
+                .tag(3)
+                .padding(.bottom, 100)
                 
                 OnboardingPersonalizeView()
                     .tag(4)
@@ -153,3 +155,4 @@ struct OnboardingContainerView_Previews: PreviewProvider {
         }
     }
 }
+

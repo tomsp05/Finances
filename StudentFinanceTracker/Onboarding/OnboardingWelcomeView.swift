@@ -36,7 +36,7 @@ struct OnboardingWelcomeView: View {
                     .opacity(animateImage ? 1.0 : 0.0)
                     
                     // Welcome title - more compact spacing
-                    Text("Welcome to Finances")
+                    Text("Welcome to Doughs")
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(viewModel.themeColor)
