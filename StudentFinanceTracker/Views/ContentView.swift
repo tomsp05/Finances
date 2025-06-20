@@ -225,7 +225,7 @@ struct ContentView: View {
                 }
                 .padding(.bottom, 20)
             }
-            .navigationTitle("Finance")
+            .navigationTitle("Doughs")
             .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
             .onAppear {
                 previousBalance = netCurrentBalance

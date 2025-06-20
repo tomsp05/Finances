@@ -57,7 +57,7 @@ extension FinanceViewModel {
         }
     }
     
-    // FIXED: Proper period checking and resetting
+    // Proper period checking and resetting
     func checkAndResetBudgetPeriods() {
         let currentDate = Date()
         var budgetsUpdated = false
@@ -83,7 +83,7 @@ extension FinanceViewModel {
         }
     }
     
-    // FIXED: Better logic for determining if a budget period should reset
+    // Better logic for determining if a budget period should reset
     private func shouldResetBudgetPeriod(budget: Budget, currentPeriodStart: Date) -> Bool {
         guard let budgetPeriodStart = budget.periodStartDate else {
             return true // First time setup
@@ -116,7 +116,7 @@ extension FinanceViewModel {
         }
     }
     
-    // FIXED: More accurate period start date calculation
+    // More accurate period start date calculation
     func getCurrentPeriodStartDate(for timePeriod: TimePeriod, from referenceDate: Date) -> Date {
         let calendar = Calendar.current
         let currentDate = Date()
@@ -139,17 +139,14 @@ extension FinanceViewModel {
             return calendar.date(from: components) ?? currentDate
         }
     }
-    
-    // FIXED: This should be called whenever transactions are modified
+
+    // This should be called whenever transactions are modified
     func handleTransactionChange() {
         checkAndResetBudgetPeriods()
         recalculateBudgetSpending()
     }
     
-    // FIXED: Simplified transaction handling - remove this method as it's redundant
-    // The recalculateBudgetSpending method handles everything properly
-    
-    // FIXED: More robust budget spending calculation
+    // More robust budget spending calculation
     func recalculateBudgetSpending() {
         // First check for period resets
         checkAndResetBudgetPeriods()
@@ -185,7 +182,7 @@ extension FinanceViewModel {
         saveBudgets()
     }
     
-    // FIXED: Cleaner transaction matching logic
+    // Cleaner transaction matching logic
     private func shouldTransactionCountForBudget(transaction: Transaction, budget: Budget) -> Bool {
         switch budget.type {
         case .overall:
@@ -202,24 +199,24 @@ extension FinanceViewModel {
         }
     }
     
-    // FIXED: Call this method from your transaction add/edit/delete methods
+    // Call this method from your transaction add/edit/delete methods
     func addTransaction(_ transaction: Transaction) {
         transactions.append(transaction)
-        saveTransactions() // Your existing save method
+        DataService.shared.saveTransactions(transactions)
         handleTransactionChange() // This will update budgets
     }
     
     func updateTransaction(_ transaction: Transaction) {
         if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
             transactions[index] = transaction
-            saveTransactions() // Your existing save method
+            DataService.shared.saveTransactions(transactions)
             handleTransactionChange() // This will update budgets
         }
     }
     
     func deleteTransaction(_ transaction: Transaction) {
         transactions.removeAll { $0.id == transaction.id }
-        saveTransactions() // Your existing save method
+        DataService.shared.saveTransactions(transactions)
         handleTransactionChange() // This will update budgets
     }
 }
