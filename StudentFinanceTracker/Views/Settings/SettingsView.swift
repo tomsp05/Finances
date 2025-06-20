@@ -421,13 +421,6 @@ struct SettingsView: View {
                             Text("Tom Speake")
                         }
                         
-                        HStack {
-                            Text("Last Updated")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("April 21, 2025")
-                        }
-                        
                     }
                 }
             }
