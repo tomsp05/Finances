@@ -35,6 +35,9 @@ struct SettingsView: View {
     @State private var newAccountBalance = ""
     @State private var accountToDelete: UUID? = nil
     
+    // State for What's New sheet
+    @State private var showWhatsNewSheet = false
+    
     // Enum to track which confirmation is being shown
     enum ConfirmationAction {
         case deleteTransactions
@@ -421,6 +424,32 @@ struct SettingsView: View {
                             Text("Tom Speake")
                         }
                         
+                        // What's New/Known Issues Button
+                        Button(action: {
+                            showWhatsNewSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "lightbulb.fill")
+                                    .foregroundColor(viewModel.themeColor)
+                                    .padding(8)
+                                    .background(viewModel.themeColor.opacity(0.1))
+                                    .cornerRadius(8)
+                                
+                                Text("What's New / Known Issues")
+                                    .fontWeight(.semibold)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
                     }
                 }
             }
@@ -454,6 +483,10 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showOnboardingSheet) {
             OnboardingContainerView(isFromSettings: true)
+                .environmentObject(viewModel)
+        }
+        .sheet(isPresented: $showWhatsNewSheet) {
+            WhatsNewView()
                 .environmentObject(viewModel)
         }
         .alert(isPresented: $showDeleteConfirmation) {
@@ -743,6 +776,14 @@ struct SettingsView: View {
             if let newPresetString = accountPresets[account.id],
                let newPreset = Double(newPresetString) {
                 updatedAccounts[index].initialBalance = newPreset
+                
+                // If initial balance changes, adjust pools proportionally if needed
+                if newPreset != account.initialBalance {
+                    let ratio = newPreset / account.initialBalance
+                    for j in 0..<updatedAccounts[index].pools.count {
+                        updatedAccounts[index].pools[j].amount *= ratio
+                    }
+                }
             }
         }
         

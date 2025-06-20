@@ -3,6 +3,7 @@ import SwiftUI
 struct OnboardingFinishView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @State private var animateElements = false
+    @State private var showWhatsNewSheet = false
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -77,6 +78,33 @@ struct OnboardingFinishView: View {
                 .offset(y: animateElements ? 0 : 20)
                 .animation(.easeOut.delay(0.4), value: animateElements)
                 
+                // What's New/Known Issues Button
+                Button(action: {
+                    showWhatsNewSheet = true
+                }) {
+                    HStack {
+                        Image(systemName: "lightbulb.fill")
+                            .foregroundColor(viewModel.themeColor)
+                            .padding(8)
+                            .background(viewModel.themeColor.opacity(0.1))
+                            .cornerRadius(8)
+                        
+                        Text("What's New / Known Issues")
+                            .fontWeight(.semibold)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.gray)
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    .padding(.horizontal, 40)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
                 // Let's go text
                 Text("Let's start managing your finances!")
                     .font(.headline)
@@ -97,8 +125,14 @@ struct OnboardingFinishView: View {
                 animateElements = true
             }
         }
+        .sheet(isPresented: $showWhatsNewSheet) {
+            WhatsNewView()
+                .environmentObject(viewModel)
+        }
     }
+    
 }
+
 
 struct OnboardingFinishView_Previews: PreviewProvider {
     static var previews: some View {
