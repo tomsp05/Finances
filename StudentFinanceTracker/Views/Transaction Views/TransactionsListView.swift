@@ -6,7 +6,12 @@ struct TransactionsListView: View {
     @Environment(\.colorScheme) var colorScheme
     
     // Filter state
-    @State private var filterState = TransactionFilterState()
+    @State private var filterState: TransactionFilterState
+    
+    // New initializer to accept a pre-configured filter state
+    init(initialFilterState: TransactionFilterState? = nil) {
+        _filterState = State(initialValue: initialFilterState ?? TransactionFilterState())
+    }
     
     // Group transactions by day and sort by date (most recent first)
     private var groupedTransactions: [(date: Date, transactions: [Transaction])] {

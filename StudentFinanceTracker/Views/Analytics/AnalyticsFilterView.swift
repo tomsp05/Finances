@@ -283,27 +283,20 @@ struct AnalyticsCategoryFilterView: View {
     }
 }
 
-// Analytics filter state model
-struct AnalyticsFilterState {
-    // Time filtering
+// Analytics filter state model - NOW Codable and Equatable
+struct AnalyticsFilterState: Codable, Equatable {
     var timeFilter: AnalyticsTimeFilter = .month
-    var timeOffset: Int = 0 // 0 = current period, -1 = previous period, etc.
-    
-    // Transaction type filtering
+    var timeOffset: Int = 0
     var transactionType: AnalyticsTransactionType = .all
-    
-    // Category filtering
     var selectedCategories: Set<UUID> = []
     
-    // Computed property to check if any filters are active (only category and transaction type)
     var hasActiveFilters: Bool {
-        return transactionType != .all ||
-               !selectedCategories.isEmpty
+        return transactionType != .all || !selectedCategories.isEmpty
     }
 }
 
-// Analytics time filter options
-enum AnalyticsTimeFilter: String, CaseIterable {
+// Analytics time filter options - NOW Codable
+enum AnalyticsTimeFilter: String, CaseIterable, Codable {
     case week = "Week"
     case month = "Month"
     case yearToDate = "Year to Date"
@@ -311,8 +304,8 @@ enum AnalyticsTimeFilter: String, CaseIterable {
     case year = "Calendar Year"
 }
 
-// Analytics transaction type filter
-enum AnalyticsTransactionType: String, CaseIterable {
+// Analytics transaction type filter - NOW Codable
+enum AnalyticsTransactionType: String, CaseIterable, Codable {
     case all = "All"
     case income = "Income"
     case expense = "Expense"

@@ -145,19 +145,9 @@ class DataService {
     }
 }
 
-//
-//  BudgetService.swift
-//  StudentFinanceTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
-import Foundation
-
 extension DataService {
     // File URL for budgets
     private var budgetsFileURL: URL {
-        // Access the documents directory directly instead of using the private property
         let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
         let documentsDirectory = paths[0]
         return documentsDirectory.appendingPathComponent("budgets.json")
@@ -187,7 +177,6 @@ extension DataService {
         }
     }
 }
-
 
 extension DataService {
     // File name for user preferences
@@ -222,5 +211,39 @@ extension DataService {
             print("Error loading user preferences: \(error)")
         }
         return nil
+    }
+}
+
+// NEW: Extension for saving and loading analytics filter state
+extension DataService {
+    private var analyticsFilterStateFile: String { "analyticsFilterState.json" }
+
+    private var analyticsFilterStateURL: URL {
+        documentsDirectory.appendingPathComponent(analyticsFilterStateFile)
+    }
+
+    func saveAnalyticsFilterState(_ state: AnalyticsFilterState) {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(state)
+            try data.write(to: analyticsFilterStateURL)
+            print("Analytics filter state saved.")
+        } catch {
+            print("Error saving analytics filter state: \(error)")
+        }
+    }
+
+    func loadAnalyticsFilterState() -> AnalyticsFilterState? {
+        guard let data = try? Data(contentsOf: analyticsFilterStateURL) else {
+            return nil
+        }
+        do {
+            let state = try JSONDecoder().decode(AnalyticsFilterState.self, from: data)
+            print("Analytics filter state loaded.")
+            return state
+        } catch {
+            print("Error loading analytics filter state: \(error)")
+            return nil
+        }
     }
 }
