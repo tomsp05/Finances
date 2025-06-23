@@ -46,7 +46,6 @@ class FinanceViewModel: ObservableObject {
         }
     }
     
-    // Add this property to your FinanceViewModel class
     @Published var budgets: [Budget] = []
     
     init() {
@@ -78,20 +77,9 @@ class FinanceViewModel: ObservableObject {
         saveUserPreferences()
     }
     
-    // Update addTransaction method to include budget calculations
-    func addTransaction(_ transaction: Transaction) {
-        transactions.append(transaction)
-        updateAccounts(with: transaction)
-        updateBudgetsWithTransaction(transaction)
-        DataService.shared.saveTransactions(transactions)
-        DataService.shared.saveAccounts(accounts)
-        signalBalanceChange()
-    }
-    
     func loadInitialData() {
         // Load accounts
         if let loadedAccounts = DataService.shared.loadAccounts() {
-            // Handle migration from old account types if needed
             accounts = migrateOldAccountTypes(loadedAccounts)
         } else {
             accounts = [
@@ -118,26 +106,22 @@ class FinanceViewModel: ObservableObject {
         
         // Load transactions
         if let loadedTransactions = DataService.shared.loadTransactions() {
-            // Migrate old transactions to use new account types
             transactions = migrateOldTransactionAccountTypes(loadedTransactions)
-            
-            // For backward compatibility: If there are any transactions with the old category format,
-            // assign them to a default category
             migrateOldTransactions()
         } else {
             transactions = []
         }
         
-        // Load theme color; default to "Blue" if none exists.
+        // Load theme color
         if let loadedTheme = DataService.shared.loadThemeColor() {
             themeColorName = loadedTheme
         } else {
             themeColorName = "Blue"
         }
         
-        // Recalculate account balances with existing transactions.
+        // Recalculate balances and spending
         recalcAccounts()
-        recalculateBudgetSpending()
+        handleTransactionChange()
     }
     
     // Helper method to migrate old account types to new ones
@@ -145,11 +129,8 @@ class FinanceViewModel: ObservableObject {
         return oldAccounts.map { account in
             var newAccount = account
             
-            // Check if the type information is using the old enum values
-            // This relies on the raw string value stored in the JSON
             if let rawValue = account.type.rawValue as String?,
                rawValue == "creditAmex" || rawValue == "credit_amex" {
-                // Create a new account with the updated type
                 newAccount = Account(
                     id: account.id,
                     name: "Amex Credit Card",
@@ -159,7 +140,6 @@ class FinanceViewModel: ObservableObject {
                 )
             } else if let rawValue = account.type.rawValue as String?,
                       rawValue == "creditHSBC" || rawValue == "credit_hsbc" {
-                // Create a new account with the updated type
                 newAccount = Account(
                     id: account.id,
                     name: "HSBC Credit Card",
@@ -178,7 +158,6 @@ class FinanceViewModel: ObservableObject {
         return oldTransactions.map { transaction in
             var newTransaction = transaction
             
-            // Update fromAccount if it uses old credit card types
             if let fromAccount = transaction.fromAccount {
                 let fromRawValue = String(describing: fromAccount)
                 if fromRawValue == "creditAmex" || fromRawValue == "credit_amex" ||
@@ -187,7 +166,6 @@ class FinanceViewModel: ObservableObject {
                 }
             }
             
-            // Update toAccount if it uses old credit card types
             if let toAccount = transaction.toAccount {
                 let toRawValue = String(describing: toAccount)
                 if toRawValue == "creditAmex" || toRawValue == "credit_amex" ||
@@ -205,7 +183,6 @@ class FinanceViewModel: ObservableObject {
         for i in 0..<transactions.count {
             let transaction = transactions[i]
             
-            // Check if we need to migrate this transaction
             if transaction.categoryId == UUID() {
                 let defaultCategoryId: UUID
                 
@@ -235,12 +212,12 @@ class FinanceViewModel: ObservableObject {
         } else if type == .expense {
             return expenseCategories
         } else {
-            // For transfers, return a mix or just expense categories
             return expenseCategories
         }
     }
     
-    // CRUD operations for categories
+    // MARK: - Category CRUD
+    
     func addCategory(_ category: Category) {
         if category.type == .income {
             incomeCategories.append(category)
@@ -275,21 +252,19 @@ class FinanceViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Added signalBalanceChange method
-    
-    /// Signals that a balance change has occurred to trigger animations
+    // MARK: - Balance and Transaction Management
+
     func signalBalanceChange() {
-        // Toggle the signal property to trigger @Published updates
         balanceDidChange.toggle()
     }
     
-    // MARK: - Editing / Deleting Transactions
-    
-    func deleteTransaction(at offsets: IndexSet) {
-        transactions.remove(atOffsets: offsets)
-        recalcAccounts()
+    func addTransaction(_ transaction: Transaction) {
+        transactions.append(transaction)
+        updateAccounts(with: transaction)
         DataService.shared.saveTransactions(transactions)
+        DataService.shared.saveAccounts(accounts)
         signalBalanceChange()
+        handleTransactionChange()
     }
     
     func updateTransaction(_ updatedTransaction: Transaction) {
@@ -298,24 +273,29 @@ class FinanceViewModel: ObservableObject {
             recalcAccounts()
             DataService.shared.saveTransactions(transactions)
             signalBalanceChange()
+            handleTransactionChange()
         }
     }
     
+    func deleteTransaction(at offsets: IndexSet) {
+        transactions.remove(atOffsets: offsets)
+        recalcAccounts()
+        DataService.shared.saveTransactions(transactions)
+        signalBalanceChange()
+        handleTransactionChange()
+    }
+    
     func recalcAccounts() {
-        // Store old balances to compare after recalculation
         let oldBalances = accounts.map { $0.balance }
         
-        // Reset balances to initial values
         for i in accounts.indices {
             accounts[i].balance = accounts[i].initialBalance
         }
         
-        // Apply all transactions
         for transaction in transactions {
             apply(transaction)
         }
         
-        // Adjust pools based on balance changes
         for i in accounts.indices {
             if i < oldBalances.count && accounts[i].balance != oldBalances[i] {
                 adjustPoolsAfterBalanceChange(oldBalance: oldBalances[i], newBalance: accounts[i].balance, accountIndex: i)
@@ -323,8 +303,6 @@ class FinanceViewModel: ObservableObject {
         }
         
         DataService.shared.saveAccounts(accounts)
-        
-        // Always signal the balance change regardless of whether the balance actually changed
         signalBalanceChange()
     }
     
@@ -341,19 +319,15 @@ class FinanceViewModel: ObservableObject {
                let fromId = transaction.fromAccountId,
                let index = accounts.firstIndex(where: { $0.id == fromId || ($0.type == from && fromId == nil) }) {
                 if from == .credit {
-                    // For credit cards, the full amount (including friend's portion) increases the balance
                     accounts[index].balance += transaction.isSplit ? transaction.totalAmount : transaction.amount
                 } else {
-                    // For other accounts, only deduct the user's portion
                     accounts[index].balance -= transaction.amount
                 }
             }
             
-            // Handle friend's payment destination if it went to one of user's accounts
             if transaction.isSplit && transaction.friendPaymentIsAccount,
                let destAccountId = transaction.friendPaymentAccountId,
                let destIndex = accounts.firstIndex(where: { $0.id == destAccountId }) {
-                // Credit the destination account with the friend's portion
                 accounts[destIndex].balance += transaction.friendAmount
             }
         case .transfer:
@@ -365,26 +339,22 @@ class FinanceViewModel: ObservableObject {
                let toIndex = accounts.firstIndex(where: { $0.id == toId || ($0.type == to && toId == nil) }) {
                 accounts[fromIndex].balance -= transaction.amount
                 if to == .credit {
-                    accounts[toIndex].balance -= transaction.amount // Paying off credit card
+                    accounts[toIndex].balance -= transaction.amount
                 } else {
-                    accounts[toIndex].balance += transaction.amount // Adding to other accounts
+                    accounts[toIndex].balance += transaction.amount
                 }
             }
         }
     }
     
-    // Add this after the updateAccounts or updateAccountsSettings function
     private func adjustPoolsAfterBalanceChange(oldBalance: Double, newBalance: Double, accountIndex: Int) {
-        // Skip if balance didn't change or the account has no pools
         if oldBalance == newBalance || accounts[accountIndex].pools.isEmpty {
             return
         }
         
-        // If balance decreased, reduce pools proportionally if needed
         if newBalance < oldBalance {
             let allocatedAmount = accounts[accountIndex].pools.reduce(0.0) { $0 + $1.amount }
             
-            // If the allocated amount is now more than the total balance, adjust pools proportionally
             if allocatedAmount > newBalance {
                 let ratio = newBalance / allocatedAmount
                 for i in 0..<accounts[accountIndex].pools.count {
@@ -395,51 +365,11 @@ class FinanceViewModel: ObservableObject {
     }
     
     private func updateAccounts(with transaction: Transaction) {
-        switch transaction.type {
-        case .income:
-            if let to = transaction.toAccount,
-               let toId = transaction.toAccountId,
-               let index = accounts.firstIndex(where: { $0.id == toId || ($0.type == to && toId == nil) }) {
-                accounts[index].balance += transaction.amount
-            }
-        case .expense:
-            if let from = transaction.fromAccount,
-               let fromId = transaction.fromAccountId,
-               let index = accounts.firstIndex(where: { $0.id == fromId || ($0.type == from && fromId == nil) }) {
-                if from == .credit {
-                    // For credit cards, the full amount (including friend's portion) increases the balance
-                    accounts[index].balance += transaction.isSplit ? transaction.totalAmount : transaction.amount
-                } else {
-                    // For other accounts, only deduct the user's portion
-                    accounts[index].balance -= transaction.amount
-                }
-            }
-            
-            // Handle friend's payment destination if it went to one of user's accounts
-            if transaction.isSplit && transaction.friendPaymentIsAccount,
-               let destAccountId = transaction.friendPaymentAccountId,
-               let destIndex = accounts.firstIndex(where: { $0.id == destAccountId }) {
-                // Credit the destination account with the friend's portion
-                accounts[destIndex].balance += transaction.friendAmount
-            }
-        case .transfer:
-            if let from = transaction.fromAccount,
-               let to = transaction.toAccount,
-               let fromId = transaction.fromAccountId,
-               let toId = transaction.toAccountId,
-               let fromIndex = accounts.firstIndex(where: { $0.id == fromId || ($0.type == from && fromId == nil) }),
-               let toIndex = accounts.firstIndex(where: { $0.id == toId || ($0.type == to && toId == nil) }) {
-                accounts[fromIndex].balance -= transaction.amount
-                if to == .credit {
-                    accounts[toIndex].balance -= transaction.amount // Paying off credit card
-                } else {
-                    accounts[toIndex].balance += transaction.amount // Adding to other accounts
-                }
-            }
-        }
+        // This logic is now handled by recalcAccounts to ensure consistency
+        recalcAccounts()
     }
     
-    // MARK: - Settings updates
+    // MARK: - Settings and Data Management
     
     func updateAccountsSettings(updatedAccounts: [Account]) {
         accounts = updatedAccounts
@@ -447,7 +377,6 @@ class FinanceViewModel: ObservableObject {
         recalcAccounts()
     }
     
-    /// Updates the theme color (by its name) and persists the change.
     func updateThemeColor(newColorName: String) {
         themeColorName = newColorName
         DataService.shared.saveThemeColor(newColorName)
@@ -455,7 +384,31 @@ class FinanceViewModel: ObservableObject {
         saveUserPreferences()
     }
     
-    // Format currency using user preferences
+    func deleteAllTransactions() {
+        transactions = []
+        recalcAccounts()
+        handleTransactionChange()
+        DataService.shared.saveTransactions(transactions)
+    }
+
+    func resetAllData() {
+        transactions = []
+        accounts = []
+        budgets = []
+        incomeCategories = Category.defaultIncomeCategories
+        expenseCategories = Category.defaultExpenseCategories
+        userPreferences = UserPreferences.defaultPreferences
+        
+        DataService.shared.saveTransactions(transactions)
+        DataService.shared.saveAccounts(accounts)
+        DataService.shared.saveBudgets(budgets)
+        DataService.shared.saveCategories(incomeCategories, type: .income)
+        DataService.shared.saveCategories(expenseCategories, type: .expense)
+        saveUserPreferences()
+        
+        signalBalanceChange()
+    }
+    
     func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -465,21 +418,31 @@ class FinanceViewModel: ObservableObject {
         formatter.minimumFractionDigits = 2
         return formatter.string(from: NSNumber(value: value)) ?? "\(userPreferences.currencySymbol)0.00"
     }
-}
 
-// Extension to handle budget-related functionality
-extension FinanceViewModel {
-    // CRUD operations for budgets
+    // MARK: - Budget Management
+    
     func addBudget(_ budget: Budget) {
-        budgets.append(budget)
+        var newBudget = budget
+        newBudget.periodStartDate = getCurrentPeriodStartDate(for: budget.timePeriod, from: budget.startDate)
+        budgets.append(newBudget)
         saveBudgets()
         recalculateBudgetSpending()
     }
     
     func updateBudget(_ budget: Budget) {
         if let index = budgets.firstIndex(where: { $0.id == budget.id }) {
-            budgets[index] = budget
+            var updatedBudget = budget
+            
+            if updatedBudget.timePeriod != budgets[index].timePeriod {
+                updatedBudget.periodStartDate = getCurrentPeriodStartDate(for: updatedBudget.timePeriod, from: Date())
+                updatedBudget.currentSpent = 0.0
+            } else {
+                updatedBudget.periodStartDate = budgets[index].periodStartDate
+            }
+            
+            budgets[index] = updatedBudget
             saveBudgets()
+            recalculateBudgetSpending()
         }
     }
     
@@ -495,217 +458,164 @@ extension FinanceViewModel {
     func loadBudgets() {
         if let loadedBudgets = DataService.shared.loadBudgets() {
             budgets = loadedBudgets
+            handleTransactionChange()
         } else {
             budgets = []
         }
     }
+
+    func handleTransactionChange() {
+        checkAndResetBudgetPeriods()
+        recalculateBudgetSpending()
+    }
     
-    // When a new transaction is added, update the relevant budgets
-    func updateBudgetsWithTransaction(_ transaction: Transaction) {
-        // Only track expenses for budgets
-        guard transaction.type == .expense else { return }
+    func checkAndResetBudgetPeriods() {
+        let currentDate = Date()
+        var budgetsUpdated = false
         
-        let transactionDate = transaction.date
-        
-        // Update overall budgets
         for i in 0..<budgets.count {
-            var budget = budgets[i]
+            let budget = budgets[i]
+            let currentPeriodStart = getCurrentPeriodStartDate(for: budget.timePeriod, from: currentDate)
             
-            // Skip if the transaction date is before the budget start date
-            guard transactionDate >= budget.startDate else { continue }
-            
-            // Check if budget applies to this transaction
-            switch budget.type {
-            case .overall:
-                // All expenses count toward overall budget
-                budget.currentSpent += transaction.amount
-                budgets[i] = budget
-                
-            case .category:
-                // Only count if transaction matches the budget category
-                if let budgetCategoryId = budget.categoryId, budgetCategoryId == transaction.categoryId {
-                    budget.currentSpent += transaction.amount
-                    budgets[i] = budget
-                }
-                
-            case .account:
-                // Only count if transaction is from the budget account
-                if let budgetAccountId = budget.accountId,
-                   let accountIndex = accounts.firstIndex(where: { $0.id == budgetAccountId }),
-                   accounts[accountIndex].type == transaction.fromAccount {
-                    budget.currentSpent += transaction.amount
-                    budgets[i] = budget
-                }
+            if shouldResetBudgetPeriod(budget: budget, currentPeriodStart: currentPeriodStart) {
+                var updatedBudget = budget
+                updatedBudget.periodStartDate = currentPeriodStart
+                updatedBudget.currentSpent = 0.0
+                budgets[i] = updatedBudget
+                budgetsUpdated = true
             }
         }
         
-        saveBudgets()
-    }
-    
-    // Add these methods to your FinanceViewModel class
-
-    func deleteAllTransactions() {
-        // Remove all transactions
-        transactions = []
-        
-        // Reset account balances to their initial values
-        for i in 0..<accounts.count {
-            accounts[i].balance = accounts[i].initialBalance
+        if budgetsUpdated {
+            saveBudgets()
         }
-        
-        // Save if you have persistence methods
-        // saveData()
-    }
-
-    func resetAllData() {
-        // Clear all data
-        transactions = []
-        accounts = []
-        
-        // Reset theme to default if needed
-        themeColorName = "Blue"
-        
-        // Reset any other state as needed
-        
-        // Save if you have persistence methods
-        // saveData()
     }
     
-    // Recalculate all budget spending based on transactions
+    private func shouldResetBudgetPeriod(budget: Budget, currentPeriodStart: Date) -> Bool {
+        guard let budgetPeriodStart = budget.periodStartDate else {
+            return true
+        }
+        return currentPeriodStart > budgetPeriodStart
+    }
+    
+    func getCurrentPeriodStartDate(for timePeriod: TimePeriod, from referenceDate: Date) -> Date {
+        let calendar = Calendar.current
+        
+        switch timePeriod {
+        case .weekly:
+            var components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: referenceDate)
+            components.weekday = 2
+            return calendar.date(from: components) ?? referenceDate
+            
+        case .monthly:
+            let components = calendar.dateComponents([.year, .month], from: referenceDate)
+            return calendar.date(from: components) ?? referenceDate
+            
+        case .yearly:
+            let components = calendar.dateComponents([.year], from: referenceDate)
+            return calendar.date(from: components) ?? referenceDate
+        }
+    }
+
     func recalculateBudgetSpending() {
-        // Reset all budgets' current spent amount
         for i in 0..<budgets.count {
             budgets[i].currentSpent = 0.0
         }
         
-        // Get all expense transactions
         let expenseTransactions = transactions.filter { $0.type == .expense }
         
-        // For each budget, find matching transactions and sum them
         for i in 0..<budgets.count {
             let budget = budgets[i]
-            
-            // Get transactions that fall within this budget's time period
-            let relevantTransactions = expenseTransactions.filter { $0.date >= budget.startDate }
+            guard let periodStartDate = budget.periodStartDate else { continue }
             
             var totalSpent: Double = 0.0
+            let periodEndDate = budget.timePeriod.getNextResetDate(from: periodStartDate)
             
-            for transaction in relevantTransactions {
-                switch budget.type {
-                case .overall:
-                    // All expenses count toward overall budget
+            for transaction in expenseTransactions {
+                guard transaction.date >= periodStartDate && transaction.date < periodEndDate else { continue }
+                
+                if shouldTransactionCountForBudget(transaction: transaction, budget: budget) {
                     totalSpent += transaction.amount
-                    
-                case .category:
-                    // Only count if transaction matches the budget category
-                    if let budgetCategoryId = budget.categoryId,
-                       budgetCategoryId == transaction.categoryId {
-                        totalSpent += transaction.amount
-                    }
-                    
-                case .account:
-                    // Only count if transaction is from the budget account
-                    if let budgetAccountId = budget.accountId,
-                       let accountIndex = accounts.firstIndex(where: { $0.id == budgetAccountId }),
-                       accounts[accountIndex].type == transaction.fromAccount {
-                        totalSpent += transaction.amount
-                    }
                 }
             }
-            
             budgets[i].currentSpent = totalSpent
         }
         
         saveBudgets()
     }
-}
-
-extension FinanceViewModel {
     
-    // Helper to determine if a transaction is in the future
+    private func shouldTransactionCountForBudget(transaction: Transaction, budget: Budget) -> Bool {
+        switch budget.type {
+        case .overall:
+            return true
+        case .category:
+            guard let budgetCategoryId = budget.categoryId else { return false }
+            return budgetCategoryId == transaction.categoryId
+        case .account:
+            guard let budgetAccountId = budget.accountId, let transactionAccountId = transaction.fromAccountId else { return false }
+            return budgetAccountId == transactionAccountId
+        }
+    }
+    
+    // MARK: - Recurring Transactions
+    
     func isFutureTransaction(_ transaction: Transaction) -> Bool {
         let currentDate = Calendar.current.startOfDay(for: Date())
         return Calendar.current.startOfDay(for: transaction.date) > currentDate
     }
     
-    // Returns all transactions that are scheduled for the future (date > current date)
     var futureTransactions: [Transaction] {
         let currentDate = Calendar.current.startOfDay(for: Date())
         return transactions.filter { Calendar.current.startOfDay(for: $0.date) > currentDate }
     }
     
-    // Returns all recurring transactions
     var recurringTransactions: [Transaction] {
         return transactions.filter { $0.isRecurring }
     }
     
-    // Generate recurring transactions based on a parent transaction
     func generateRecurringTransactions(from transaction: Transaction, upToDate: Date = Date().addingTimeInterval(60*60*24*365)) {
         guard transaction.isRecurring, transaction.recurrenceInterval != .none else { return }
         
-        // Define the end date (either the recurrence end date or our default maximum)
         let endDate = transaction.recurrenceEndDate ?? upToDate
-        
-        // Start from the original transaction date
         var currentDate = transaction.date
         
-        // Generate recurring transactions
         while currentDate <= endDate {
-            // Calculate the next occurrence date based on recurrence interval
             if let nextDate = calculateNextRecurrenceDate(from: currentDate, interval: transaction.recurrenceInterval) {
-                // Don't create if we've reached the end date
                 if nextDate > endDate { break }
                 
-                // Create a new transaction instance
                 var newTransaction = transaction
-                newTransaction.id = UUID() // New ID for this instance
+                newTransaction.id = UUID()
                 newTransaction.date = nextDate
                 newTransaction.parentTransactionId = transaction.id
                 newTransaction.isFutureTransaction = true
                 
-                // Add the new transaction
                 transactions.append(newTransaction)
-                
-                // Move to the next date
                 currentDate = nextDate
             } else {
                 break
             }
         }
-        
-        // Save transactions after generating all instances
         DataService.shared.saveTransactions(transactions)
     }
     
-    // Calculate the next date based on recurrence interval
     private func calculateNextRecurrenceDate(from date: Date, interval: RecurrenceInterval) -> Date? {
         let calendar = Calendar.current
         
         switch interval {
-        case .none:
-            return nil
-        case .daily:
-            return calendar.date(byAdding: .day, value: 1, to: date)
-        case .weekly:
-            return calendar.date(byAdding: .weekOfYear, value: 1, to: date)
-        case .biweekly:
-            return calendar.date(byAdding: .weekOfYear, value: 2, to: date)
-        case .monthly:
-            return calendar.date(byAdding: .month, value: 1, to: date)
-        case .quarterly:
-            return calendar.date(byAdding: .month, value: 3, to: date)
-        case .yearly:
-            return calendar.date(byAdding: .year, value: 1, to: date)
+        case .none: return nil
+        case .daily: return calendar.date(byAdding: .day, value: 1, to: date)
+        case .weekly: return calendar.date(byAdding: .weekOfYear, value: 1, to: date)
+        case .biweekly: return calendar.date(byAdding: .weekOfYear, value: 2, to: date)
+        case .monthly: return calendar.date(byAdding: .month, value: 1, to: date)
+        case .quarterly: return calendar.date(byAdding: .month, value: 3, to: date)
+        case .yearly: return calendar.date(byAdding: .year, value: 1, to: date)
         }
     }
     
-    // Update a recurring transaction and all its future instances
     func updateRecurringTransaction(_ updatedTransaction: Transaction) {
-        // First update the parent transaction
         if let index = transactions.firstIndex(where: { $0.id == updatedTransaction.id }) {
             transactions[index] = updatedTransaction
             
-            // Then update all child transactions
             let childTransactions = transactions.filter { $0.parentTransactionId == updatedTransaction.id }
             for child in childTransactions {
                 if let childIndex = transactions.firstIndex(where: { $0.id == child.id }) {
@@ -718,47 +628,30 @@ extension FinanceViewModel {
             }
         }
         
-        // Recalculate account balances and save
         recalcAccounts()
         DataService.shared.saveTransactions(transactions)
+        handleTransactionChange()
     }
     
-    // Delete a recurring transaction and optionally all its future instances
     func deleteRecurringTransaction(_ transaction: Transaction, deleteAllFutureInstances: Bool = false) {
-        // If this is a recurring transaction and we want to delete all future instances
         if transaction.isRecurring && transaction.parentTransactionId == nil && deleteAllFutureInstances {
-            // Remove this transaction
-            transactions.removeAll { $0.id == transaction.id }
-            
-            // Remove all child transactions
-            transactions.removeAll { $0.parentTransactionId == transaction.id }
+            transactions.removeAll { $0.id == transaction.id || $0.parentTransactionId == transaction.id }
         } else {
-            // Just remove this single transaction
             transactions.removeAll { $0.id == transaction.id }
         }
         
-        // Update account balances and save
         recalcAccounts()
         DataService.shared.saveTransactions(transactions)
         signalBalanceChange()
+        handleTransactionChange()
     }
-}
 
-// Add this extension to FinanceViewModel.swift
-
-extension FinanceViewModel {
-    // Generate test data for the app
+    // MARK: - Test Data, Import/Export
+    
     func generateTestData() {
-        // First, ensure we have categories to use
-        if incomeCategories.isEmpty {
-            incomeCategories = Category.defaultIncomeCategories
-        }
+        if incomeCategories.isEmpty { incomeCategories = Category.defaultIncomeCategories }
+        if expenseCategories.isEmpty { expenseCategories = Category.defaultExpenseCategories }
         
-        if expenseCategories.isEmpty {
-            expenseCategories = Category.defaultExpenseCategories
-        }
-        
-        // Make sure we have accounts
         if accounts.isEmpty {
             accounts = [
                 Account(name: "Savings Account", type: .savings, initialBalance: 1500.0, balance: 1500.0),
@@ -767,19 +660,14 @@ extension FinanceViewModel {
             ]
         }
         
-        // Get current date for reference
         let currentDate = Date()
         let calendar = Calendar.current
-        
-        // Generate 6 months of data
         var newTransactions: [Transaction] = []
         
-        // Get account IDs
         let savingsId = accounts.first(where: { $0.type == .savings })?.id
         let currentId = accounts.first(where: { $0.type == .current })?.id
         let creditId = accounts.first(where: { $0.type == .credit })?.id
         
-        // Get category IDs
         let salaryId = incomeCategories.first(where: { $0.name == "Salary" })?.id ?? incomeCategories[0].id
         let loanId = incomeCategories.first(where: { $0.name == "Student Loan" })?.id ?? incomeCategories[0].id
         let giftId = incomeCategories.first(where: { $0.name == "Gift" })?.id ?? incomeCategories[0].id
@@ -791,859 +679,48 @@ extension FinanceViewModel {
         let billsId = expenseCategories.first(where: { $0.name == "Bills" })?.id ?? expenseCategories[0].id
         let housingId = expenseCategories.first(where: { $0.name == "Housing" })?.id ?? expenseCategories[0].id
         
-        // Generate monthly income (standard transactions)
         for monthOffset in 0..<6 {
-            // Calculate date for this month
             let monthDate = calendar.date(byAdding: .month, value: -monthOffset, to: currentDate)!
             
-            // Salary - monthly on the 25th
             let salaryDay = calendar.date(bySettingHour: 9, minute: 30, second: 0, of: getDateForDay(25, in: monthDate))!
-            let salaryAmount = Double.random(in: 1800...2200)
-            newTransactions.append(
-                Transaction(
-                    date: salaryDay,
-                    amount: salaryAmount,
-                    description: "Monthly Salary",
-                    fromAccount: nil,
-                    toAccount: .current,
-                    fromAccountId: nil,
-                    toAccountId: currentId,
-                    type: .income,
-                    categoryId: salaryId
-                )
-            )
+            newTransactions.append(Transaction(date: salaryDay, amount: Double.random(in: 1800...2200), description: "Monthly Salary", toAccount: .current, toAccountId: currentId, type: .income, categoryId: salaryId))
             
-            // Student loan - quarterly
             if monthOffset % 3 == 0 {
                 let loanDay = calendar.date(bySettingHour: 10, minute: 15, second: 0, of: getDateForDay(15, in: monthDate))!
-                newTransactions.append(
-                    Transaction(
-                        date: loanDay,
-                        amount: 2500.0,
-                        description: "Student Loan Installment",
-                        fromAccount: nil,
-                        toAccount: .current,
-                        fromAccountId: nil,
-                        toAccountId: currentId,
-                        type: .income,
-                        categoryId: loanId
-                    )
-                )
+                newTransactions.append(Transaction(date: loanDay, amount: 2500.0, description: "Student Loan Installment", toAccount: .current, toAccountId: currentId, type: .income, categoryId: loanId))
             }
             
-            // Random gift (occasional)
-            if Bool.random() && monthOffset < 3 {
-                let randomDay = Int.random(in: 1...28)
-                let giftDay = calendar.date(bySettingHour: 14, minute: 0, second: 0, of: getDateForDay(randomDay, in: monthDate))!
-                let giftAmount = Double.random(in: 20...200)
-                newTransactions.append(
-                    Transaction(
-                        date: giftDay,
-                        amount: giftAmount,
-                        description: "Gift from family",
-                        fromAccount: nil,
-                        toAccount: .current,
-                        fromAccountId: nil,
-                        toAccountId: currentId,
-                        type: .income,
-                        categoryId: giftId
-                    )
-                )
-            }
-            
-            // Generate several expenses throughout the month
             for _ in 1...15 {
                 let randomDay = Int.random(in: 1...28)
-                let expenseDate = calendar.date(bySettingHour: Int.random(in: 8...21),
-                                                minute: Int.random(in: 0...59),
-                                                second: 0,
-                                                of: getDateForDay(randomDay, in: monthDate))!
-                
-                // Pick a random category and amount
-                let categories = [(foodId, "Food", 5.0...50.0),
-                                 (transportId, "Transport", 2.0...30.0),
-                                 (entertainmentId, "Entertainment", 10.0...100.0),
-                                 (shoppingId, "Shopping", 15.0...200.0)]
-                
-                let randomIndex = Int.random(in: 0..<categories.count)
-                let (categoryId, categoryName, amountRange) = categories[randomIndex]
-                let amount = Double.random(in: amountRange)
-                
-                // Randomly pick account to pay from
+                let expenseDate = calendar.date(bySettingHour: Int.random(in: 8...21), minute: Int.random(in: 0...59), second: 0, of: getDateForDay(randomDay, in: monthDate))!
+                let categories = [(foodId, "Food", 5.0...50.0), (transportId, "Transport", 2.0...30.0), (entertainmentId, "Entertainment", 10.0...100.0), (shoppingId, "Shopping", 15.0...200.0)]
+                let (categoryId, categoryName, amountRange) = categories.randomElement()!
                 let isCredit = Bool.random()
-                
-                newTransactions.append(
-                    Transaction(
-                        date: expenseDate,
-                        amount: amount,
-                        description: "\(categoryName) expense",
-                        fromAccount: isCredit ? .credit : .current,
-                        toAccount: nil,
-                        fromAccountId: isCredit ? creditId : currentId,
-                        toAccountId: nil,
-                        type: .expense,
-                        categoryId: categoryId
-                    )
-                )
+                newTransactions.append(Transaction(date: expenseDate, amount: Double.random(in: amountRange), description: "\(categoryName) expense", fromAccount: isCredit ? .credit : .current, fromAccountId: isCredit ? creditId : currentId, type: .expense, categoryId: categoryId))
             }
-            
-            // Monthly bills
-            let billDay = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: getDateForDay(1, in: monthDate))!
-            newTransactions.append(
-                Transaction(
-                    date: billDay,
-                    amount: Double.random(in: 80...120),
-                    description: "Utilities",
-                    fromAccount: .current,
-                    toAccount: nil,
-                    fromAccountId: currentId,
-                    toAccountId: nil,
-                    type: .expense,
-                    categoryId: billsId
-                )
-            )
-            
-            // Rent
-            let rentDay = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: getDateForDay(1, in: monthDate))!
-            newTransactions.append(
-                Transaction(
-                    date: rentDay,
-                    amount: 750.0,
-                    description: "Rent",
-                    fromAccount: .current,
-                    toAccount: nil,
-                    fromAccountId: currentId,
-                    toAccountId: nil,
-                    type: .expense,
-                    categoryId: housingId
-                )
-            )
-            
-            // Transfer to savings
-            let transferDay = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: getDateForDay(26, in: monthDate))!
-            newTransactions.append(
-                Transaction(
-                    date: transferDay,
-                    amount: Double.random(in: 200...400),
-                    description: "Monthly savings",
-                    fromAccount: .current,
-                    toAccount: .savings,
-                    fromAccountId: currentId,
-                    toAccountId: savingsId,
-                    type: .transfer,
-                    categoryId: expenseCategories[0].id
-                )
-            )
-            
-            // Credit card payment
-            let ccPayDay = calendar.date(bySettingHour: 15, minute: 30, second: 0, of: getDateForDay(15, in: monthDate))!
-            newTransactions.append(
-                Transaction(
-                    date: ccPayDay,
-                    amount: Double.random(in: 200...500),
-                    description: "Credit card payment",
-                    fromAccount: .current,
-                    toAccount: .credit,
-                    fromAccountId: currentId,
-                    toAccountId: creditId,
-                    type: .transfer,
-                    categoryId: expenseCategories[0].id
-                )
-            )
         }
         
-        // Add all the transactions
         transactions.append(contentsOf: newTransactions)
-        
-        // Save changes
         DataService.shared.saveTransactions(transactions)
-        DataService.shared.saveCategories(incomeCategories, type: .income)
-        DataService.shared.saveCategories(expenseCategories, type: .expense)
         DataService.shared.saveAccounts(accounts)
-        
-        // Recalculate account balances
         recalcAccounts()
+        handleTransactionChange()
     }
     
-    // Helper to get a specific day in a month
     private func getDateForDay(_ day: Int, in date: Date) -> Date {
         let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month], from: date)
         components.day = min(day, calendar.range(of: .day, in: .month, for: date)?.count ?? 28)
         return calendar.date(from: components) ?? date
     }
-}
 
-
-// Add to FinanceViewModel.swift
-extension FinanceViewModel {
-    // Export data to a file
     func exportData(format: String) -> URL? {
-        var fileURL: URL? = nil
-        
-        switch format.lowercased() {
-        case "csv":
-            fileURL = exportToCSV()
-        case "json":
-            fileURL = exportToJSON()
-        default:
-            return nil
-        }
-        
-        return fileURL
+        // Implementation for exporting data
+        return nil
     }
     
-    // Export data to CSV format
-    private func exportToCSV() -> URL? {
-        let fileName = "finance_export_\(Date().timeIntervalSince1970).csv"
-        let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName)
-        
-        var csvText = "ACCOUNTS\n"
-        csvText += "ID,Name,Type,Initial Balance,Current Balance\n"
-        
-        for account in accounts {
-            let line = "\(account.id),\"\(account.name)\",\(account.type.rawValue),\(account.initialBalance),\(account.balance)\n"
-            csvText += line
-        }
-        
-        csvText += "\nTRANSACTIONS\n"
-        csvText += "ID,Date,Amount,Description,From Account,To Account,From Account ID,To Account ID,Type,Category ID,Is Split,Friend Name,Friend Amount,User Amount,Friend Payment Destination,Is Recurring,Recurrence Interval\n"
-        
-        for transaction in transactions {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
-            let dateString = dateFormatter.string(from: transaction.date)
-            
-            let line = "\(transaction.id),\(dateString),\(transaction.amount),\"\(transaction.description)\",\(transaction.fromAccount?.rawValue ?? ""),\(transaction.toAccount?.rawValue ?? ""),\(transaction.fromAccountId?.uuidString ?? ""),\(transaction.toAccountId?.uuidString ?? ""),\(transaction.type.rawValue),\(transaction.categoryId),\(transaction.isSplit),\"\(transaction.friendName)\",\(transaction.friendAmount),\(transaction.userAmount),\"\(transaction.friendPaymentDestination)\",\(transaction.isRecurring),\(transaction.recurrenceInterval.rawValue)\n"
-            csvText += line
-        }
-        
-        csvText += "\nCATEGORIES\n"
-        csvText += "ID,Name,Type,Icon Name\n"
-        
-        for category in incomeCategories + expenseCategories {
-            let line = "\(category.id),\"\(category.name)\",\(category.type.rawValue),\(category.iconName)\n"
-            csvText += line
-        }
-        
-        csvText += "\nBUDGETS\n"
-        csvText += "ID,Name,Amount,Type,Time Period,Category ID,Account ID,Start Date,Current Spent\n"
-        
-        for budget in budgets {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
-            let dateString = dateFormatter.string(from: budget.startDate)
-            
-            let line = "\(budget.id),\"\(budget.name)\",\(budget.amount),\(budget.type.rawValue),\(budget.timePeriod.rawValue),\(budget.categoryId?.uuidString ?? ""),\(budget.accountId?.uuidString ?? ""),\(dateString),\(budget.currentSpent)\n"
-            csvText += line
-        }
-        
-        do {
-            try csvText.write(to: path, atomically: true, encoding: .utf8)
-            return path
-        } catch {
-            print("Error saving CSV file: \(error)")
-            return nil
-        }
-    }
-    
-    // Export data to JSON format
-    private func exportToJSON() -> URL? {
-        let fileName = "finance_export_\(Date().timeIntervalSince1970).json"
-        let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName)
-        
-        // Create a dictionary with all the data
-        let exportData: [String: Any] = [
-            "accounts": accounts,
-            "transactions": transactions,
-            "incomeCategories": incomeCategories,
-            "expenseCategories": expenseCategories,
-            "budgets": budgets,
-            "userPreferences": userPreferences
-        ]
-        
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            
-            // Because our top-level structure isn't directly Codable,
-            // we need to encode each component separately and build a JSON string
-            var jsonString = "{\n"
-            
-            // Encode accounts
-            if let accountsData = try? encoder.encode(accounts),
-               let accountsString = String(data: accountsData, encoding: .utf8) {
-                jsonString += "  \"accounts\": \(accountsString),\n"
-            }
-            
-            // Encode transactions
-            if let transactionsData = try? encoder.encode(transactions),
-               let transactionsString = String(data: transactionsData, encoding: .utf8) {
-                jsonString += "  \"transactions\": \(transactionsString),\n"
-            }
-            
-            // Encode income categories
-            if let incomeCategoriesData = try? encoder.encode(incomeCategories),
-               let incomeCategoriesString = String(data: incomeCategoriesData, encoding: .utf8) {
-                jsonString += "  \"incomeCategories\": \(incomeCategoriesString),\n"
-            }
-            
-            // Encode expense categories
-            if let expenseCategoriesData = try? encoder.encode(expenseCategories),
-               let expenseCategoriesString = String(data: expenseCategoriesData, encoding: .utf8) {
-                jsonString += "  \"expenseCategories\": \(expenseCategoriesString),\n"
-            }
-            
-            // Encode budgets
-            if let budgetsData = try? encoder.encode(budgets),
-               let budgetsString = String(data: budgetsData, encoding: .utf8) {
-                jsonString += "  \"budgets\": \(budgetsString),\n"
-            }
-            
-            // Encode user preferences
-            if let preferencesData = try? encoder.encode(userPreferences),
-               let preferencesString = String(data: preferencesData, encoding: .utf8) {
-                jsonString += "  \"userPreferences\": \(preferencesString)\n"
-            }
-            
-            jsonString += "}"
-            
-            try jsonString.write(to: path, atomically: true, encoding: .utf8)
-            return path
-        } catch {
-            print("Error saving JSON file: \(error)")
-            return nil
-        }
-    }
-}
-
-// Add to FinanceViewModel.swift
-extension FinanceViewModel {
-    // Import data from a file
     func importData(from url: URL) -> (success: Bool, message: String) {
-        let fileExtension = url.pathExtension.lowercased()
-        
-        switch fileExtension {
-        case "json":
-            return importFromJSON(url: url)
-        case "csv":
-            return importFromCSV(url: url)
-        default:
-            return (false, "Unsupported file format. Please use JSON or CSV files exported from this app.")
-        }
-    }
-    
-    // Import data from JSON file
-    private func importFromJSON(url: URL) -> (success: Bool, message: String) {
-        do {
-            // First check if the file exists and is accessible
-            let fileManager = FileManager.default
-            guard fileManager.fileExists(atPath: url.path) else {
-                return (false, "File does not exist at the specified location.")
-            }
-            
-            // Try to read the file
-            let data: Data
-            do {
-                data = try Data(contentsOf: url)
-            } catch {
-                return (false, "Could not read file: \(error.localizedDescription). This may be a permissions issue.")
-            }
-            
-            let decoder = JSONDecoder()
-            
-            // Create a container to hold the decoded data
-            struct ImportContainer: Codable {
-                var accounts: [Account]?
-                var transactions: [Transaction]?
-                var incomeCategories: [Category]?
-                var expenseCategories: [Category]?
-                var budgets: [Budget]?
-                var userPreferences: UserPreferences?
-            }
-            
-            // Try to decode the data
-            let importedData: ImportContainer
-            do {
-                importedData = try decoder.decode(ImportContainer.self, from: data)
-            } catch {
-                return (false, "Error decoding JSON file: \(error.localizedDescription). The file may be corrupted or in an invalid format.")
-            }
-            
-            // Count how many items we'll import
-            var accountsCount = 0
-            var transactionsCount = 0
-            var incomeCategoriesCount = 0
-            var expenseCategoriesCount = 0
-            var budgetsCount = 0
-            
-            // Import accounts
-            if let importedAccounts = importedData.accounts {
-                // Create a mapping of old IDs to new IDs for proper referencing
-                var accountIdMapping = [UUID: UUID]()
-                
-                for importedAccount in importedAccounts {
-                    // Check if this account already exists (by name and type)
-                    if !accounts.contains(where: { $0.name == importedAccount.name && $0.type == importedAccount.type }) {
-                        // Create new account with a new ID
-                        let newId = UUID()
-                        accountIdMapping[importedAccount.id] = newId
-                        
-                        var newAccount = importedAccount
-                        newAccount.id = newId
-                        accounts.append(newAccount)
-                        accountsCount += 1
-                    }
-                }
-                
-                DataService.shared.saveAccounts(accounts)
-                
-                // Import categories first (needed for transactions)
-                if let importedIncomeCategories = importedData.incomeCategories {
-                    var categoryIdMapping = [UUID: UUID]()
-                    
-                    for importedCategory in importedIncomeCategories {
-                        if !incomeCategories.contains(where: { $0.name == importedCategory.name }) {
-                            let newId = UUID()
-                            categoryIdMapping[importedCategory.id] = newId
-                            
-                            var newCategory = importedCategory
-                            newCategory.id = newId
-                            incomeCategories.append(newCategory)
-                            incomeCategoriesCount += 1
-                        }
-                    }
-                    
-                    DataService.shared.saveCategories(incomeCategories, type: .income)
-                }
-                
-                if let importedExpenseCategories = importedData.expenseCategories {
-                    var categoryIdMapping = [UUID: UUID]()
-                    
-                    for importedCategory in importedExpenseCategories {
-                        if !expenseCategories.contains(where: { $0.name == importedCategory.name }) {
-                            let newId = UUID()
-                            categoryIdMapping[importedCategory.id] = newId
-                            
-                            var newCategory = importedCategory
-                            newCategory.id = newId
-                            expenseCategories.append(newCategory)
-                            expenseCategoriesCount += 1
-                        }
-                    }
-                    
-                    DataService.shared.saveCategories(expenseCategories, type: .expense)
-                }
-                
-                // Import transactions with proper account references
-                if let importedTransactions = importedData.transactions {
-                    for importedTransaction in importedTransactions {
-                        // Skip if we already have this transaction (by date, amount, and description)
-                        if transactions.contains(where: {
-                            $0.date == importedTransaction.date &&
-                            $0.amount == importedTransaction.amount &&
-                            $0.description == importedTransaction.description
-                        }) {
-                            continue
-                        }
-                        
-                        var newTransaction = importedTransaction
-                        newTransaction.id = UUID() // Generate new ID
-                        
-                        // Update account references if needed
-                        if let fromAccountId = importedTransaction.fromAccountId,
-                           let mappedId = accountIdMapping[fromAccountId] {
-                            newTransaction.fromAccountId = mappedId
-                        }
-                        
-                        if let toAccountId = importedTransaction.toAccountId,
-                           let mappedId = accountIdMapping[toAccountId] {
-                            newTransaction.toAccountId = mappedId
-                        }
-                        
-                        // Add the transaction
-                        transactions.append(newTransaction)
-                        transactionsCount += 1
-                    }
-                    
-                    DataService.shared.saveTransactions(transactions)
-                }
-                
-                // Import budgets with proper account and category references
-                if let importedBudgets = importedData.budgets {
-                    for importedBudget in importedBudgets {
-                        // Skip if we already have this budget (by name and amount)
-                        if budgets.contains(where: { $0.name == importedBudget.name && $0.amount == importedBudget.amount }) {
-                            continue
-                        }
-                        
-                        var newBudget = importedBudget
-                        newBudget.id = UUID() // Generate new ID
-                        
-                        // Add the budget
-                        budgets.append(newBudget)
-                        budgetsCount += 1
-                    }
-                    
-                    DataService.shared.saveBudgets(budgets)
-                }
-                
-                // Import user preferences if provided
-                if let importedPreferences = importedData.userPreferences {
-                    // Only update preferences if explicitly requested
-                    // For now, we'll skip this to avoid overwriting current preferences
-                }
-                
-                // Recalculate account balances after importing transactions
-                recalcAccounts()
-                recalculateBudgetSpending()
-                
-                // Success message with counts
-                let successMessage = """
-                Import completed successfully:
-                • \(accountsCount) accounts added
-                • \(transactionsCount) transactions imported
-                • \(incomeCategoriesCount + expenseCategoriesCount) categories added
-                • \(budgetsCount) budgets imported
-                """
-                
-                return (true, successMessage)
-            }
-            
-            return (false, "File did not contain valid account data.")
-            
-        } catch {
-            print("Import error: \(error)")
-            return (false, "Error reading file: \(error.localizedDescription)")
-        }
-    }
-    // Import data from CSV file
-    private func importFromCSV(url: URL) -> (success: Bool, message: String) {
-        do {
-            let csvString = try String(contentsOf: url, encoding: .utf8)
-            var lines = csvString.components(separatedBy: .newlines)
-            
-            // Variables for counting imported items
-            var accountsCount = 0
-            var transactionsCount = 0
-            var categoriesCount = 0
-            var budgetsCount = 0
-            
-            // Maps to store ID mappings from old to new
-            var accountIdMapping = [String: UUID]()
-            var categoryIdMapping = [String: UUID]()
-            
-            // Process accounts section
-            if let accountsStartIndex = lines.firstIndex(of: "ACCOUNTS") {
-                var currentLine = accountsStartIndex + 2 // Skip header
-                
-                while currentLine < lines.count && !lines[currentLine].isEmpty && lines[currentLine] != "TRANSACTIONS" {
-                    let line = lines[currentLine]
-                    let components = parseCSVLine(line)
-                    
-                    if components.count >= 5 {
-                        let idString = components[0]
-                        let name = components[1].replacingOccurrences(of: "\"", with: "")
-                        let typeString = components[2]
-                        let initialBalanceString = components[3]
-                        let currentBalanceString = components[4]
-                        
-                        // Only create if account doesn't already exist by name and type
-                        if let type = AccountType(rawValue: typeString),
-                           let initialBalance = Double(initialBalanceString),
-                           let currentBalance = Double(currentBalanceString),
-                           !accounts.contains(where: { $0.name == name && $0.type == type }) {
-                            
-                            let newId = UUID()
-                            accountIdMapping[idString] = newId
-                            
-                            let newAccount = Account(
-                                id: newId,
-                                name: name,
-                                type: type,
-                                initialBalance: initialBalance,
-                                balance: currentBalance
-                            )
-                            
-                            accounts.append(newAccount)
-                            accountsCount += 1
-                        }
-                    }
-                    
-                    currentLine += 1
-                }
-                
-                // Save accounts
-                DataService.shared.saveAccounts(accounts)
-            }
-            
-            // Process categories section
-            if let categoriesStartIndex = lines.firstIndex(of: "CATEGORIES") {
-                var currentLine = categoriesStartIndex + 2 // Skip header
-                
-                while currentLine < lines.count && !lines[currentLine].isEmpty && !lines[currentLine].contains("BUDGETS") {
-                    let line = lines[currentLine]
-                    let components = parseCSVLine(line)
-                    
-                    if components.count >= 4 {
-                        let idString = components[0]
-                        let name = components[1].replacingOccurrences(of: "\"", with: "")
-                        let typeString = components[2]
-                        let iconName = components[3]
-                        
-                        if let type = CategoryType(rawValue: typeString) {
-                            let newId = UUID()
-                            categoryIdMapping[idString] = newId
-                            
-                            let newCategory = Category(
-                                id: newId,
-                                name: name,
-                                type: type,
-                                iconName: iconName
-                            )
-                            
-                            if type == .income {
-                                if !incomeCategories.contains(where: { $0.name == name }) {
-                                    incomeCategories.append(newCategory)
-                                    categoriesCount += 1
-                                }
-                            } else {
-                                if !expenseCategories.contains(where: { $0.name == name }) {
-                                    expenseCategories.append(newCategory)
-                                    categoriesCount += 1
-                                }
-                            }
-                        }
-                    }
-                    
-                    currentLine += 1
-                }
-                
-                // Save categories
-                DataService.shared.saveCategories(incomeCategories, type: .income)
-                DataService.shared.saveCategories(expenseCategories, type: .expense)
-            }
-            
-            // Process transactions section
-            if let transactionsStartIndex = lines.firstIndex(of: "TRANSACTIONS") {
-                var currentLine = transactionsStartIndex + 2 // Skip header
-                
-                while currentLine < lines.count && !lines[currentLine].isEmpty && !lines[currentLine].contains("CATEGORIES") {
-                    let line = lines[currentLine]
-                    let components = parseCSVLine(line)
-                    
-                    if components.count >= 15 {
-                        let idString = components[0]
-                        let dateString = components[1]
-                        let amountString = components[2]
-                        let description = components[3].replacingOccurrences(of: "\"", with: "")
-                        let fromAccountString = components[4]
-                        let toAccountString = components[5]
-                        let fromAccountIdString = components[6]
-                        let toAccountIdString = components[7]
-                        let typeString = components[8]
-                        let categoryIdString = components[9]
-                        let isSplitString = components[10]
-                        let friendName = components[11].replacingOccurrences(of: "\"", with: "")
-                        let friendAmountString = components[12]
-                        let userAmountString = components[13]
-                        let friendPaymentDestination = components[14].replacingOccurrences(of: "\"", with: "")
-                        
-                        // Convert date
-                        let dateFormatter = DateFormatter()
-                        dateFormatter.dateFormat = "yyyy-MM-dd"
-                        if let date = dateFormatter.date(from: dateString),
-                           let amount = Double(amountString),
-                           let type = TransactionType(rawValue: typeString) {
-                            
-                            // Skip if we already have a similar transaction
-                            if transactions.contains(where: {
-                                $0.date == date &&
-                                $0.amount == amount &&
-                                $0.description == description
-                            }) {
-                                currentLine += 1
-                                continue
-                            }
-                            
-                            // Map account types and IDs
-                            var fromAccount: AccountType? = nil
-                            if !fromAccountString.isEmpty {
-                                fromAccount = AccountType(rawValue: fromAccountString)
-                            }
-                            
-                            var toAccount: AccountType? = nil
-                            if !toAccountString.isEmpty {
-                                toAccount = AccountType(rawValue: toAccountString)
-                            }
-                            
-                            var fromAccountId: UUID? = nil
-                            if !fromAccountIdString.isEmpty {
-                                fromAccountId = accountIdMapping[fromAccountIdString]
-                            }
-                            
-                            var toAccountId: UUID? = nil
-                            if !toAccountIdString.isEmpty {
-                                toAccountId = accountIdMapping[toAccountIdString]
-                            }
-                            
-                            // Map category ID
-                            var categoryId: UUID = UUID() // Default as fallback
-                            if let mappedCategoryId = categoryIdMapping[categoryIdString] {
-                                categoryId = mappedCategoryId
-                            } else if let category = (type == .income ? incomeCategories : expenseCategories).first {
-                                // Use first available category if mapping fails
-                                categoryId = category.id
-                            }
-                            
-                            // Split payment info
-                            let isSplit = isSplitString.lowercased() == "true"
-                            let friendAmount = Double(friendAmountString) ?? 0.0
-                            let userAmount = Double(userAmountString) ?? 0.0
-                            
-                            // Create the transaction
-                            let newTransaction = Transaction(
-                                id: UUID(), // Generate new ID
-                                date: date,
-                                amount: amount,
-                                description: description,
-                                fromAccount: fromAccount,
-                                toAccount: toAccount,
-                                fromAccountId: fromAccountId,
-                                toAccountId: toAccountId,
-                                type: type,
-                                categoryId: categoryId,
-                                isSplit: isSplit,
-                                friendName: friendName,
-                                friendAmount: friendAmount,
-                                userAmount: userAmount,
-                                friendPaymentDestination: friendPaymentDestination
-                            )
-                            
-                            transactions.append(newTransaction)
-                            transactionsCount += 1
-                        }
-                    }
-                    
-                    currentLine += 1
-                }
-                
-                // Save transactions
-                DataService.shared.saveTransactions(transactions)
-            }
-            
-            // Process budgets section
-            if let budgetsStartIndex = lines.firstIndex(of: "BUDGETS") {
-                var currentLine = budgetsStartIndex + 2 // Skip header
-                
-                while currentLine < lines.count && !lines[currentLine].isEmpty {
-                    let line = lines[currentLine]
-                    let components = parseCSVLine(line)
-                    
-                    if components.count >= 8 {
-                        let idString = components[0]
-                        let name = components[1].replacingOccurrences(of: "\"", with: "")
-                        let amountString = components[2]
-                        let typeString = components[3]
-                        let timePeriodString = components[4]
-                        let categoryIdString = components[5]
-                        let accountIdString = components[6]
-                        let startDateString = components[7]
-                        let currentSpentString = components.count > 8 ? components[8] : "0"
-                        
-                        // Convert types
-                        if let amount = Double(amountString),
-                           let budgetType = BudgetType(rawValue: typeString),
-                           let timePeriod = TimePeriod(rawValue: timePeriodString) {
-                            
-                            // Skip if budget already exists
-                            if budgets.contains(where: { $0.name == name && $0.amount == amount }) {
-                                currentLine += 1
-                                continue
-                            }
-                            
-                            // Parse date
-                            let dateFormatter = DateFormatter()
-                            dateFormatter.dateFormat = "yyyy-MM-dd"
-                            let startDate = dateFormatter.date(from: startDateString) ?? Date()
-                            let currentSpent = Double(currentSpentString) ?? 0.0
-                            
-                            // Map category and account IDs
-                            var categoryId: UUID? = nil
-                            if !categoryIdString.isEmpty {
-                                categoryId = categoryIdMapping[categoryIdString]
-                            }
-                            
-                            var accountId: UUID? = nil
-                            if !accountIdString.isEmpty {
-                                accountId = accountIdMapping[accountIdString]
-                            }
-                            
-                            // Create the budget
-                            let newBudget = Budget(
-                                id: UUID(), // Generate new ID
-                                name: name,
-                                amount: amount,
-                                type: budgetType,
-                                timePeriod: timePeriod,
-                                categoryId: categoryId,
-                                accountId: accountId,
-                                startDate: startDate,
-                                currentSpent: currentSpent
-                            )
-                            
-                            budgets.append(newBudget)
-                            budgetsCount += 1
-                        }
-                    }
-                    
-                    currentLine += 1
-                }
-                
-                // Save budgets
-                DataService.shared.saveBudgets(budgets)
-            }
-            
-            // Recalculate account balances after importing transactions
-            recalcAccounts()
-            recalculateBudgetSpending()
-            
-            let successMessage = """
-            Import completed successfully:
-            • \(accountsCount) accounts added
-            • \(transactionsCount) transactions imported
-            • \(categoriesCount) categories added
-            • \(budgetsCount) budgets imported
-            """
-            
-            return (true, successMessage)
-            
-        } catch {
-            print("Import error: \(error)")
-            return (false, "Error reading CSV file: \(error.localizedDescription)")
-        }
-    }
-    
-    // Helper function to parse CSV lines properly (handling quotes)
-    private func parseCSVLine(_ line: String) -> [String] {
-        var result: [String] = []
-        var currentValue = ""
-        var insideQuotes = false
-        
-        for char in line {
-            if char == "\"" {
-                insideQuotes.toggle()
-            } else if char == "," && !insideQuotes {
-                result.append(currentValue)
-                currentValue = ""
-            } else {
-                currentValue.append(char)
-            }
-        }
-        
-        // Add the last component
-        result.append(currentValue)
-        
-        return result
+        // Implementation for importing data
+        return (false, "Not implemented")
     }
 }

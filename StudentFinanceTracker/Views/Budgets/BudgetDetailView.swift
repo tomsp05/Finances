@@ -15,6 +15,55 @@ struct BudgetDetailView: View {
         viewModel.budgets.first(where: { $0.id == budget.id }) ?? budget
     }
     
+    // 1. Corrected logic to get transactions only for the current budget period
+    private var relevantTransactions: [Transaction] {
+        guard let periodStartDate = currentBudget.periodStartDate else { return [] }
+        let periodEndDate = currentBudget.timePeriod.getNextResetDate(from: periodStartDate)
+
+        // Filter transactions that fall within the current budget period
+        let transactionsInPeriod = viewModel.transactions.filter {
+            $0.type == .expense && $0.date >= periodStartDate && $0.date < periodEndDate
+        }
+        
+        let filteredTransactions: [Transaction]
+        switch currentBudget.type {
+        case .overall:
+            filteredTransactions = transactionsInPeriod
+            
+        case .category:
+            guard let categoryId = currentBudget.categoryId else { return [] }
+            filteredTransactions = transactionsInPeriod.filter { $0.categoryId == categoryId }
+            
+        case .account:
+            guard let accountId = currentBudget.accountId else { return [] }
+            filteredTransactions = transactionsInPeriod.filter { $0.fromAccountId == accountId }
+        }
+        
+        return filteredTransactions.sorted { $0.date > $1.date }
+    }
+
+    // 2. New logic to group the relevant transactions by week
+    private var weeklyGroupedTransactions: [(weekDescription: String, transactions: [Transaction])] {
+        guard !relevantTransactions.isEmpty else { return [] }
+
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+
+        let now = Date()
+
+        let groupedByWeek = Dictionary(grouping: relevantTransactions) { transaction -> Date in
+            let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: transaction.date)
+            return calendar.date(from: components) ?? transaction.date
+        }
+
+        let sortedGroups = groupedByWeek.sorted { $0.key > $1.key }
+
+        return sortedGroups.map { (weekStartDate, transactions) in
+            let description = formatWeekDescription(for: weekStartDate, calendar: calendar, now: now)
+            return (weekDescription: description, transactions: transactions)
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -24,7 +73,7 @@ struct BudgetDetailView: View {
                 // Budget details
                 budgetDetailsCard
                 
-                // Recent transactions
+                // Recent transactions, now grouped by week
                 recentTransactionsSection
             }
             .padding(.bottom, 20)
@@ -250,16 +299,17 @@ struct BudgetDetailView: View {
         .padding(.horizontal, 16)
     }
     
+    // 3. Updated this section to use the new weekly grouped data
     private var recentTransactionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Recent Transactions")
+            Text("Transactions This Period")
                 .font(.headline)
                 .padding(.horizontal)
                 .opacity(isAppearing ? 1.0 : 0.0)
                 .offset(y: isAppearing ? 0 : 10)
                 .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.3), value: isAppearing)
             
-            if relevantTransactions.isEmpty {
+            if weeklyGroupedTransactions.isEmpty {
                 emptyTransactionsView
             } else {
                 transactionsList
@@ -273,7 +323,7 @@ struct BudgetDetailView: View {
                 .font(.system(size: 32))
                 .foregroundColor(.secondary)
             
-            Text("No transactions yet")
+            Text("No transactions in this period yet")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
@@ -295,82 +345,59 @@ struct BudgetDetailView: View {
     }
     
     private var transactionsList: some View {
-        VStack(spacing: 12) {
-            ForEach(Array(relevantTransactions.prefix(5).enumerated()), id: \.element.id) { index, transaction in
-                NavigationLink(destination: EditTransactionView(transaction: transaction)) {
-                    TransactionCardView(transaction: transaction)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .offset(y: isAppearing ? 0 : 20)
-                .opacity(isAppearing ? 1.0 : 0.0)
-                .animation(
-                    .spring(response: 0.5, dampingFraction: 0.7)
-                    .delay(0.4 + Double(index) * 0.05),
-                    value: isAppearing
-                )
-            }
-            
-            // "See All" button for more than 5 transactions
-            if relevantTransactions.count > 5 {
-                NavigationLink(destination:
-                    TransactionsListView()
-                        // Add custom filtering here if needed
+        LazyVStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(weeklyGroupedTransactions.enumerated()), id: \.element.weekDescription) { weekIndex, group in
+                Section(header:
+                    Text(group.weekDescription)
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                        .padding(.top, weekIndex > 0 ? 16 : 0) // Add top padding for subsequent sections
+                        .padding(.horizontal)
                 ) {
-                    HStack {
-                        Text("See All Transactions")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
+                    ForEach(Array(group.transactions.enumerated()), id: \.element.id) { transactionIndex, transaction in
+                        NavigationLink(destination: EditTransactionView(transaction: transaction)) {
+                            TransactionCardView(transaction: transaction)
+                                .padding(.horizontal)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .offset(y: isAppearing ? 0 : 20)
+                        .opacity(isAppearing ? 1.0 : 0.0)
+                        .animation(
+                            .spring(response: 0.5, dampingFraction: 0.7)
+                            .delay(0.4 + Double(weekIndex) * 0.1 + Double(transactionIndex) * 0.05),
+                            value: isAppearing
+                        )
                     }
-                    .foregroundColor(viewModel.themeColor)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.15 : 0.1))
-                    )
                 }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.horizontal)
-                .offset(y: isAppearing ? 0 : 20)
-                .opacity(isAppearing ? 1.0 : 0.0)
-                .animation(
-                    .spring(response: 0.5, dampingFraction: 0.7)
-                    .delay(0.6),
-                    value: isAppearing
-                )
             }
         }
-        .padding(.horizontal)
     }
     
     // MARK: - Helper Methods
     
-    // Get relevant transactions for this budget
-    private var relevantTransactions: [Transaction] {
-        // Filter expense transactions that fall within the budget period
-        let expenseTransactions = viewModel.transactions.filter {
-            $0.type == .expense && $0.date >= currentBudget.startDate
+    // 4. New helper function to format the week's description
+    private func formatWeekDescription(for weekStartDate: Date, calendar: Calendar, now: Date) -> String {
+        let currentWeekStartDate = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
+        
+        if calendar.isDate(weekStartDate, inSameDayAs: currentWeekStartDate) {
+            return "This Week"
         }
         
-        // Further filter based on budget type
-        switch currentBudget.type {
-        case .overall:
-            return expenseTransactions
-            
-        case .category:
-            guard let categoryId = currentBudget.categoryId else { return [] }
-            return expenseTransactions.filter { $0.categoryId == categoryId }
-            
-        case .account:
-            guard let accountId = currentBudget.accountId,
-                  let account = viewModel.accounts.first(where: { $0.id == accountId }) else { return [] }
-            return expenseTransactions.filter { $0.fromAccount == account.type }
+        let lastWeekStartDate = calendar.date(byAdding: .weekOfYear, value: -1, to: currentWeekStartDate)!
+        if calendar.isDate(weekStartDate, inSameDayAs: lastWeekStartDate) {
+            return "Last Week"
         }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM d"
+        
+        guard let endDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate) else {
+            return dateFormatter.string(from: weekStartDate)
+        }
+        
+        return "\(dateFormatter.string(from: weekStartDate)) - \(dateFormatter.string(from: endDate))"
     }
-    
+
     private func getBudgetTypeText() -> String {
         switch currentBudget.type {
         case .overall: return "Overall"
