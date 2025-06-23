@@ -234,7 +234,7 @@ struct TransactionAnalyticsView: View {
                 }
             }
         }
-        .navigationTitle("Spending Analytics")
+//        .navigationTitle("Spending Analytics")
         .navigationBarItems(trailing: filterButton)
         .sheet(isPresented: $showFilterSheet) {
             NavigationView { AnalyticsFilterView(filterState: $filterState) }
@@ -297,7 +297,6 @@ struct TransactionAnalyticsView: View {
     
     private var hasDataForCurrentView: Bool { !chartData.isEmpty }
     
-    // UPDATED: This view is now more compact
     private var timeNavigationView: some View {
         HStack {
             Button(action: { filterState.timeOffset -= 1 }) {
