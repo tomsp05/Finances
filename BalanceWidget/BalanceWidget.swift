@@ -60,7 +60,7 @@ struct SimpleEntry: TimelineEntry {
 
 struct BalanceWidgetEntryView : View {
     var entry: Provider.Entry
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Net Balance")
@@ -71,43 +71,23 @@ struct BalanceWidgetEntryView : View {
                 .font(.title2)
                 .fontWeight(.bold)
                 .id(entry.netBalance) // Add an ID to help SwiftUI notice changes
-
-            Divider()
             
-            if !entry.transactions.isEmpty {
-                Text("Recent Transactions")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(entry.transactions.prefix(3)) { transaction in
-                        HStack {
-                            Text(transaction.description)
-                                .font(.footnote)
-                            Spacer()
-                            Text(transaction.amount, format: .currency(code: "GBP"))
-                                .font(.footnote)
-                                .foregroundColor(transaction.amount < 0 ? .red : .green)
-                        }
+            Divider()
                     }
-                }
+                    .padding()
+        }
+    }
+    
+    struct BalanceWidget: Widget {
+        let kind: String = "BalanceWidget"
+        
+        var body: some WidgetConfiguration {
+            AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
+                BalanceWidgetEntryView(entry: entry)
+                    .containerBackground(.fill.tertiary, for: .widget)
             }
-            Spacer()
+            .configurationDisplayName("Net Balance")
+            .description("View your net balance and recent transactions.")
+            .supportedFamilies([.systemSmall, .systemMedium]) // Allow medium size for more space
         }
-        .padding()
     }
-}
-
-struct BalanceWidget: Widget {
-    let kind: String = "BalanceWidget"
-
-    var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
-            BalanceWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
-        }
-        .configurationDisplayName("Net Balance")
-        .description("View your net balance and recent transactions.")
-        .supportedFamilies([.systemSmall, .systemMedium]) // Allow medium size for more space
-    }
-}
