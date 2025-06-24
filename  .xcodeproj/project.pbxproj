@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7AD14BD02E0AE63F00834929 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7AD14BCF2E0AE63F00834929 /* WidgetKit.framework */; };
+		7AD14BD22E0AE63F00834929 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7AD14BD12E0AE63F00834929 /* SwiftUI.framework */; };
+		7AD14BE32E0AE63F00834929 /* BalanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7AD14BCD2E0AE63F00834929 /* BalanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7AD14BEB2E0AE80900834929 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7AD14BCF2E0AE63F00834929 /* WidgetKit.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		7A9B39652DAD883300A7693B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,12 +28,37 @@
 			remoteGlobalIDString = 7A9B39532DAD883100A7693B;
 			remoteInfo = StudentFinanceTracker;
 		};
+		7AD14BE12E0AE63F00834929 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7A9B394C2DAD883100A7693B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7AD14BCC2E0AE63F00834929;
+			remoteInfo = BalanceWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7AD14BE42E0AE63F00834929 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7AD14BE32E0AE63F00834929 /* BalanceWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		7A9B39542DAD883100A7693B /* StudentFinanceTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StudentFinanceTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A9B39642DAD883300A7693B /* StudentFinanceTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StudentFinanceTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A9B396E2DAD883300A7693B /* StudentFinanceTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StudentFinanceTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7AD14BCD2E0AE63F00834929 /* BalanceWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BalanceWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7AD14BCF2E0AE63F00834929 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		7AD14BD12E0AE63F00834929 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		7AD14BEA2E0AE7AC00834929 /* BalanceWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BalanceWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -38,6 +70,23 @@
 				ViewModels/darkMode.swift,
 			);
 			target = 7A9B39532DAD883100A7693B /* StudentFinanceTracker */;
+		};
+		7AD14BE82E0AE63F00834929 /* Exceptions for "BalanceWidget" folder in "BalanceWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7AD14BCC2E0AE63F00834929 /* BalanceWidgetExtension */;
+		};
+		7AD14BED2E0AE9B800834929 /* Exceptions for "StudentFinanceTracker" folder in "BalanceWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/Account.swift,
+				Models/Category.swift,
+				Models/Transaction.swift,
+				Models/UserPreferences.swift,
+			);
+			target = 7AD14BCC2E0AE63F00834929 /* BalanceWidgetExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -59,6 +108,7 @@
 			exceptions = (
 				7A9B39A72DAD9F8100A7693B /* Exceptions for "StudentFinanceTracker" folder in "StudentFinanceTracker" target */,
 				7A9B39A82DAD9F8100A7693B /* Exceptions for "StudentFinanceTracker" folder in "Copy Bundle Resources" phase from "StudentFinanceTracker" target */,
+				7AD14BED2E0AE9B800834929 /* Exceptions for "StudentFinanceTracker" folder in "BalanceWidgetExtension" target */,
 			);
 			path = StudentFinanceTracker;
 			sourceTree = "<group>";
@@ -73,6 +123,14 @@
 			path = StudentFinanceTrackerUITests;
 			sourceTree = "<group>";
 		};
+		7AD14BD32E0AE63F00834929 /* BalanceWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7AD14BE82E0AE63F00834929 /* Exceptions for "BalanceWidget" folder in "BalanceWidgetExtension" target */,
+			);
+			path = BalanceWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +138,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7AD14BEB2E0AE80900834929 /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -97,15 +156,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7AD14BCA2E0AE63F00834929 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AD14BD22E0AE63F00834929 /* SwiftUI.framework in Frameworks */,
+				7AD14BD02E0AE63F00834929 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		7A9B394B2DAD883100A7693B = {
 			isa = PBXGroup;
 			children = (
+				7AD14BEA2E0AE7AC00834929 /* BalanceWidgetExtension.entitlements */,
 				7A9B39562DAD883100A7693B /* StudentFinanceTracker */,
 				7A9B39672DAD883300A7693B /* StudentFinanceTrackerTests */,
 				7A9B39712DAD883400A7693B /* StudentFinanceTrackerUITests */,
+				7AD14BD32E0AE63F00834929 /* BalanceWidget */,
+				7AD14BCE2E0AE63F00834929 /* Frameworks */,
 				7A9B39552DAD883100A7693B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -116,8 +187,18 @@
 				7A9B39542DAD883100A7693B /* StudentFinanceTracker.app */,
 				7A9B39642DAD883300A7693B /* StudentFinanceTrackerTests.xctest */,
 				7A9B396E2DAD883300A7693B /* StudentFinanceTrackerUITests.xctest */,
+				7AD14BCD2E0AE63F00834929 /* BalanceWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7AD14BCE2E0AE63F00834929 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7AD14BCF2E0AE63F00834929 /* WidgetKit.framework */,
+				7AD14BD12E0AE63F00834929 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -130,10 +211,12 @@
 				7A9B39502DAD883100A7693B /* Sources */,
 				7A9B39512DAD883100A7693B /* Frameworks */,
 				7A9B39522DAD883100A7693B /* Resources */,
+				7AD14BE42E0AE63F00834929 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7AD14BE22E0AE63F00834929 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7A9B39562DAD883100A7693B /* StudentFinanceTracker */,
@@ -191,6 +274,28 @@
 			productReference = 7A9B396E2DAD883300A7693B /* StudentFinanceTrackerUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		7AD14BCC2E0AE63F00834929 /* BalanceWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7AD14BE72E0AE63F00834929 /* Build configuration list for PBXNativeTarget "BalanceWidgetExtension" */;
+			buildPhases = (
+				7AD14BC92E0AE63F00834929 /* Sources */,
+				7AD14BCA2E0AE63F00834929 /* Frameworks */,
+				7AD14BCB2E0AE63F00834929 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7AD14BD32E0AE63F00834929 /* BalanceWidget */,
+			);
+			name = BalanceWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = BalanceWidgetExtension;
+			productReference = 7AD14BCD2E0AE63F00834929 /* BalanceWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -198,7 +303,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
 					7A9B39532DAD883100A7693B = {
@@ -211,6 +316,9 @@
 					7A9B396D2DAD883300A7693B = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 7A9B39532DAD883100A7693B;
+					};
+					7AD14BCC2E0AE63F00834929 = {
+						CreatedOnToolsVersion = 26.0;
 					};
 				};
 			};
@@ -231,6 +339,7 @@
 				7A9B39532DAD883100A7693B /* StudentFinanceTracker */,
 				7A9B39632DAD883300A7693B /* StudentFinanceTrackerTests */,
 				7A9B396D2DAD883300A7693B /* StudentFinanceTrackerUITests */,
+				7AD14BCC2E0AE63F00834929 /* BalanceWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -251,6 +360,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		7A9B396C2DAD883300A7693B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7AD14BCB2E0AE63F00834929 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -281,6 +397,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7AD14BC92E0AE63F00834929 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -293,6 +416,11 @@
 			isa = PBXTargetDependency;
 			target = 7A9B39532DAD883100A7693B /* StudentFinanceTracker */;
 			targetProxy = 7A9B396F2DAD883300A7693B /* PBXContainerItemProxy */;
+		};
+		7AD14BE22E0AE63F00834929 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7AD14BCC2E0AE63F00834929 /* BalanceWidgetExtension */;
+			targetProxy = 7AD14BE12E0AE63F00834929 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -422,10 +550,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = StudentFinanceTracker/StudentFinanceTracker.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_ASSET_PATHS = "\"StudentFinanceTracker/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "StudentFinanceTracker/Preview\\ Content BalanceWidget BalanceWidgetExtension.entitlements";
 				DEVELOPMENT_TEAM = E63NY5ZD35;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -458,10 +587,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = StudentFinanceTracker/StudentFinanceTracker.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_ASSET_PATHS = "\"StudentFinanceTracker/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "StudentFinanceTracker/Preview\\ Content BalanceWidget BalanceWidgetExtension.entitlements";
 				DEVELOPMENT_TEAM = E63NY5ZD35;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -560,6 +690,70 @@
 			};
 			name = Release;
 		};
+		7AD14BE52E0AE63F00834929 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = BalanceWidgetExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = E63NY5ZD35;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BalanceWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BalanceWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tomsp05.StudentFinanceTracker.BalanceWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7AD14BE62E0AE63F00834929 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = BalanceWidgetExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = E63NY5ZD35;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BalanceWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BalanceWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tomsp05.StudentFinanceTracker.BalanceWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -595,6 +789,15 @@
 			buildConfigurations = (
 				7A9B397F2DAD883400A7693B /* Debug */,
 				7A9B39802DAD883400A7693B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7AD14BE72E0AE63F00834929 /* Build configuration list for PBXNativeTarget "BalanceWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7AD14BE52E0AE63F00834929 /* Debug */,
+				7AD14BE62E0AE63F00834929 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
