@@ -11,7 +11,6 @@ struct WidgetData: Codable {
 }
 
 struct Provider: AppIntentTimelineProvider {
-    // Make sure this ID is correct!
     let appGroupID = "group.com.TomSpeake.StudentFinanceTracker"
 
     func placeholder(in context: Context) -> SimpleEntry {
