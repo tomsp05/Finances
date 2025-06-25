@@ -4,7 +4,6 @@ struct AccountsListView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
     
-    // Animation state
     @State private var isAppearing: Bool = false
     
     private var netCurrentBalance: Double {

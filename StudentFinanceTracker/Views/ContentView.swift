@@ -48,7 +48,7 @@ struct ContentView: View {
         if horizontalSizeClass == .compact {
             return verticalSizeClass == .compact ? 32 : 42
         } else {
-            return 50 // iPad
+            return 50
         }
     }
     
@@ -79,7 +79,6 @@ struct ContentView: View {
                     isAnimating = false
                     showChangeAmount = false
                 }
-                // Update previous balance for next comparison
                 previousBalance = currentBalance
             }
         } else {
@@ -229,7 +228,7 @@ struct ContentView: View {
             .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
             .onAppear {
                 previousBalance = netCurrentBalance
-                viewDidAppear = true // Mark view as appearing
+                viewDidAppear = true
                 
                 DispatchQueue.main.async {
                     self.refreshBalanceDisplay()
@@ -237,7 +236,6 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 if viewDidAppear {
-                    // Only refresh if the view has previously appeared (to avoid duplicate animations on first load)
                     DispatchQueue.main.async {
                         self.refreshBalanceDisplay()
                     }
@@ -277,7 +275,6 @@ struct ContentView: View {
     @ViewBuilder
     private func adaptiveNavCardsView() -> some View {
         if horizontalSizeClass == .compact && verticalSizeClass == .regular {
-            // Portrait phone layout - 2x2 grid
             VStack(spacing: 16) {
                 HStack(spacing: 16) {
                     navCardBudgets

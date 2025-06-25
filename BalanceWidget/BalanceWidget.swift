@@ -1,9 +1,7 @@
-// BalanceWidget/BalanceWidget.swift
 
 import WidgetKit
 import SwiftUI
 
-// Make sure this struct matches the one in your main app
 struct WidgetData: Codable {
     let netBalance: Double
     let transactions: [Transaction]
@@ -148,7 +146,6 @@ struct BalanceWidgetEntryView: View {
     
     private var mediumWidgetView: some View {
         HStack(spacing: 20) {
-            // Left side - Balance
             VStack(alignment: .leading, spacing: 8) {
                 Text("Net Balance")
                     .font(titleFontSize)
@@ -173,26 +170,12 @@ struct BalanceWidgetEntryView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Divider
             Rectangle()
                 .fill(.white.opacity(0.3))
                 .frame(width: 1)
                 .padding(.vertical, 8)
             
-            // Right side - Recent Transactions
             VStack(alignment: .leading, spacing: 6) {
-//                HStack {
-//                    Text("Recent")
-//                        .font(titleFontSize)
-//                        .fontWeight(.medium)
-//                        .foregroundColor(.white)
-//                    
-//                    Spacer()
-//                    
-//                    Image(systemName: "clock")
-//                        .font(.system(size: 12))
-//                        .foregroundColor(.white.opacity(0.7))
-//                }
                 
                 if recentTransactions.prefix(4).isEmpty {
                     Spacer()
@@ -237,7 +220,6 @@ struct BalanceWidgetEntryView: View {
 
     private var largeWidgetView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Top Section: Net Balance
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Net Balance")
@@ -265,9 +247,7 @@ struct BalanceWidgetEntryView: View {
             }
             .frame(maxHeight: 60)
 
-            // Bottom Section: Transactions and Categories
             HStack(alignment: .top, spacing: 20) {
-                // Left Column: Recent Transactions
                 VStack(alignment: .leading) {
                     Text("Recent Transactions")
                         .font(.headline)
@@ -300,7 +280,6 @@ struct BalanceWidgetEntryView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                // Right Column: Spending Categories
                 VStack(alignment: .leading) {
                     Text("Top Spending")
                         .font(.headline)
@@ -327,7 +306,6 @@ struct BalanceWidgetEntryView: View {
                                             .fontWeight(.medium)
                                             .foregroundColor(.white)
                                     }
-                                    // Visual progress bar
                                     GeometryReader { geo in
                                         let totalSpending = categorySpending.first?.1 ?? 1
                                         let barWidth = geo.size.width * (total / totalSpending)
@@ -398,13 +376,11 @@ struct BalanceWidgetEntryView: View {
         return formatter.string(from: entry.date)
     }
     
-    // THIS IS THE CORRECTED FUNCTION
     private func transactionIcon(for transaction: Transaction) -> String {
         if let category = entry.categories.first(where: { $0.id == transaction.categoryId }) {
             return category.iconName
         }
         
-        // Fallback
         switch transaction.type {
         case .income:
             return "arrow.down.circle.fill"

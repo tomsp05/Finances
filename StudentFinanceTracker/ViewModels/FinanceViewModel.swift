@@ -126,7 +126,7 @@ class FinanceViewModel: ObservableObject {
         handleTransactionChange()
     }
     
-    // Helper method to migrate old account types to new ones
+    // Helper to migrate old account types to new ones
     private func migrateOldAccountTypes(_ oldAccounts: [Account]) -> [Account] {
         return oldAccounts.map { account in
             var newAccount = account
@@ -155,7 +155,7 @@ class FinanceViewModel: ObservableObject {
         }
     }
     
-    // Helper method to migrate transactions with old account types
+    // Helper to migrate transactions with old account types
     private func migrateOldTransactionAccountTypes(_ oldTransactions: [Transaction]) -> [Transaction] {
         return oldTransactions.map { transaction in
             var newTransaction = transaction
@@ -223,7 +223,7 @@ class FinanceViewModel: ObservableObject {
     func updateWidgetData() {
         let userDefaults = UserDefaults(suiteName: "group.com.TomSpeake.StudentFinanceTracker")
         
-        // Correctly calculate net balance
+        // Calculate net balance
         let currentAccountsTotal = accounts.filter { $0.type == .current }.reduce(0) { $0 + $1.balance }
         let creditCardsTotal = accounts.filter { $0.type == .credit }.reduce(0) { $0 + $1.balance }
         let netBalance = currentAccountsTotal - creditCardsTotal
@@ -410,7 +410,6 @@ class FinanceViewModel: ObservableObject {
     }
     
     private func updateAccounts(with transaction: Transaction) {
-        // This logic is now handled by recalcAccounts to ensure consistency
         recalcAccounts()
     }
     
@@ -602,12 +601,6 @@ class FinanceViewModel: ObservableObject {
             return budgetAccountId == transactionAccountId
         }
     }
-    
-    // MARK: - Recurring Transactions - Assuming Transaction has these properties
-    
-    // The following properties and methods assume `Transaction` has `isRecurring`, `recurrenceInterval`,
-    // `recurrenceEndDate`, `parentTransactionId`, and `isFutureTransaction` properties.
-    // If not, these will cause errors and should be adapted to your data model.
 
     // MARK: - Test Data, Import/Export
     
