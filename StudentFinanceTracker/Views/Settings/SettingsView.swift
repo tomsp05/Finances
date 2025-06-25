@@ -485,17 +485,22 @@ struct SettingsView: View {
                     },
                     secondaryButton: .cancel()
                 )
+// MARK: - Delete Account Alert
             case .deleteAccount:
-                return Alert(
-                    title: Text("Delete Account"),
-                    message: Text("Are you sure you want to delete this account? All associated transactions will be deleted as well."),
-                    primaryButton: .destructive(Text("Delete")) {
-                        if let id = accountToDelete {
-                            viewModel.deleteAccountAndTransactions(accountId: id)
-                        }
-                    },
-                    secondaryButton: .cancel()
-                )
+                        return Alert(
+                            title: Text("Delete Account"),
+                            message: Text("Are you sure you want to delete this account? All associated transactions will be deleted as well."),
+                            primaryButton: .destructive(Text("Delete")) {
+                                if let id = accountToDelete {
+                                    viewModel.deleteAccountAndTransactions(accountId: id)
+                                    showEditAccountSheet = false  // Dismiss the sheet after deletion
+                                    accountToDelete = nil  // Reset the state
+                                }
+                            },
+                            secondaryButton: .cancel {
+                                accountToDelete = nil  // Reset the state on cancel
+                            }
+                        )
             }
         }
         .alert(isPresented: $showTestDataAlert) {
@@ -689,11 +694,16 @@ struct SettingsView: View {
                             }
                             .padding(.horizontal)
                             
-                            // Delete button
+                            // MARK: - Delete Account Button
+                            // This button initiates the delete process for the selected account.
                             Button(action: {
+                                // Set the account to be deleted.
                                 accountToDelete = account.id
+                                // Specify the confirmation action.
                                 confirmationAction = .deleteAccount
+                                // Hide the edit sheet to show the alert on the main view.
                                 showEditAccountSheet = false
+                                // Show the confirmation alert.
                                 showConfirmationAlert = true
                             }) {
                                 HStack {
