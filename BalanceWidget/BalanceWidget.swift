@@ -3,12 +3,12 @@
 import WidgetKit
 import SwiftUI
 
-// You may need to create this as a new file `WidgetData.swift` and
-// ensure it also has Target Membership for both the app and the widget.
+// Make sure this struct matches the one in your main app
 struct WidgetData: Codable {
     let netBalance: Double
     let transactions: [Transaction]
-    let themeColorData: Data? // Store theme color as Data
+    let themeColorData: Data?
+    let categories: [Category]
 }
 
 struct Provider: AppIntentTimelineProvider {
@@ -20,7 +20,8 @@ struct Provider: AppIntentTimelineProvider {
             configuration: ConfigurationAppIntent(),
             netBalance: 1234.56,
             transactions: [],
-            themeColor: .blue
+            themeColor: .blue,
+            categories: []
         )
     }
 
@@ -31,7 +32,8 @@ struct Provider: AppIntentTimelineProvider {
             configuration: configuration,
             netBalance: data?.netBalance ?? 0.0,
             transactions: data?.transactions ?? [],
-            themeColor: extractThemeColor(from: data) ?? .blue
+            themeColor: extractThemeColor(from: data) ?? .blue,
+            categories: data?.categories ?? []
         )
     }
     
@@ -42,7 +44,8 @@ struct Provider: AppIntentTimelineProvider {
             configuration: configuration,
             netBalance: data?.netBalance ?? 0.0,
             transactions: data?.transactions ?? [],
-            themeColor: extractThemeColor(from: data) ?? .blue
+            themeColor: extractThemeColor(from: data) ?? .blue,
+            categories: data?.categories ?? []
         )
         
         let nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: Date())!
@@ -64,7 +67,6 @@ struct Provider: AppIntentTimelineProvider {
             return nil
         }
         
-        // Try to decode the color from Data
         if let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: colorData) {
             return Color(uiColor)
         }
@@ -78,6 +80,7 @@ struct SimpleEntry: TimelineEntry {
     let netBalance: Double
     let transactions: [Transaction]
     let themeColor: Color
+    let categories: [Category]
 }
 
 struct BalanceWidgetEntryView: View {
@@ -85,87 +88,40 @@ struct BalanceWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     @Environment(\.colorScheme) var colorScheme
     
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
-    }
-    
-    // Get recent transactions for medium widget
-    private var recentTransactions: [Transaction] {
-        Array(entry.transactions.sorted { $0.date > $1.date }.prefix(3))
-    }
-    
-    // Dynamic font sizes based on widget family
-    private var titleFontSize: Font {
-        switch family {
-        case .systemSmall:
-            return .caption
-        case .systemMedium:
-            return .caption
-        default:
-            return .caption
-        }
-    }
-    
-    private var balanceFontSize: Font {
-        switch family {
-        case .systemSmall:
-            return .title2
-        case .systemMedium:
-            return .title
-        default:
-            return .largeTitle
-        }
-    }
-    
-    private var transactionFontSize: Font {
-        switch family {
-        case .systemMedium:
-            return .caption2
-        default:
-            return .caption2
-        }
-    }
-    
     var body: some View {
         ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [Color.blue, Color.purple]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
             switch family {
             case .systemSmall:
                 smallWidgetView
             case .systemMedium:
                 mediumWidgetView
+            case .systemLarge:
+                largeWidgetView
             default:
                 smallWidgetView
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+        .containerBackground(for: .widget) {
+            LinearGradient(
+                gradient: Gradient(colors: [entry.themeColor.opacity(0.7), entry.themeColor]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
     
-    // Small widget view
+    // MARK: - Subviews
+    
     private var smallWidgetView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Net Balance")
                     .font(titleFontSize)
-                    .fontWeight(.semibold)
+                    .fontWeight(.bold)
                     .foregroundColor(.white)
                 
                 Spacer()
                 
-                // App icon or indicator
                 Image(systemName: "sterlingsign.circle.fill")
                     .font(.system(size: 16))
                     .foregroundColor(.white)
@@ -184,37 +140,19 @@ struct BalanceWidgetEntryView: View {
                 
                 Text("Updated \(formattedTime)")
                     .font(.caption2)
-                    .foregroundColor(.white)
+                    .foregroundColor(.white.opacity(0.8))
             }
         }
-        .padding(.all, 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.clear)
-        .overlay(
-            // Subtle pattern overlay
-            RoundedRectangle(cornerRadius: 0)
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0.1),
-                            Color.clear
-                        ]),
-                        center: .topTrailing,
-                        startRadius: 20,
-                        endRadius: 80
-                    )
-                )
-        )
+        .padding(10)
     }
     
-    // Medium widget view
     private var mediumWidgetView: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 20) {
             // Left side - Balance
             VStack(alignment: .leading, spacing: 8) {
                 Text("Net Balance")
                     .font(titleFontSize)
-                    .fontWeight(.medium)
+                    .fontWeight(.bold)
                     .foregroundColor(.white)
                 
                 Spacer()
@@ -230,7 +168,7 @@ struct BalanceWidgetEntryView: View {
                     
                     Text("Updated \(formattedTime)")
                         .font(.caption2)
-                        .foregroundColor(.white)
+                        .foregroundColor(.white.opacity(0.8))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -243,20 +181,20 @@ struct BalanceWidgetEntryView: View {
             
             // Right side - Recent Transactions
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Recent")
-                        .font(titleFontSize)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "clock")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.7))
-                }
+//                HStack {
+//                    Text("Recent")
+//                        .font(titleFontSize)
+//                        .fontWeight(.medium)
+//                        .foregroundColor(.white)
+//                    
+//                    Spacer()
+//                    
+//                    Image(systemName: "clock")
+//                        .font(.system(size: 12))
+//                        .foregroundColor(.white.opacity(0.7))
+//                }
                 
-                if recentTransactions.isEmpty {
+                if recentTransactions.prefix(4).isEmpty {
                     Spacer()
                     Text("No transactions")
                         .font(transactionFontSize)
@@ -265,24 +203,20 @@ struct BalanceWidgetEntryView: View {
                     Spacer()
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
-                        ForEach(recentTransactions.prefix(3), id: \.id) { transaction in
+                        ForEach(recentTransactions.prefix(4)) { transaction in
                             HStack(spacing: 6) {
-                                // Transaction type icon
                                 Image(systemName: transactionIcon(for: transaction))
-                                    .font(.system(size: 10))
+                                    .font(.caption)
                                     .foregroundColor(.white.opacity(0.8))
                                     .frame(width: 12)
                                 
-                                // Transaction description
-                                Text(transaction.description)
-                                    .font(transactionFontSize)
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
+//                                Text(transaction.description)
+//                                    .font(transactionFontSize)
+//                                    .foregroundColor(.white.opacity(0.9))
+//                                    .lineLimit(1)
                                 
                                 Spacer()
                                 
-                                // Amount
                                 Text(formatCurrency(transaction.amount))
                                     .font(transactionFontSize)
                                     .fontWeight(.medium)
@@ -290,43 +224,187 @@ struct BalanceWidgetEntryView: View {
                                     .lineLimit(1)
                             }
                         }
-                        
-                        if recentTransactions.count < 3 {
-                            Spacer()
+                        if recentTransactions.count < 4 {
+                           Spacer()
                         }
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.all, 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.clear)
-        .overlay(
-            // Subtle pattern overlay
-            RoundedRectangle(cornerRadius: 0)
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0.1),
-                            Color.clear
-                        ]),
-                        center: .topTrailing,
-                        startRadius: 30,
-                        endRadius: 120
-                    )
-                )
-        )
+        .padding(10)
+    }
+
+    private var largeWidgetView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Top Section: Net Balance
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Net Balance")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    
+                    Text(formatCurrency(entry.netBalance))
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                        .shadow(color: .black.opacity(0.18), radius: 1, x: 0, y: 1)
+                }
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Image(systemName: "sterlingsign.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundColor(.white.opacity(0.8))
+                    Spacer()
+                    Text("Updated \(formattedTime)")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+            }
+            .frame(maxHeight: 60)
+
+            // Bottom Section: Transactions and Categories
+            HStack(alignment: .top, spacing: 20) {
+                // Left Column: Recent Transactions
+                VStack(alignment: .leading) {
+                    Text("Recent Transactions")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.bottom, 4)
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(recentTransactions.prefix(5)) { transaction in
+                            HStack(spacing: 6) {
+                                Image(systemName: transactionIcon(for: transaction))
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .frame(width: 14)
+                                
+//                                Text(transaction.description)
+//                                    .font(.caption)
+//                                    .foregroundColor(.white.opacity(0.9))
+//                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                Text(formatCurrency(transaction.amount))
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(transactionAmountColor(for: transaction))
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                // Right Column: Spending Categories
+                VStack(alignment: .leading) {
+                    Text("Top Spending")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.bottom, 4)
+
+                    if categorySpending.isEmpty {
+                         Text("No spending yet.")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(categorySpending.prefix(5), id: \.0.id) { (category, total) in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack {
+                                        Text(category.name)
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                        Text(formatCurrency(total))
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.white)
+                                    }
+                                    // Visual progress bar
+                                    GeometryReader { geo in
+                                        let totalSpending = categorySpending.first?.1 ?? 1
+                                        let barWidth = geo.size.width * (total / totalSpending)
+                                        
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(.white.opacity(0.2))
+                                            .frame(height: 5)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 3)
+                                                    .fill(.white)
+                                                    .frame(width: barWidth),
+                                                alignment: .leading
+                                            )
+                                    }
+                                    .frame(height: 5)
+                                }
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(10)
     }
     
-    // Helper functions
+    // MARK: - Helpers & Formatting
+    
+    private var recentTransactions: [Transaction] {
+        entry.transactions.sorted { $0.date > $1.date }
+    }
+    
+    private var categorySpending: [(Category, Double)] {
+        let expenseTransactions = recentTransactions.filter { $0.type == .expense }
+        
+        let spendingByCategoryId = Dictionary(grouping: expenseTransactions, by: { $0.categoryId })
+            .mapValues { transactions in
+                transactions.reduce(0) { $0 + $1.amount }
+            }
+        
+        let categorySpendingData = spendingByCategoryId.compactMap { (categoryId, total) -> (Category, Double)? in
+            if let category = entry.categories.first(where: { $0.id == categoryId }) {
+                return (category, total)
+            }
+            return nil
+        }
+        
+        return categorySpendingData.sorted { $0.1 > $1.1 }
+    }
+
+    private func formatCurrency(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "£"
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
+    }
+    
+    private var titleFontSize: Font { .caption }
+    private var balanceFontSize: Font { family == .systemSmall ? .title2 : .title }
+    private var transactionFontSize: Font { .caption2 }
+    
     private var formattedTime: String {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: entry.date)
     }
     
+    // THIS IS THE CORRECTED FUNCTION
     private func transactionIcon(for transaction: Transaction) -> String {
+        if let category = entry.categories.first(where: { $0.id == transaction.categoryId }) {
+            return category.iconName
+        }
+        
+        // Fallback
         switch transaction.type {
         case .income:
             return "arrow.down.circle.fill"
@@ -339,12 +417,9 @@ struct BalanceWidgetEntryView: View {
     
     private func transactionAmountColor(for transaction: Transaction) -> Color {
         switch transaction.type {
-        case .income:
-            return .white.opacity(0.9)
-        case .expense:
-            return .white.opacity(0.7)
-        case .transfer:
-            return .white.opacity(0.8)
+        case .income: .white.opacity(0.9)
+        case .expense: .white.opacity(0.7)
+        case .transfer: .white.opacity(0.8)
         }
     }
 }
@@ -358,7 +433,6 @@ struct BalanceWidget: Widget {
         }
         .configurationDisplayName("Net Balance")
         .description("View your net balance and recent transactions at a glance.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
-

@@ -229,9 +229,23 @@ class FinanceViewModel: ObservableObject {
         let netBalance = currentAccountsTotal - creditCardsTotal
 
         // Get the 3 most recent transactions
-        let recentTransactions = Array(transactions.sorted { $0.date > $1.date }.prefix(3))
-        
-        let widgetData = WidgetData(netBalance: netBalance, transactions: recentTransactions)
+        let recentTransactions = Array(transactions.sorted { $0.date > $1.date }.prefix(15))
+
+        // Convert the theme color to Data for UserDefaults
+        var themeColorData: Data?
+        if let cgColor = themeColor.cgColor {
+            // Convert SwiftUI Color to UIColor
+            let uiColor = UIColor(cgColor: cgColor)
+            // Archive UIColor to Data
+            themeColorData = try? NSKeyedArchiver.archivedData(withRootObject: uiColor, requiringSecureCoding: false)
+        }
+
+        let widgetData = WidgetData(
+              netBalance: netBalance,
+              transactions: recentTransactions,
+              themeColorData: themeColorData,
+              categories: self.expenseCategories // <-- ADD THIS
+          )
         
         let encoder = JSONEncoder()
         if let data = try? encoder.encode(widgetData) {
