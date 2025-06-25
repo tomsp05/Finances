@@ -6,8 +6,7 @@ struct SettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var showOnboardingSheet = false
 
-    @State private var showDeleteConfirmation = false
-    @State private var showResetConfirmation = false
+    @State private var showConfirmationAlert = false
     
     // For editing account settings
     @State private var accountNames: [UUID: String] = [:]
@@ -16,7 +15,6 @@ struct SettingsView: View {
     @State private var editingAccount: Account? = nil
     @State private var showEditAccountSheet = false
     @State private var showTestDataAlert = false
-
     
     // Add state variable to track which action is being confirmed
     @State private var confirmationAction: ConfirmationAction = .deleteTransactions
@@ -283,8 +281,8 @@ struct SettingsView: View {
                         
                         // Delete All Transactions button
                         Button(action: {
-                            showDeleteConfirmation = true
-                            viewModel.deleteAllTransactions()
+                            confirmationAction = .deleteTransactions
+                            showConfirmationAlert = true
                         }) {
                             HStack {
                                 Image(systemName: "trash.fill")
@@ -305,21 +303,11 @@ struct SettingsView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .alert(isPresented: $showDeleteConfirmation) {
-                            Alert(
-                                title: Text("Delete All Transactions"),
-                                message: Text("Are you sure you want to delete all transactions? This action cannot be undone."),
-                                primaryButton: .destructive(Text("Delete")) {
-                                    viewModel.deleteAllTransactions()
-                                },
-                                secondaryButton: .cancel()
-                            )
-                        }
 
                         // Reset All Data button
                         Button(action: {
-                            showResetConfirmation = true
-                            viewModel.resetAllData()
+                            confirmationAction = .resetAllData
+                            showConfirmationAlert = true
                         }) {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -463,18 +451,6 @@ struct SettingsView: View {
             // Set the initial theme selection
             selectedTheme = viewModel.themeColorName
         }
-        .alert(isPresented: $showingExportOptions) {
-            Alert(
-                title: Text("Export Data"),
-                message: Text("Choose an export format:"),
-                primaryButton: .default(Text("CSV")) {
-                    exportData(format: "csv")
-                },
-                secondaryButton: .default(Text("PDF")) {
-                    exportData(format: "pdf")
-                }
-            )
-        }
         .sheet(isPresented: $showAddAccountSheet) {
             addAccountSheet
         }
@@ -489,7 +465,7 @@ struct SettingsView: View {
             WhatsNewView()
                 .environmentObject(viewModel)
         }
-        .alert(isPresented: $showDeleteConfirmation) {
+        .alert(isPresented: $showConfirmationAlert) {
             switch confirmationAction {
             case .deleteTransactions:
                 return Alert(
@@ -515,7 +491,7 @@ struct SettingsView: View {
                     message: Text("Are you sure you want to delete this account? All associated transactions will be deleted as well."),
                     primaryButton: .destructive(Text("Delete")) {
                         if let id = accountToDelete {
-                            deleteAccount(id: id)
+                            viewModel.deleteAccountAndTransactions(accountId: id)
                         }
                     },
                     secondaryButton: .cancel()
@@ -718,7 +694,7 @@ struct SettingsView: View {
                                 accountToDelete = account.id
                                 confirmationAction = .deleteAccount
                                 showEditAccountSheet = false
-                                showDeleteConfirmation = true
+                                showConfirmationAlert = true
                             }) {
                                 HStack {
                                     Image(systemName: "trash")
@@ -995,17 +971,6 @@ struct SettingsView: View {
         newAccountName = ""
         newAccountBalance = ""
         newAccountType = .savings
-    }
-    
-    private func deleteAccount(id: UUID) {
-        var updatedAccounts = viewModel.accounts
-        updatedAccounts.removeAll { $0.id == id }
-        viewModel.updateAccountsSettings(updatedAccounts: updatedAccounts)
-        
-        // Clean up references to this account
-        accountNames.removeValue(forKey: id)
-        accountPresets.removeValue(forKey: id)
-        accountTypes.removeValue(forKey: id)
     }
     
     // MARK: - Action Methods
