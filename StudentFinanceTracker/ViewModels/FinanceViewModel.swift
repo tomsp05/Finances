@@ -9,14 +9,14 @@ class FinanceViewModel: ObservableObject {
     @Published var incomeCategories: [Category] = []
     @Published var expenseCategories: [Category] = []
     @Published var incomes: [IncomeSource] = []
-    
+
     // Add a signal property that changes whenever balance changes
     @Published var balanceDidChange: Bool = false
-    
+
     // User preferences
     @Published var userPreferences: UserPreferences = UserPreferences.defaultPreferences
     let defaults = UserDefaults(suiteName: "group.com.TomSpeake.StudentFinanceTracker")
-    
+
     // Theme color getter from user preferences
     var themeColorName: String {
         get { userPreferences.themeColorName }
@@ -27,7 +27,7 @@ class FinanceViewModel: ObservableObject {
             DataService.shared.saveThemeColor(newValue)
         }
     }
-    
+
     /// Returns a SwiftUI Color based on the selected theme color name.
     var themeColor: Color {
         switch themeColorName {
@@ -47,65 +47,61 @@ class FinanceViewModel: ObservableObject {
             return Color(red: 0.20, green: 0.40, blue: 0.70) // Default to Blue
         }
     }
-    
+
     @Published var budgets: [Budget] = []
-    
+
     init() {
         loadUserPreferences()
         loadInitialData()
     }
-    
+
     func loadUserPreferences() {
         if let preferences = DataService.shared.loadUserPreferences() {
             userPreferences = preferences
         } else {
             userPreferences = UserPreferences.defaultPreferences
-            
+
             // Check if legacy theme color exists and migrate it
             if let legacyTheme = DataService.shared.loadThemeColor() {
                 userPreferences.themeColorName = legacyTheme
             }
-            
+
             DataService.shared.saveUserPreferences(userPreferences)
         }
     }
-    
+
     func saveUserPreferences() {
         DataService.shared.saveUserPreferences(userPreferences)
     }
-    
+
     func completeOnboarding() {
         userPreferences.hasCompletedOnboarding = true
         saveUserPreferences()
     }
-    
+
     func loadInitialData() {
         // Load accounts
         if let loadedAccounts = DataService.shared.loadAccounts() {
             accounts = migrateOldAccountTypes(loadedAccounts)
         } else {
-            accounts = [
-                Account(name: "Savings Account", type: .savings, initialBalance: 0.0, balance: 0.0),
-                Account(name: "Current Account", type: .current, initialBalance: 0.0, balance: 0.0),
-                Account(name: "Credit Card", type: .credit, initialBalance: 0.0, balance: 0.0),
-            ]
+            accounts = []
         }
-        
+
         loadBudgets()
-        
+
         // Load categories
         if let loadedIncomeCategories = DataService.shared.loadCategories(type: .income) {
             incomeCategories = loadedIncomeCategories
         } else {
             incomeCategories = Category.defaultIncomeCategories
         }
-        
+
         if let loadedExpenseCategories = DataService.shared.loadCategories(type: .expense) {
             expenseCategories = loadedExpenseCategories
         } else {
             expenseCategories = Category.defaultExpenseCategories
         }
-        
+
         // Load transactions
         if let loadedTransactions = DataService.shared.loadTransactions() {
             transactions = migrateOldTransactionAccountTypes(loadedTransactions)
@@ -113,24 +109,24 @@ class FinanceViewModel: ObservableObject {
         } else {
             transactions = []
         }
-        
+
         // Load theme color
         if let loadedTheme = DataService.shared.loadThemeColor() {
             themeColorName = loadedTheme
         } else {
             themeColorName = "Blue"
         }
-        
+
         // Recalculate balances and spending
         recalcAccounts()
         handleTransactionChange()
     }
-    
+
     // Helper to migrate old account types to new ones
     private func migrateOldAccountTypes(_ oldAccounts: [Account]) -> [Account] {
         return oldAccounts.map { account in
             var newAccount = account
-            
+
             if let rawValue = account.type.rawValue as String?,
                rawValue == "creditAmex" || rawValue == "credit_amex" {
                 newAccount = Account(
@@ -150,16 +146,16 @@ class FinanceViewModel: ObservableObject {
                     balance: account.balance
                 )
             }
-            
+
             return newAccount
         }
     }
-    
+
     // Helper to migrate transactions with old account types
     private func migrateOldTransactionAccountTypes(_ oldTransactions: [Transaction]) -> [Transaction] {
         return oldTransactions.map { transaction in
             var newTransaction = transaction
-            
+
             if let fromAccount = transaction.fromAccount {
                 let fromRawValue = String(describing: fromAccount)
                 if fromRawValue == "creditAmex" || fromRawValue == "credit_amex" ||
@@ -167,7 +163,7 @@ class FinanceViewModel: ObservableObject {
                     newTransaction.fromAccount = .credit
                 }
             }
-            
+
             if let toAccount = transaction.toAccount {
                 let toRawValue = String(describing: toAccount)
                 if toRawValue == "creditAmex" || toRawValue == "credit_amex" ||
@@ -175,30 +171,30 @@ class FinanceViewModel: ObservableObject {
                     newTransaction.toAccount = .credit
                 }
             }
-            
+
             return newTransaction
         }
     }
-    
+
     // Helper to migrate old transaction data
     private func migrateOldTransactions() {
         for i in 0..<transactions.count {
             let transaction = transactions[i]
-            
+
             if transaction.categoryId == UUID() {
                 let defaultCategoryId: UUID
-                
+
                 if transaction.type == .income {
                     defaultCategoryId = incomeCategories.first { $0.name == "Other" }?.id ?? incomeCategories[0].id
                 } else {
                     defaultCategoryId = expenseCategories.first { $0.name == "Other" }?.id ?? expenseCategories[0].id
                 }
-                
+
                 transactions[i].categoryId = defaultCategoryId
             }
         }
     }
-    
+
     // Get a category by its ID
     func getCategory(id: UUID) -> Category? {
         if let category = incomeCategories.first(where: { $0.id == id }) {
@@ -206,7 +202,7 @@ class FinanceViewModel: ObservableObject {
         }
         return expenseCategories.first(where: { $0.id == id })
     }
-    
+
     // Get appropriate categories based on transaction type
     func getCategoriesForTransactionType(_ type: TransactionType) -> [Category] {
         if type == .income {
@@ -217,12 +213,12 @@ class FinanceViewModel: ObservableObject {
             return expenseCategories
         }
     }
-    
+
     // MARK: - Widget Data Update
-    
+
     func updateWidgetData() {
         let userDefaults = UserDefaults(suiteName: "group.com.TomSpeake.StudentFinanceTracker")
-        
+
         // Calculate net balance
         let currentAccountsTotal = accounts.filter { $0.type == .current }.reduce(0) { $0 + $1.balance }
         let creditCardsTotal = accounts.filter { $0.type == .credit }.reduce(0) { $0 + $1.balance }
@@ -241,12 +237,12 @@ class FinanceViewModel: ObservableObject {
         }
 
         let widgetData = WidgetData(
-              netBalance: netBalance,
-              transactions: recentTransactions,
-              themeColorData: themeColorData,
-              categories: self.expenseCategories // <-- ADD THIS
-          )
-        
+            netBalance: netBalance,
+            transactions: recentTransactions,
+            themeColorData: themeColorData,
+            categories: self.expenseCategories // <-- ADD THIS
+        )
+
         let encoder = JSONEncoder()
         if let data = try? encoder.encode(widgetData) {
             userDefaults?.set(data, forKey: "widgetData")
@@ -255,9 +251,9 @@ class FinanceViewModel: ObservableObject {
             print("Failed to encode widget data.")
         }
     }
-    
+
     // MARK: - Category CRUD
-    
+
     func addCategory(_ category: Category) {
         if category.type == .income {
             incomeCategories.append(category)
@@ -267,7 +263,7 @@ class FinanceViewModel: ObservableObject {
             DataService.shared.saveCategories(expenseCategories, type: .expense)
         }
     }
-    
+
     func updateCategory(_ category: Category) {
         if category.type == .income {
             if let index = incomeCategories.firstIndex(where: { $0.id == category.id }) {
@@ -281,7 +277,7 @@ class FinanceViewModel: ObservableObject {
             }
         }
     }
-    
+
     func deleteCategory(_ category: Category) {
         if category.type == .income {
             incomeCategories.removeAll { $0.id == category.id }
@@ -291,13 +287,13 @@ class FinanceViewModel: ObservableObject {
             DataService.shared.saveCategories(expenseCategories, type: .expense)
         }
     }
-    
+
     // MARK: - Balance and Transaction Management
 
     func signalBalanceChange() {
         balanceDidChange.toggle()
     }
-    
+
     func addTransaction(_ transaction: Transaction) {
         transactions.append(transaction)
         updateAccounts(with: transaction)
@@ -307,7 +303,7 @@ class FinanceViewModel: ObservableObject {
         handleTransactionChange()
         updateWidgetData() // Update widget
     }
-    
+
     func updateTransaction(_ updatedTransaction: Transaction) {
         if let index = transactions.firstIndex(where: { $0.id == updatedTransaction.id }) {
             transactions[index] = updatedTransaction
@@ -318,7 +314,7 @@ class FinanceViewModel: ObservableObject {
             updateWidgetData() // Update widget
         }
     }
-    
+
     func deleteTransaction(at offsets: IndexSet) {
         transactions.remove(atOffsets: offsets)
         recalcAccounts()
@@ -327,29 +323,29 @@ class FinanceViewModel: ObservableObject {
         handleTransactionChange()
         updateWidgetData() // Update widget
     }
-    
+
     func recalcAccounts() {
         let oldBalances = accounts.map { $0.balance }
-        
+
         for i in accounts.indices {
             accounts[i].balance = accounts[i].initialBalance
         }
-        
+
         for transaction in transactions {
             apply(transaction)
         }
-        
+
         for i in accounts.indices {
             if i < oldBalances.count && accounts[i].balance != oldBalances[i] {
                 adjustPoolsAfterBalanceChange(oldBalance: oldBalances[i], newBalance: accounts[i].balance, accountIndex: i)
             }
         }
-        
+
         DataService.shared.saveAccounts(accounts)
         updateWidgetData() // Update widget whenever balances are recalculated
         signalBalanceChange()
     }
-    
+
     private func apply(_ transaction: Transaction) {
         switch transaction.type {
         case .income:
@@ -368,7 +364,7 @@ class FinanceViewModel: ObservableObject {
                     accounts[index].balance -= transaction.amount
                 }
             }
-            
+
             // This logic appears to have a bug in the original file, amount might be incorrect. Preserving original logic.
             if transaction.isSplit, //&& transaction.friendPaymentIsAccount,
                let destAccountId = transaction.toAccountId, // Assuming friend's payment goes to an account
@@ -391,15 +387,15 @@ class FinanceViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func adjustPoolsAfterBalanceChange(oldBalance: Double, newBalance: Double, accountIndex: Int) {
         if oldBalance == newBalance || accounts[accountIndex].pools.isEmpty {
             return
         }
-        
+
         if newBalance < oldBalance {
             let allocatedAmount = accounts[accountIndex].pools.reduce(0.0) { $0 + $1.amount }
-            
+
             if allocatedAmount > newBalance {
                 let ratio = newBalance / allocatedAmount
                 for i in 0..<accounts[accountIndex].pools.count {
@@ -408,26 +404,43 @@ class FinanceViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func updateAccounts(with transaction: Transaction) {
         recalcAccounts()
     }
-    
+
     // MARK: - Settings and Data Management
-    
+
     func updateAccountsSettings(updatedAccounts: [Account]) {
         accounts = updatedAccounts
         DataService.shared.saveAccounts(accounts)
         recalcAccounts()
     }
-    
+
+    func deleteAccountAndTransactions(accountId: UUID) {
+        // Find and delete transactions associated with the account
+        transactions.removeAll { $0.fromAccountId == accountId || $0.toAccountId == accountId }
+
+        // Delete the account
+        accounts.removeAll { $0.id == accountId }
+
+        // Save the changes
+        DataService.shared.saveTransactions(transactions)
+        DataService.shared.saveAccounts(accounts)
+
+        // Recalculate balances and update UI
+        recalcAccounts()
+        handleTransactionChange()
+        signalBalanceChange()
+    }
+
     func updateThemeColor(newColorName: String) {
         themeColorName = newColorName
         DataService.shared.saveThemeColor(newColorName)
         userPreferences.themeColorName = newColorName
         saveUserPreferences()
     }
-    
+
     func deleteAllTransactions() {
         transactions = []
         recalcAccounts()
@@ -442,18 +455,18 @@ class FinanceViewModel: ObservableObject {
         incomeCategories = Category.defaultIncomeCategories
         expenseCategories = Category.defaultExpenseCategories
         userPreferences = UserPreferences.defaultPreferences
-        
+
         DataService.shared.saveTransactions(transactions)
         DataService.shared.saveAccounts(accounts)
         DataService.shared.saveBudgets(budgets)
         DataService.shared.saveCategories(incomeCategories, type: .income)
         DataService.shared.saveCategories(expenseCategories, type: .expense)
         saveUserPreferences()
-        
+
         updateWidgetData() // Update widget after resetting
         signalBalanceChange()
     }
-    
+
     func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -465,7 +478,7 @@ class FinanceViewModel: ObservableObject {
     }
 
     // MARK: - Budget Management
-    
+
     func addBudget(_ budget: Budget) {
         var newBudget = budget
         newBudget.periodStartDate = getCurrentPeriodStartDate(for: budget.timePeriod, from: budget.startDate)
@@ -473,33 +486,33 @@ class FinanceViewModel: ObservableObject {
         saveBudgets()
         recalculateBudgetSpending()
     }
-    
+
     func updateBudget(_ budget: Budget) {
         if let index = budgets.firstIndex(where: { $0.id == budget.id }) {
             var updatedBudget = budget
-            
+
             if updatedBudget.timePeriod != budgets[index].timePeriod {
                 updatedBudget.periodStartDate = getCurrentPeriodStartDate(for: updatedBudget.timePeriod, from: Date())
                 updatedBudget.currentSpent = 0.0
             } else {
                 updatedBudget.periodStartDate = budgets[index].periodStartDate
             }
-            
+
             budgets[index] = updatedBudget
             saveBudgets()
             recalculateBudgetSpending()
         }
     }
-    
+
     func deleteBudget(_ budget: Budget) {
         budgets.removeAll { $0.id == budget.id }
         saveBudgets()
     }
-    
+
     func saveBudgets() {
         DataService.shared.saveBudgets(budgets)
     }
-    
+
     func loadBudgets() {
         if let loadedBudgets = DataService.shared.loadBudgets() {
             budgets = loadedBudgets
@@ -513,15 +526,15 @@ class FinanceViewModel: ObservableObject {
         checkAndResetBudgetPeriods()
         recalculateBudgetSpending()
     }
-    
+
     func checkAndResetBudgetPeriods() {
         let currentDate = Date()
         var budgetsUpdated = false
-        
+
         for i in 0..<budgets.count {
             let budget = budgets[i]
             let currentPeriodStart = getCurrentPeriodStartDate(for: budget.timePeriod, from: currentDate)
-            
+
             if shouldResetBudgetPeriod(budget: budget, currentPeriodStart: currentPeriodStart) {
                 var updatedBudget = budget
                 updatedBudget.periodStartDate = currentPeriodStart
@@ -530,32 +543,32 @@ class FinanceViewModel: ObservableObject {
                 budgetsUpdated = true
             }
         }
-        
+
         if budgetsUpdated {
             saveBudgets()
         }
     }
-    
+
     private func shouldResetBudgetPeriod(budget: Budget, currentPeriodStart: Date) -> Bool {
         guard let budgetPeriodStart = budget.periodStartDate else {
             return true
         }
         return currentPeriodStart > budgetPeriodStart
     }
-    
+
     func getCurrentPeriodStartDate(for timePeriod: TimePeriod, from referenceDate: Date) -> Date {
         let calendar = Calendar.current
-        
+
         switch timePeriod {
         case .weekly:
             var components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: referenceDate)
             components.weekday = 2 // Monday
             return calendar.date(from: components) ?? referenceDate
-            
+
         case .monthly:
             let components = calendar.dateComponents([.year, .month], from: referenceDate)
             return calendar.date(from: components) ?? referenceDate
-            
+
         case .yearly:
             let components = calendar.dateComponents([.year], from: referenceDate)
             return calendar.date(from: components) ?? referenceDate
@@ -566,29 +579,29 @@ class FinanceViewModel: ObservableObject {
         for i in 0..<budgets.count {
             budgets[i].currentSpent = 0.0
         }
-        
+
         let expenseTransactions = transactions.filter { $0.type == .expense }
-        
+
         for i in 0..<budgets.count {
             let budget = budgets[i]
             guard let periodStartDate = budget.periodStartDate else { continue }
-            
+
             var totalSpent: Double = 0.0
             let periodEndDate = budget.timePeriod.getNextResetDate(from: periodStartDate)
-            
+
             for transaction in expenseTransactions {
                 guard transaction.date >= periodStartDate && transaction.date < periodEndDate else { continue }
-                
+
                 if shouldTransactionCountForBudget(transaction: transaction, budget: budget) {
                     totalSpent += transaction.amount
                 }
             }
             budgets[i].currentSpent = totalSpent
         }
-        
+
         saveBudgets()
     }
-    
+
     private func shouldTransactionCountForBudget(transaction: Transaction, budget: Budget) -> Bool {
         switch budget.type {
         case .overall:
@@ -603,11 +616,11 @@ class FinanceViewModel: ObservableObject {
     }
 
     // MARK: - Test Data, Import/Export
-    
+
     func generateTestData() {
         if incomeCategories.isEmpty { incomeCategories = Category.defaultIncomeCategories }
         if expenseCategories.isEmpty { expenseCategories = Category.defaultExpenseCategories }
-        
+
         if accounts.isEmpty {
             accounts = [
                 Account(name: "Savings Account", type: .savings, initialBalance: 1500.0, balance: 1500.0),
@@ -615,37 +628,37 @@ class FinanceViewModel: ObservableObject {
                 Account(name: "Credit Card", type: .credit, initialBalance: 0.0, balance: 0.0)
             ]
         }
-        
+
         let currentDate = Date()
         let calendar = Calendar.current
         var newTransactions: [Transaction] = []
-        
+
         let savingsId = accounts.first(where: { $0.type == .savings })?.id
         let currentId = accounts.first(where: { $0.type == .current })?.id
         let creditId = accounts.first(where: { $0.type == .credit })?.id
-        
+
         let salaryId = incomeCategories.first(where: { $0.name == "Salary" })?.id ?? incomeCategories[0].id
         let loanId = incomeCategories.first(where: { $0.name == "Student Loan" })?.id ?? incomeCategories[0].id
         let giftId = incomeCategories.first(where: { $0.name == "Gift" })?.id ?? incomeCategories[0].id
-        
+
         let foodId = expenseCategories.first(where: { $0.name == "Food" })?.id ?? expenseCategories[0].id
         let transportId = expenseCategories.first(where: { $0.name == "Transport" })?.id ?? expenseCategories[0].id
         let entertainmentId = expenseCategories.first(where: { $0.name == "Entertainment" })?.id ?? expenseCategories[0].id
         let shoppingId = expenseCategories.first(where: { $0.name == "Shopping" })?.id ?? expenseCategories[0].id
         let billsId = expenseCategories.first(where: { $0.name == "Bills" })?.id ?? expenseCategories[0].id
         let housingId = expenseCategories.first(where: { $0.name == "Housing" })?.id ?? expenseCategories[0].id
-        
+
         for monthOffset in 0..<6 {
             let monthDate = calendar.date(byAdding: .month, value: -monthOffset, to: currentDate)!
-            
+
             let salaryDay = calendar.date(bySettingHour: 9, minute: 30, second: 0, of: getDateForDay(25, in: monthDate))!
             newTransactions.append(Transaction(date: salaryDay, amount: Double.random(in: 1800...2200), description: "Monthly Salary", toAccount: .current, toAccountId: currentId, type: .income, categoryId: salaryId))
-            
+
             if monthOffset % 3 == 0 {
                 let loanDay = calendar.date(bySettingHour: 10, minute: 15, second: 0, of: getDateForDay(15, in: monthDate))!
                 newTransactions.append(Transaction(date: loanDay, amount: 2500.0, description: "Student Loan Installment", toAccount: .current, toAccountId: currentId, type: .income, categoryId: loanId))
             }
-            
+
             for _ in 1...15 {
                 let randomDay = Int.random(in: 1...28)
                 let expenseDate = calendar.date(bySettingHour: Int.random(in: 8...21), minute: Int.random(in: 0...59), second: 0, of: getDateForDay(randomDay, in: monthDate))!
@@ -655,30 +668,30 @@ class FinanceViewModel: ObservableObject {
                 newTransactions.append(Transaction(date: expenseDate, amount: Double.random(in: amountRange), description: "\(categoryName) expense", fromAccount: isCredit ? .credit : .current, fromAccountId: isCredit ? creditId : currentId, type: .expense, categoryId: categoryId))
             }
         }
-        
+
         transactions.append(contentsOf: newTransactions)
         DataService.shared.saveTransactions(transactions)
         DataService.shared.saveAccounts(accounts)
         recalcAccounts()
         handleTransactionChange()
     }
-    
+
     private func getDateForDay(_ day: Int, in date: Date) -> Date {
         let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month], from: date)
         components.day = min(day, calendar.range(of: .day, in: .month, for: date)?.count ?? 28)
         return calendar.date(from: components) ?? date
     }
-    
+
     // MARK: - Recurring Transactions API for UI (Stubs)
     func updateRecurringTransaction(_ transaction: Transaction) {
         // TODO: Implement updating recurring transactions
     }
-    
+
     func generateRecurringTransactions(from transaction: Transaction) {
         // TODO: Implement generation of recurring transactions
     }
-    
+
     func deleteRecurringTransaction(_ transaction: Transaction, deleteAllFutureInstances: Bool) {
         // TODO: Implement deletion of recurring transactions
     }
@@ -689,7 +702,7 @@ extension FinanceViewModel {
     // Import data from a file
     func importData(from url: URL) -> (success: Bool, message: String) {
         let fileExtension = url.pathExtension.lowercased()
-        
+
         switch fileExtension {
         case "json":
             return importFromJSON(url: url)
@@ -699,7 +712,7 @@ extension FinanceViewModel {
             return (false, "Unsupported file format. Please use JSON or CSV files exported from this app.")
         }
     }
-    
+
     // Import data from JSON file
     private func importFromJSON(url: URL) -> (success: Bool, message: String) {
         do {
@@ -708,7 +721,7 @@ extension FinanceViewModel {
             guard fileManager.fileExists(atPath: url.path) else {
                 return (false, "File does not exist at the specified location.")
             }
-            
+
             // Try to read the file
             let data: Data
             do {
@@ -716,9 +729,9 @@ extension FinanceViewModel {
             } catch {
                 return (false, "Could not read file: \(error.localizedDescription). This may be a permissions issue.")
             }
-            
+
             let decoder = JSONDecoder()
-            
+
             // Create a container to hold the decoded data
             struct ImportContainer: Codable {
                 var accounts: [Account]?
@@ -728,7 +741,7 @@ extension FinanceViewModel {
                 var budgets: [Budget]?
                 var userPreferences: UserPreferences?
             }
-            
+
             // Try to decode the data
             let importedData: ImportContainer
             do {
@@ -736,26 +749,26 @@ extension FinanceViewModel {
             } catch {
                 return (false, "Error decoding JSON file: \(error.localizedDescription). The file may be corrupted or in an invalid format.")
             }
-            
+
             // Count how many items we'll import
             var accountsCount = 0
             var transactionsCount = 0
             var incomeCategoriesCount = 0
             var expenseCategoriesCount = 0
             var budgetsCount = 0
-            
+
             // Import accounts
             if let importedAccounts = importedData.accounts {
                 // Create a mapping of old IDs to new IDs for proper referencing
                 var accountIdMapping = [UUID: UUID]()
-                
+
                 for importedAccount in importedAccounts {
                     // Check if this account already exists (by name and type)
                     if !accounts.contains(where: { $0.name == importedAccount.name && $0.type == importedAccount.type }) {
                         // Create new account with a new ID
                         let newId = UUID()
                         accountIdMapping[importedAccount.id] = newId
-                        
+
                         var newAccount = importedAccount
                         newAccount.id = newId
                         accounts.append(newAccount)
@@ -763,463 +776,467 @@ extension FinanceViewModel {
                     }
                 }
                 DataService.shared.saveAccounts(accounts)
-                                
-                                // Import categories first (needed for transactions)
-                                if let importedIncomeCategories = importedData.incomeCategories {
-                                    var categoryIdMapping = [UUID: UUID]()
-                                    
-                                    for importedCategory in importedIncomeCategories {
-                                        if !incomeCategories.contains(where: { $0.name == importedCategory.name }) {
-                                            let newId = UUID()
-                                            categoryIdMapping[importedCategory.id] = newId
-                                            
-                                            var newCategory = importedCategory
-                                            newCategory.id = newId
-                                            incomeCategories.append(newCategory)
-                                            incomeCategoriesCount += 1
-                                        }
-                                    }
-                                    
-                                    DataService.shared.saveCategories(incomeCategories, type: .income)
-                                }
-                                
-                                if let importedExpenseCategories = importedData.expenseCategories {
-                                    var categoryIdMapping = [UUID: UUID]()
-                                    
-                                    for importedCategory in importedExpenseCategories {
-                                        if !expenseCategories.contains(where: { $0.name == importedCategory.name }) {
-                                            let newId = UUID()
-                                            categoryIdMapping[importedCategory.id] = newId
-                                            
-                                            var newCategory = importedCategory
-                                            newCategory.id = newId
-                                            expenseCategories.append(newCategory)
-                                            expenseCategoriesCount += 1
-                                        }
-                                    }
-                                    
-                                    DataService.shared.saveCategories(expenseCategories, type: .expense)
-                                }
-                                
-                                // Import transactions with proper account references
-                                if let importedTransactions = importedData.transactions {
-                                    for importedTransaction in importedTransactions {
-                                        // Skip if we already have this transaction (by date, amount, and description)
-                                        if transactions.contains(where: {
-                                            $0.date == importedTransaction.date &&
-                                            $0.amount == importedTransaction.amount &&
-                                            $0.description == importedTransaction.description
-                                        }) {
-                                            continue
-                                        }
-                                        
-                                        var newTransaction = importedTransaction
-                                        newTransaction.id = UUID() // Generate new ID
-                                        
-                                        // Update account references if needed
-                                        if let fromAccountId = importedTransaction.fromAccountId,
-                                           let mappedId = accountIdMapping[fromAccountId] {
-                                            newTransaction.fromAccountId = mappedId
-                                        }
-                                        
-                                        if let toAccountId = importedTransaction.toAccountId,
-                                           let mappedId = accountIdMapping[toAccountId] {
-                                            newTransaction.toAccountId = mappedId
-                                        }
-                                        
-                                        // Add the transaction
-                                        transactions.append(newTransaction)
-                                        transactionsCount += 1
-                                    }
-                                    
-                                    DataService.shared.saveTransactions(transactions)
-                                }
-                
-                // Import budgets with proper account and category references
-                                if let importedBudgets = importedData.budgets {
-                                    for importedBudget in importedBudgets {
-                                        // Skip if we already have this budget (by name and amount)
-                                        if budgets.contains(where: { $0.name == importedBudget.name && $0.amount == importedBudget.amount }) {
-                                            continue
-                                        }
-                                        
-                                        var newBudget = importedBudget
-                                        newBudget.id = UUID() // Generate new ID
-                                        
-                                        // Add the budget
-                                        budgets.append(newBudget)
-                                        budgetsCount += 1
-                                    }
-                                    
-                                    DataService.shared.saveBudgets(budgets)
-                                }
-                                
-                                // Import user preferences if provided
-                                if let importedPreferences = importedData.userPreferences {
-                                    // Only update preferences if explicitly requested
-                                    // For now, we'll skip this to avoid overwriting current preferences
-                                }
-                                
-                                // Recalculate account balances after importing transactions
-                                recalcAccounts()
-                                recalculateBudgetSpending()
-                                
-                                // Success message with counts
-                                let successMessage = """
-                                Import completed successfully:
-                                • \(accountsCount) accounts added
-                                • \(transactionsCount) transactions imported
-                                • \(incomeCategoriesCount + expenseCategoriesCount) categories added
-                                • \(budgetsCount) budgets imported
-                                """
-                                
-                                return (true, successMessage)
-                            }
-                            
-                            return (false, "File did not contain valid account data.")
-                            
-                        } catch {
-                            print("Import error: \(error)")
-                            return (false, "Error reading file: \(error.localizedDescription)")
+
+                // Import categories first (needed for transactions)
+                if let importedIncomeCategories = importedData.incomeCategories {
+                    var categoryIdMapping = [UUID: UUID]()
+
+                    for importedCategory in importedIncomeCategories {
+                        if !incomeCategories.contains(where: { $0.name == importedCategory.name }) {
+                            let newId = UUID()
+                            categoryIdMapping[importedCategory.id] = newId
+
+                            var newCategory = importedCategory
+                            newCategory.id = newId
+                            incomeCategories.append(newCategory)
+                            incomeCategoriesCount += 1
                         }
                     }
-                    // Import data from CSV file
-                    private func importFromCSV(url: URL) -> (success: Bool, message: String) {
-                        do {
-                            let csvString = try String(contentsOf: url, encoding: .utf8)
-                            var lines = csvString.components(separatedBy: .newlines)
-                            
-                            // Variables for counting imported items
-                            var accountsCount = 0
-                            var transactionsCount = 0
-                            var categoriesCount = 0
-                            var budgetsCount = 0
-                            
-                            // Maps to store ID mappings from old to new
-                            var accountIdMapping = [String: UUID]()
-                            var categoryIdMapping = [String: UUID]()
-                            
-                            // Process accounts section
-                            if let accountsStartIndex = lines.firstIndex(of: "ACCOUNTS") {
-                                var currentLine = accountsStartIndex + 2 // Skip header
-                                
-                                while currentLine < lines.count && !lines[currentLine].isEmpty && lines[currentLine] != "TRANSACTIONS" {
-                                    let line = lines[currentLine]
-                                    let components = parseCSVLine(line)
-                                    
-                                    if components.count >= 5 {
-                                        let idString = components[0]
-                                        let name = components[1].replacingOccurrences(of: "\"", with: "")
-                                        let typeString = components[2]
-                                        let initialBalanceString = components[3]
-                                        let currentBalanceString = components[4]
-                                        // Only create if account doesn't already exist by name and type
-                                                    if let type = AccountType(rawValue: typeString),
-                                                       let initialBalance = Double(initialBalanceString),
-                                                       let currentBalance = Double(currentBalanceString),
-                                                       !accounts.contains(where: { $0.name == name && $0.type == type }) {
-                                                        
-                                                        let newId = UUID()
-                                                        accountIdMapping[idString] = newId
-                                                        
-                                                        let newAccount = Account(
-                                                            id: newId,
-                                                            name: name,
-                                                            type: type,
-                                                            initialBalance: initialBalance,
-                                                            balance: currentBalance
-                                                        )
-                                                        
-                                                        accounts.append(newAccount)
-                                                        accountsCount += 1
-                                                    }
-                                                }
-                                                
-                                                currentLine += 1
-                                            }
-                                            
-                                            // Save accounts
-                                            DataService.shared.saveAccounts(accounts)
-                                        }
-                                        
-                                        // Process categories section
-                                        if let categoriesStartIndex = lines.firstIndex(of: "CATEGORIES") {
-                                            var currentLine = categoriesStartIndex + 2 // Skip header
-                                            
-                                            while currentLine < lines.count && !lines[currentLine].isEmpty && !lines[currentLine].contains("BUDGETS") {
-                                                let line = lines[currentLine]
-                                                let components = parseCSVLine(line)
-                                                
-                                                if components.count >= 4 {
-                                                    let idString = components[0]
-                                                    let name = components[1].replacingOccurrences(of: "\"", with: "")
-                                                    let typeString = components[2]
-                                                    let iconName = components[3]
-                                                    
-                                                    if let type = CategoryType(rawValue: typeString) {
-                                                        let newId = UUID()
-                                                        categoryIdMapping[idString] = newId
-                                                        
-                                                        let newCategory = Category(
-                                                            id: newId,
-                                                            name: name,
-                                                            type: type,
-                                                            iconName: iconName
-                                                        )
-                                                        
-                                                        if type == .income {
-                                                            if !incomeCategories.contains(where: { $0.name == name }) {
-                                                                incomeCategories.append(newCategory)
-                                                                categoriesCount += 1
-                                                            }
-                                                        } else {
-                                                            if !expenseCategories.contains(where: { $0.name == name }) {
-                                                                expenseCategories.append(newCategory)
-                                                                categoriesCount += 1
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                
-                                                currentLine += 1
-                                            }
-                                            
-                                            // Save categories
-                                            DataService.shared.saveCategories(incomeCategories, type: .income)
-                                            DataService.shared.saveCategories(expenseCategories, type: .expense)
-                                        }
-                            // Process transactions section
-                                       if let transactionsStartIndex = lines.firstIndex(of: "TRANSACTIONS") {
-                                           var currentLine = transactionsStartIndex + 2 // Skip header
-                                           
-                                           while currentLine < lines.count && !lines[currentLine].isEmpty && !lines[currentLine].contains("CATEGORIES") {
-                                               let line = lines[currentLine]
-                                               let components = parseCSVLine(line)
-                                               
-                                               if components.count >= 15 {
-                                                   let idString = components[0]
-                                                   let dateString = components[1]
-                                                   let amountString = components[2]
-                                                   let description = components[3].replacingOccurrences(of: "\"", with: "")
-                                                   let fromAccountString = components[4]
-                                                   let toAccountString = components[5]
-                                                   let fromAccountIdString = components[6]
-                                                   let toAccountIdString = components[7]
-                                                   let typeString = components[8]
-                                                   let categoryIdString = components[9]
-                                                   let isSplitString = components[10]
-                                                   let friendName = components[11].replacingOccurrences(of: "\"", with: "")
-                                                   let friendAmountString = components[12]
-                                                   let userAmountString = components[13]
-                                                   let friendPaymentDestination = components[14].replacingOccurrences(of: "\"", with: "")
-                                                   
-                                                   // Convert date
-                                                   let dateFormatter = DateFormatter()
-                                                   dateFormatter.dateFormat = "yyyy-MM-dd"
-                                                   if let date = dateFormatter.date(from: dateString),
-                                                      let amount = Double(amountString),
-                                                      let type = TransactionType(rawValue: typeString) {
-                                                       
-                                                       // Skip if we already have a similar transaction
-                                                       if transactions.contains(where: {
-                                                           $0.date == date &&
-                                                           $0.amount == amount &&
-                                                           $0.description == description
-                                                       }) {
-                                                           currentLine += 1
-                                                           continue
-                                                       }
-                                                       
-                                                       // Map account types and IDs
-                                                       var fromAccount: AccountType? = nil
-                                                       if !fromAccountString.isEmpty {
-                                                           fromAccount = AccountType(rawValue: fromAccountString)
-                                                       }
-                                                       
-                                                       var toAccount: AccountType? = nil
-                                                       if !toAccountString.isEmpty {
-                                                           toAccount = AccountType(rawValue: toAccountString)
-                                                       }
-                                                       
-                                                       var fromAccountId: UUID? = nil
-                                                       if !fromAccountIdString.isEmpty {
-                                                           fromAccountId = accountIdMapping[fromAccountIdString]
-                                                       }
-                                                       
-                                                       var toAccountId: UUID? = nil
-                                                       if !toAccountIdString.isEmpty {
-                                                           toAccountId = accountIdMapping[toAccountIdString]
-                                                       }
-                                                       
-                                                       // Map category ID
-                                                       var categoryId: UUID = UUID() // Default as fallback
-                                                       if let mappedCategoryId = categoryIdMapping[categoryIdString] {
-                                                           categoryId = mappedCategoryId
-                                                       } else if let category = (type == .income ? incomeCategories : expenseCategories).first {
-                                                           // Use first available category if mapping fails
-                                                           categoryId = category.id
-                                                       }
-                                                       
-                                                       // Split payment info
-                                                       let isSplit = isSplitString.lowercased() == "true"
-                                                       let friendAmount = Double(friendAmountString) ?? 0.0
-                                                       let userAmount = Double(userAmountString) ?? 0.0
-                                                       
-                                                       // Create the transaction
-                                                                                   let newTransaction = Transaction(
-                                                                                       id: UUID(), // Generate new ID
-                                                                                       date: date,
-                                                                                       amount: amount,
-                                                                                       description: description,
-                                                                                       fromAccount: fromAccount,
-                                                                                       toAccount: toAccount,
-                                                                                       fromAccountId: fromAccountId,
-                                                                                       toAccountId: toAccountId,
-                                                                                       type: type,
-                                                                                       categoryId: categoryId,
-                                                                                       isSplit: isSplit,
-                                                                                       friendName: friendName,
-                                                                                       friendAmount: friendAmount,
-                                                                                       userAmount: userAmount,
-                                                                                       friendPaymentDestination: friendPaymentDestination
-                                                                                   )
-                                                                                   
-                                                                                   transactions.append(newTransaction)
-                                                                                   transactionsCount += 1
-                                                                               }
-                                                                           }
-                                                                           
-                                                                           currentLine += 1
-                                                                       }
-                                                                       
-                                                                       // Save transactions
-                                                                       DataService.shared.saveTransactions(transactions)
-                                                                   }
-                                                                   
-                                                                   // Process budgets section
-                                                                   if let budgetsStartIndex = lines.firstIndex(of: "BUDGETS") {
-                                                                       var currentLine = budgetsStartIndex + 2 // Skip header
-                                                                       
-                                                                       while currentLine < lines.count && !lines[currentLine].isEmpty {
-                                                                           let line = lines[currentLine]
-                                                                           let components = parseCSVLine(line)
-                                                                           
-                                                                           if components.count >= 8 {
-                                                                               let idString = components[0]
-                                                                               let name = components[1].replacingOccurrences(of: "\"", with: "")
-                                                                               let amountString = components[2]
-                                                                               let typeString = components[3]
-                                                                               let timePeriodString = components[4]
-                                                                               let categoryIdString = components[5]
-                                                                               let accountIdString = components[6]
-                                                                               let startDateString = components[7]
-                                                                               let currentSpentString = components.count > 8 ? components[8] : "0"
-                                                                               
-                                                                               // Convert types
-                                                                               if let amount = Double(amountString),
-                                                                                  let budgetType = BudgetType(rawValue: typeString),
-                                                                                  let timePeriod = TimePeriod(rawValue: timePeriodString) {
-                                                                                   
-                                                                                   // Skip if budget already exists
-                                                                                   if budgets.contains(where: { $0.name == name && $0.amount == amount }) {
-                                                                                       currentLine += 1
-                                                                                       continue
-                                                                                   }
-                                                                                   
-                                                                                   // Parse date
-                                                                                   let dateFormatter = DateFormatter()
-                                                                                   dateFormatter.dateFormat = "yyyy-MM-dd"
-                                                                                   let startDate = dateFormatter.date(from: startDateString) ?? Date()
-                                                                                   let currentSpent = Double(currentSpentString) ?? 0.0
-                                                                                   
-                                                                                   // Map category and account IDs
-                                                                                   var categoryId: UUID? = nil
-                                                                                   if !categoryIdString.isEmpty {
-                                                                                       categoryId = categoryIdMapping[categoryIdString]
-                                                                                   }
-                                                                                   
-                                                                                   var accountId: UUID? = nil
-                                                                                   if !accountIdString.isEmpty {
-                                                                                       accountId = accountIdMapping[accountIdString]
-                                                                                   }
-                                                                                   
-                                                                                   
-                                                                                   // Create the budget
-                                                                                   let newBudget = Budget(
-                                                                                       id: UUID(), // Generate new ID
-                                                                                       name: name,
-                                                                                       amount: amount,
-                                                                                       type: budgetType,
-                                                                                       timePeriod: timePeriod,
-                                                                                       categoryId: categoryId,
-                                                                                       accountId: accountId,
-                                                                                       startDate: startDate,
-                                                                                       currentSpent: currentSpent
-                                                                                   )
-                                                                                   
-                                                                                   budgets.append(newBudget)
-                                                                                   budgetsCount += 1
-                                                                               }
-                                                                           }
-                                                                           
-                                                                           currentLine += 1
-                                                                       }
-                                                                       
-                                                                       // Save budgets
-                                                                       DataService.shared.saveBudgets(budgets)
-                                                                   }
-                                                                   
-                                                                   // Recalculate account balances after importing transactions
-                                                                   recalcAccounts()
-                                                                   recalculateBudgetSpending()
-                                                                   
-                                                                   let successMessage = """
-                                                                   Import completed successfully:
-                                                                   • \(accountsCount) accounts added
-                                                                   • \(transactionsCount) transactions imported
-                                                                   • \(categoriesCount) categories added
-                                                                   • \(budgetsCount) budgets imported
-                                                                   """
-                                                                   
-                                                                   return (true, successMessage)
-                                                                   
-                                                               } catch {
-                                                                   print("Import error: \(error)")
-                                                                   return (false, "Error reading CSV file: \(error.localizedDescription)")
-                                                               }
-                                                           }
-                                                           
-                                                           // Helper function to parse CSV lines properly (handling quotes)
-                                                           private func parseCSVLine(_ line: String) -> [String] {
-                                                               var result: [String] = []
-                                                               var currentValue = ""
-                                                               var insideQuotes = false
-                                                               
-                                                               for char in line {
-                                                                   if char == "\"" {
-                                                                       insideQuotes.toggle()
-                                                                   } else if char == "," && !insideQuotes {
-                                                                       result.append(currentValue)
-                                                                       currentValue = ""
-                                                                   } else {
-                                                                       currentValue.append(char)
-                                                                   }
-                                                               }
-                                                               
-                                                               // Add the last component
-                                                               result.append(currentValue)
-                                                               
-                                                               return result
-                                                           }
-                                                       }
+
+                    DataService.shared.saveCategories(incomeCategories, type: .income)
+                }
+
+                if let importedExpenseCategories = importedData.expenseCategories {
+                    var categoryIdMapping = [UUID: UUID]()
+
+                    for importedCategory in importedExpenseCategories {
+                        if !expenseCategories.contains(where: { $0.name == importedCategory.name }) {
+                            let newId = UUID()
+                            categoryIdMapping[importedCategory.id] = newId
+
+                            var newCategory = importedCategory
+                            newCategory.id = newId
+                            expenseCategories.append(newCategory)
+                            expenseCategoriesCount += 1
+                        }
+                    }
+
+                    DataService.shared.saveCategories(expenseCategories, type: .expense)
+                }
+
+                // Import transactions with proper account references
+                if let importedTransactions = importedData.transactions {
+                    for importedTransaction in importedTransactions {
+                        // Skip if we already have this transaction (by date, amount, and description)
+                        if transactions.contains(where: {
+                            $0.date == importedTransaction.date &&
+                                $0.amount == importedTransaction.amount &&
+                                $0.description == importedTransaction.description
+                        }) {
+                            continue
+                        }
+
+                        var newTransaction = importedTransaction
+                        newTransaction.id = UUID() // Generate new ID
+
+                        // Update account references if needed
+                        if let fromAccountId = importedTransaction.fromAccountId,
+                           let mappedId = accountIdMapping[fromAccountId] {
+                            newTransaction.fromAccountId = mappedId
+                        }
+
+                        if let toAccountId = importedTransaction.toAccountId,
+                           let mappedId = accountIdMapping[toAccountId] {
+                            newTransaction.toAccountId = mappedId
+                        }
+
+                        // Add the transaction
+                        transactions.append(newTransaction)
+                        transactionsCount += 1
+                    }
+
+                    DataService.shared.saveTransactions(transactions)
+                }
+
+                // Import budgets with proper account and category references
+                if let importedBudgets = importedData.budgets {
+                    for importedBudget in importedBudgets {
+                        // Skip if we already have this budget (by name and amount)
+                        if budgets.contains(where: { $0.name == importedBudget.name && $0.amount == importedBudget.amount }) {
+                            continue
+                        }
+
+                        var newBudget = importedBudget
+                        newBudget.id = UUID() // Generate new ID
+
+                        // Add the budget
+                        budgets.append(newBudget)
+                        budgetsCount += 1
+                    }
+
+                    DataService.shared.saveBudgets(budgets)
+                }
+
+                // Import user preferences if provided
+                if let importedPreferences = importedData.userPreferences {
+                    // Only update preferences if explicitly requested
+                    // For now, we'll skip this to avoid overwriting current preferences
+                }
+
+                // Recalculate account balances after importing transactions
+                recalcAccounts()
+                recalculateBudgetSpending()
+
+                // Success message with counts
+                let successMessage = """
+                        Import completed successfully:
+                        • \(accountsCount) accounts added
+                        • \(transactionsCount) transactions imported
+                        • \(incomeCategoriesCount + expenseCategoriesCount) categories added
+                        • \(budgetsCount) budgets imported
+                        """
+
+                return (true, successMessage)
+            }
+
+            return (false, "File did not contain valid account data.")
+
+        } catch {
+            print("Import error: \(error)")
+            return (false, "Error reading file: \(error.localizedDescription)")
+        }
+    }
+    // Import data from CSV file
+    private func importFromCSV(url: URL) -> (success: Bool, message: String) {
+        do {
+            let csvString = try String(contentsOf: url, encoding: .utf8)
+            var lines = csvString.components(separatedBy: .newlines)
+
+            // Variables for counting imported items
+            var accountsCount = 0
+            var transactionsCount = 0
+            var categoriesCount = 0
+            var budgetsCount = 0
+
+            // Maps to store ID mappings from old to new
+            var accountIdMapping = [String: UUID]()
+            var categoryIdMapping = [String: UUID]()
+
+            // Process accounts section
+            if let accountsStartIndex = lines.firstIndex(of: "ACCOUNTS") {
+                var currentLine = accountsStartIndex + 2 // Skip header
+
+                while currentLine < lines.count && !lines[currentLine].isEmpty && lines[currentLine] != "TRANSACTIONS" {
+                    let line = lines[currentLine]
+                    let components = parseCSVLine(line)
+
+                    if components.count >= 5 {
+                        let idString = components[0]
+                        let name = components[1].replacingOccurrences(of: "\"", with: "")
+                        let typeString = components[2]
+                        let initialBalanceString = components[3]
+                        let currentBalanceString = components[4]
+                        
+                        if let type = AccountType(rawValue: typeString),
+                           let initialBalance = Double(initialBalanceString),
+                           let currentBalance = Double(currentBalanceString) {
+
+                            // Check if an account with the same name and type already exists
+                            if let existingAccount = accounts.first(where: { $0.name == name && $0.type == type }) {
+                                // If it exists, map the old ID from the CSV to the existing account's ID
+                                accountIdMapping[idString] = existingAccount.id
+                            } else {
+                                // If it doesn't exist, create a new account and map the old ID to the new ID
+                                let newId = UUID()
+                                accountIdMapping[idString] = newId
+
+                                let newAccount = Account(
+                                    id: newId,
+                                    name: name,
+                                    type: type,
+                                    initialBalance: initialBalance,
+                                    balance: currentBalance
+                                )
+
+                                accounts.append(newAccount)
+                                accountsCount += 1
+                            }
+                        }
+                    }
+                    currentLine += 1
+                }
+
+                // Save accounts
+                DataService.shared.saveAccounts(accounts)
+            }
+
+            // Process categories section
+            if let categoriesStartIndex = lines.firstIndex(of: "CATEGORIES") {
+                var currentLine = categoriesStartIndex + 2 // Skip header
+
+                while currentLine < lines.count && !lines[currentLine].isEmpty && !lines[currentLine].contains("BUDGETS") {
+                    let line = lines[currentLine]
+                    let components = parseCSVLine(line)
+
+                    if components.count >= 4 {
+                        let idString = components[0]
+                        let name = components[1].replacingOccurrences(of: "\"", with: "")
+                        let typeString = components[2]
+                        let iconName = components[3]
+
+                        if let type = CategoryType(rawValue: typeString) {
+                            let newId = UUID()
+                            categoryIdMapping[idString] = newId
+
+                            let newCategory = Category(
+                                id: newId,
+                                name: name,
+                                type: type,
+                                iconName: iconName
+                            )
+
+                            if type == .income {
+                                if !incomeCategories.contains(where: { $0.name == name }) {
+                                    incomeCategories.append(newCategory)
+                                    categoriesCount += 1
+                                }
+                            } else {
+                                if !expenseCategories.contains(where: { $0.name == name }) {
+                                    expenseCategories.append(newCategory)
+                                    categoriesCount += 1
+                                }
+                            }
+                        }
+                    }
+
+                    currentLine += 1
+                }
+
+                // Save categories
+                DataService.shared.saveCategories(incomeCategories, type: .income)
+                DataService.shared.saveCategories(expenseCategories, type: .expense)
+            }
+            // Process transactions section
+            if let transactionsStartIndex = lines.firstIndex(of: "TRANSACTIONS") {
+                var currentLine = transactionsStartIndex + 2 // Skip header
+
+                while currentLine < lines.count && !lines[currentLine].isEmpty && !lines[currentLine].contains("CATEGORIES") {
+                    let line = lines[currentLine]
+                    let components = parseCSVLine(line)
+
+                    if components.count >= 15 {
+                        let idString = components[0]
+                        let dateString = components[1]
+                        let amountString = components[2]
+                        let description = components[3].replacingOccurrences(of: "\"", with: "")
+                        let fromAccountString = components[4]
+                        let toAccountString = components[5]
+                        let fromAccountIdString = components[6]
+                        let toAccountIdString = components[7]
+                        let typeString = components[8]
+                        let categoryIdString = components[9]
+                        let isSplitString = components[10]
+                        let friendName = components[11].replacingOccurrences(of: "\"", with: "")
+                        let friendAmountString = components[12]
+                        let userAmountString = components[13]
+                        let friendPaymentDestination = components[14].replacingOccurrences(of: "\"", with: "")
+
+                        // Convert date
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateFormat = "yyyy-MM-dd"
+                        if let date = dateFormatter.date(from: dateString),
+                           let amount = Double(amountString),
+                           let type = TransactionType(rawValue: typeString) {
+
+                            // Skip if we already have a similar transaction
+                            if transactions.contains(where: {
+                                $0.date == date &&
+                                    $0.amount == amount &&
+                                    $0.description == description
+                            }) {
+                                currentLine += 1
+                                continue
+                            }
+
+                            // Map account types and IDs
+                            var fromAccount: AccountType? = nil
+                            if !fromAccountString.isEmpty {
+                                fromAccount = AccountType(rawValue: fromAccountString)
+                            }
+
+                            var toAccount: AccountType? = nil
+                            if !toAccountString.isEmpty {
+                                toAccount = AccountType(rawValue: toAccountString)
+                            }
+
+                            var fromAccountId: UUID? = nil
+                            if !fromAccountIdString.isEmpty {
+                                fromAccountId = accountIdMapping[fromAccountIdString]
+                            }
+
+                            var toAccountId: UUID? = nil
+                            if !toAccountIdString.isEmpty {
+                                toAccountId = accountIdMapping[toAccountIdString]
+                            }
+
+                            // Map category ID
+                            var categoryId: UUID = UUID() // Default as fallback
+                            if let mappedCategoryId = categoryIdMapping[categoryIdString] {
+                                categoryId = mappedCategoryId
+                            } else if let category = (type == .income ? incomeCategories : expenseCategories).first {
+                                // Use first available category if mapping fails
+                                categoryId = category.id
+                            }
+
+                            // Split payment info
+                            let isSplit = isSplitString.lowercased() == "true"
+                            let friendAmount = Double(friendAmountString) ?? 0.0
+                            let userAmount = Double(userAmountString) ?? 0.0
+
+                            // Create the transaction
+                            let newTransaction = Transaction(
+                                id: UUID(), // Generate new ID
+                                date: date,
+                                amount: amount,
+                                description: description,
+                                fromAccount: fromAccount,
+                                toAccount: toAccount,
+                                fromAccountId: fromAccountId,
+                                toAccountId: toAccountId,
+                                type: type,
+                                categoryId: categoryId,
+                                isSplit: isSplit,
+                                friendName: friendName,
+                                friendAmount: friendAmount,
+                                userAmount: userAmount,
+                                friendPaymentDestination: friendPaymentDestination
+                            )
+
+                            transactions.append(newTransaction)
+                            transactionsCount += 1
+                        }
+                    }
+
+                    currentLine += 1
+                }
+
+                // Save transactions
+                DataService.shared.saveTransactions(transactions)
+            }
+
+            // Process budgets section
+            if let budgetsStartIndex = lines.firstIndex(of: "BUDGETS") {
+                var currentLine = budgetsStartIndex + 2 // Skip header
+
+                while currentLine < lines.count && !lines[currentLine].isEmpty {
+                    let line = lines[currentLine]
+                    let components = parseCSVLine(line)
+
+                    if components.count >= 8 {
+                        let idString = components[0]
+                        let name = components[1].replacingOccurrences(of: "\"", with: "")
+                        let amountString = components[2]
+                        let typeString = components[3]
+                        let timePeriodString = components[4]
+                        let categoryIdString = components[5]
+                        let accountIdString = components[6]
+                        let startDateString = components[7]
+                        let currentSpentString = components.count > 8 ? components[8] : "0"
+
+                        // Convert types
+                        if let amount = Double(amountString),
+                           let budgetType = BudgetType(rawValue: typeString),
+                           let timePeriod = TimePeriod(rawValue: timePeriodString) {
+
+                            // Skip if budget already exists
+                            if budgets.contains(where: { $0.name == name && $0.amount == amount }) {
+                                currentLine += 1
+                                continue
+                            }
+
+                            // Parse date
+                            let dateFormatter = DateFormatter()
+                            dateFormatter.dateFormat = "yyyy-MM-dd"
+                            let startDate = dateFormatter.date(from: startDateString) ?? Date()
+                            let currentSpent = Double(currentSpentString) ?? 0.0
+
+                            // Map category and account IDs
+                            var categoryId: UUID? = nil
+                            if !categoryIdString.isEmpty {
+                                categoryId = categoryIdMapping[categoryIdString]
+                            }
+
+                            var accountId: UUID? = nil
+                            if !accountIdString.isEmpty {
+                                accountId = accountIdMapping[accountIdString]
+                            }
 
 
-// Add to FinanceViewModel.swift
+                            // Create the budget
+                            let newBudget = Budget(
+                                id: UUID(), // Generate new ID
+                                name: name,
+                                amount: amount,
+                                type: budgetType,
+                                timePeriod: timePeriod,
+                                categoryId: categoryId,
+                                accountId: accountId,
+                                startDate: startDate,
+                                currentSpent: currentSpent
+                            )
+
+                            budgets.append(newBudget)
+                            budgetsCount += 1
+                        }
+                    }
+
+                    currentLine += 1
+                }
+
+                // Save budgets
+                DataService.shared.saveBudgets(budgets)
+            }
+
+            // Recalculate account balances after importing transactions
+            recalcAccounts()
+            recalculateBudgetSpending()
+
+            let successMessage = """
+                    Import completed successfully:
+                    • \(accountsCount) accounts added
+                    • \(transactionsCount) transactions imported
+                    • \(categoriesCount) categories added
+                    • \(budgetsCount) budgets imported
+                    """
+
+            return (true, successMessage)
+
+        } catch {
+            print("Import error: \(error)")
+            return (false, "Error reading CSV file: \(error.localizedDescription)")
+        }
+    }
+
+    // Helper function to parse CSV lines properly (handling quotes)
+    private func parseCSVLine(_ line: String) -> [String] {
+        var result: [String] = []
+        var currentValue = ""
+        var insideQuotes = false
+
+        for char in line {
+            if char == "\"" {
+                insideQuotes.toggle()
+            } else if char == "," && !insideQuotes {
+                result.append(currentValue)
+                currentValue = ""
+            } else {
+                currentValue.append(char)
+            }
+        }
+
+        // Add the last component
+        result.append(currentValue)
+
+        return result
+    }
+}
+
+
 extension FinanceViewModel {
     // Export data to a file
     func exportData(format: String) -> URL? {
         var fileURL: URL? = nil
-        
+
         switch format.lowercased() {
         case "csv":
             fileURL = exportToCSV()
@@ -1228,55 +1245,55 @@ extension FinanceViewModel {
         default:
             return nil
         }
-        
+
         return fileURL
     }
-    
+
     // Export data to CSV format
     private func exportToCSV() -> URL? {
         let fileName = "finance_export_\(Date().timeIntervalSince1970).csv"
         let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName)
-        
+
         var csvText = "ACCOUNTS\n"
         csvText += "ID,Name,Type,Initial Balance,Current Balance\n"
-        
+
         for account in accounts {
             let line = "\(account.id),\"\(account.name)\",\(account.type.rawValue),\(account.initialBalance),\(account.balance)\n"
             csvText += line
         }
-        
+
         csvText += "\nTRANSACTIONS\n"
         csvText += "ID,Date,Amount,Description,From Account,To Account,From Account ID,To Account ID,Type,Category ID,Is Split,Friend Name,Friend Amount,User Amount,Friend Payment Destination,Is Recurring,Recurrence Interval\n"
-        
+
         for transaction in transactions {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let dateString = dateFormatter.string(from: transaction.date)
-            
+
             let line = "\(transaction.id),\(dateString),\(transaction.amount),\"\(transaction.description)\",\(transaction.fromAccount?.rawValue ?? ""),\(transaction.toAccount?.rawValue ?? ""),\(transaction.fromAccountId?.uuidString ?? ""),\(transaction.toAccountId?.uuidString ?? ""),\(transaction.type.rawValue),\(transaction.categoryId),\(transaction.isSplit),\"\(transaction.friendName)\",\(transaction.friendAmount),\(transaction.userAmount),\"\(transaction.friendPaymentDestination)\",\(transaction.isRecurring),\(transaction.recurrenceInterval.rawValue)\n"
             csvText += line
         }
-        
+
         csvText += "\nCATEGORIES\n"
         csvText += "ID,Name,Type,Icon Name\n"
-        
+
         for category in incomeCategories + expenseCategories {
             let line = "\(category.id),\"\(category.name)\",\(category.type.rawValue),\(category.iconName)\n"
             csvText += line
         }
-        
+
         csvText += "\nBUDGETS\n"
         csvText += "ID,Name,Amount,Type,Time Period,Category ID,Account ID,Start Date,Current Spent\n"
-        
+
         for budget in budgets {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let dateString = dateFormatter.string(from: budget.startDate)
-            
+
             let line = "\(budget.id),\"\(budget.name)\",\(budget.amount),\(budget.type.rawValue),\(budget.timePeriod.rawValue),\(budget.categoryId?.uuidString ?? ""),\(budget.accountId?.uuidString ?? ""),\(dateString),\(budget.currentSpent)\n"
             csvText += line
         }
-        
+
         do {
             try csvText.write(to: path, atomically: true, encoding: .utf8)
             return path
@@ -1285,12 +1302,12 @@ extension FinanceViewModel {
             return nil
         }
     }
-    
+
     // Export data to JSON format
     private func exportToJSON() -> URL? {
         let fileName = "finance_export_\(Date().timeIntervalSince1970).json"
         let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName)
-        
+
         // Create a dictionary with all the data
         let exportData: [String: Any] = [
             "accounts": accounts,
@@ -1301,56 +1318,56 @@ extension FinanceViewModel {
             "userPreferences": userPreferences
         ]
         do {
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = .prettyPrinted
-                    
-                    // Because our top-level structure isn't directly Codable,
-                    // we need to encode each component separately and build a JSON string
-                    var jsonString = "{\n"
-                    
-                    // Encode accounts
-                    if let accountsData = try? encoder.encode(accounts),
-                       let accountsString = String(data: accountsData, encoding: .utf8) {
-                        jsonString += "  \"accounts\": \(accountsString),\n"
-                    }
-                    
-                    // Encode transactions
-                    if let transactionsData = try? encoder.encode(transactions),
-                       let transactionsString = String(data: transactionsData, encoding: .utf8) {
-                        jsonString += "  \"transactions\": \(transactionsString),\n"
-                    }
-                    
-                    // Encode income categories
-                    if let incomeCategoriesData = try? encoder.encode(incomeCategories),
-                       let incomeCategoriesString = String(data: incomeCategoriesData, encoding: .utf8) {
-                        jsonString += "  \"incomeCategories\": \(incomeCategoriesString),\n"
-                    }
-                    
-                    // Encode expense categories
-                    if let expenseCategoriesData = try? encoder.encode(expenseCategories),
-                       let expenseCategoriesString = String(data: expenseCategoriesData, encoding: .utf8) {
-                        jsonString += "  \"expenseCategories\": \(expenseCategoriesString),\n"
-                    }
-                    
-                    // Encode budgets
-                    if let budgetsData = try? encoder.encode(budgets),
-                       let budgetsString = String(data: budgetsData, encoding: .utf8) {
-                        jsonString += "  \"budgets\": \(budgetsString),\n"
-                    }
-                    
-                    // Encode user preferences
-                    if let preferencesData = try? encoder.encode(userPreferences),
-                       let preferencesString = String(data: preferencesData, encoding: .utf8) {
-                        jsonString += "  \"userPreferences\": \(preferencesString)\n"
-                    }
-                    
-                    jsonString += "}"
-                    
-                    try jsonString.write(to: path, atomically: true, encoding: .utf8)
-                    return path
-                } catch {
-                    print("Error saving JSON file: \(error)")
-                    return nil
-                }
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+
+            // Because our top-level structure isn't directly Codable,
+            // we need to encode each component separately and build a JSON string
+            var jsonString = "{\n"
+
+            // Encode accounts
+            if let accountsData = try? encoder.encode(accounts),
+               let accountsString = String(data: accountsData, encoding: .utf8) {
+                jsonString += "  \"accounts\": \(accountsString),\n"
             }
+
+            // Encode transactions
+            if let transactionsData = try? encoder.encode(transactions),
+               let transactionsString = String(data: transactionsData, encoding: .utf8) {
+                jsonString += "  \"transactions\": \(transactionsString),\n"
+            }
+
+            // Encode income categories
+            if let incomeCategoriesData = try? encoder.encode(incomeCategories),
+               let incomeCategoriesString = String(data: incomeCategoriesData, encoding: .utf8) {
+                jsonString += "  \"incomeCategories\": \(incomeCategoriesString),\n"
+            }
+
+            // Encode expense categories
+            if let expenseCategoriesData = try? encoder.encode(expenseCategories),
+               let expenseCategoriesString = String(data: expenseCategoriesData, encoding: .utf8) {
+                jsonString += "  \"expenseCategories\": \(expenseCategoriesString),\n"
+            }
+
+            // Encode budgets
+            if let budgetsData = try? encoder.encode(budgets),
+               let budgetsString = String(data: budgetsData, encoding: .utf8) {
+                jsonString += "  \"budgets\": \(budgetsString),\n"
+            }
+
+            // Encode user preferences
+            if let preferencesData = try? encoder.encode(userPreferences),
+               let preferencesString = String(data: preferencesData, encoding: .utf8) {
+                jsonString += "  \"userPreferences\": \(preferencesString)\n"
+            }
+
+            jsonString += "}"
+
+            try jsonString.write(to: path, atomically: true, encoding: .utf8)
+            return path
+        } catch {
+            print("Error saving JSON file: \(error)")
+            return nil
         }
+    }
+}
