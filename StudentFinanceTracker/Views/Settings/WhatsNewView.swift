@@ -1,11 +1,3 @@
-//
-//  WhatsNewView.swift
-//   
-//
-//  Created by Tom Speake on 6/20/25.
-//
-
-
 import SwiftUI
 
 struct WhatsNewView: View {
@@ -120,6 +112,14 @@ struct WhatsNewView: View {
                 .padding(.horizontal)
             
             VStack(alignment: .leading, spacing: 15) {
+                
+                IssueBullet(
+                    icon: "exclamationmark.triangle.fill",
+                    title: "Account edit sheet",
+                    description: "When a user first taps to edit an account in the Settings view, the edit account sheet appears blank. The issue resolves itself if the user edits a different account and then returns to the original account edit view.",
+                    iconColor: .orange
+                )
+                
                 IssueBullet(
                     icon: "square.split.diagonal.fill",
                     title: "Split Payments Not Exporting",
