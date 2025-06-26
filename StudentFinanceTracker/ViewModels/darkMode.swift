@@ -43,19 +43,25 @@ extension FinanceViewModel {
                 UIColor(red: 0.70, green: 0.20, blue: 0.20, alpha: 1.0)
             })
         case "Teal":
-            return Color(UIColor { traitCollection in
-                traitCollection.userInterfaceStyle == .dark ?
-                UIColor(red: 0.25, green: 0.55, blue: 0.65, alpha: 1.0) :
-                UIColor(red: 0.20, green: 0.50, blue: 0.60, alpha: 1.0)
-            })
-        default:
-            return Color(UIColor { traitCollection in
-                traitCollection.userInterfaceStyle == .dark ?
-                UIColor(red: 0.25, green: 0.45, blue: 0.85, alpha: 1.0) :
-                UIColor(red: 0.20, green: 0.40, blue: 0.70, alpha: 1.0)
-            })
-        }
-    }
+                    return Color(UIColor { traitCollection in
+                        traitCollection.userInterfaceStyle == .dark ?
+                        UIColor(red: 0.25, green: 0.55, blue: 0.65, alpha: 1.0) :
+                        UIColor(red: 0.20, green: 0.50, blue: 0.60, alpha: 1.0)
+                    })
+                case "Pink":
+                    return Color(UIColor { traitCollection in
+                        traitCollection.userInterfaceStyle == .dark ?
+                        UIColor(red: 0.90, green: 0.50, blue: 0.70, alpha: 1.0) :
+                        UIColor(red: 0.90, green: 0.40, blue: 0.60, alpha: 1.0)
+                    })
+                default:
+                    return Color(UIColor { traitCollection in
+                        traitCollection.userInterfaceStyle == .dark ?
+                        UIColor(red: 0.25, green: 0.45, blue: 0.85, alpha: 1.0) :
+                        UIColor(red: 0.20, green: 0.40, blue: 0.70, alpha: 1.0)
+                    })
+                }
+            }
     
     /// Returns appropriate background colors for cards
     func cardBackgroundColor(for colorScheme: ColorScheme) -> Color {

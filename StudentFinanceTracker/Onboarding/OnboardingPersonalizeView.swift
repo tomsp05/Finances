@@ -8,13 +8,14 @@ struct OnboardingPersonalizeView: View {
     
     // Available theme colours with their visual representations
     let themeOptions = [
-        "Blue": Color(red: 0.20, green: 0.40, blue: 0.70),
-        "Green": Color(red: 0.20, green: 0.55, blue: 0.30),
-        "Orange": Color(red: 0.80, green: 0.40, blue: 0.20),
-        "Purple": Color(red: 0.50, green: 0.25, blue: 0.70),
-        "Red": Color(red: 0.70, green: 0.20, blue: 0.20),
-        "Teal": Color(red: 0.20, green: 0.50, blue: 0.60)
-    ]
+            "Blue": Color(red: 0.20, green: 0.40, blue: 0.70),
+            "Green": Color(red: 0.20, green: 0.55, blue: 0.30),
+            "Orange": Color(red: 0.80, green: 0.40, blue: 0.20),
+            "Purple": Color(red: 0.50, green: 0.25, blue: 0.70),
+            "Red": Color(red: 0.70, green: 0.20, blue: 0.20),
+            "Teal": Color(red: 0.20, green: 0.50, blue: 0.60),
+            "Pink": Color(red: 0.90, green: 0.40, blue: 0.60)
+        ]
     
     init() {
         // Get the current theme colour from the view model
@@ -123,24 +124,27 @@ struct OnboardingPersonalizeView: View {
     
     // Helper function to get theme colour
     private func getThemeColor(name: String) -> Color {
-        // Match the same colour calculation as in the ViewModel
-        switch name {
-        case "Blue":
-            return Color(red: 0.20, green: 0.40, blue: 0.70)
-        case "Green":
-            return Color(red: 0.20, green: 0.55, blue: 0.30)
-        case "Orange":
-            return Color(red: 0.80, green: 0.40, blue: 0.20)
-        case "Purple":
-            return Color(red: 0.50, green: 0.25, blue: 0.70)
-        case "Red":
-            return Color(red: 0.70, green: 0.20, blue: 0.20)
-        case "Teal":
-            return Color(red: 0.20, green: 0.50, blue: 0.60)
-        default:
-            return Color(red: 0.20, green: 0.40, blue: 0.70)
+            // Match the same colour calculation as in the ViewModel
+            switch name {
+            case "Blue":
+                return Color(red: 0.20, green: 0.40, blue: 0.70)
+            case "Green":
+                return Color(red: 0.20, green: 0.55, blue: 0.30)
+            case "Orange":
+                return Color(red: 0.80, green: 0.40, blue: 0.20)
+            case "Purple":
+                return Color(red: 0.50, green: 0.25, blue: 0.70)
+            case "Red":
+                return Color(red: 0.70, green: 0.20, blue: 0.20)
+            case "Teal":
+                return Color(red: 0.20, green: 0.50, blue: 0.60)
+            case "Pink":
+                return Color(red: 0.90, green: 0.40, blue: 0.60)
+            default:
+                return Color(red: 0.20, green: 0.40, blue: 0.70)
+            }
         }
-    }
+
 }
 
 // Theme colour selection button
