@@ -229,105 +229,105 @@ struct SettingsView: View {
                 settingsSection(title: "Data Management", icon: "externaldrive.fill") {
                     VStack(alignment: .leading, spacing: 16) {
                         
-                        // Show onboarding again button
-                        Button(action: {
-                            showOnboardingSheet = true
-                        }) {
-                            HStack {
-                                Image(systemName: "rectangle.and.pencil.and.ellipsis")
-                                    .foregroundColor(.white)
-                                    .padding(8)
-                                    .background(viewModel.themeColor)
-                                    .cornerRadius(8)
-                                
-                                Text("Show Onboarding Again")
-                                    .fontWeight(.semibold)
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        
-                        // Add test data button
-                        Button(action: {
-                            viewModel.generateTestData()
-                            showTestDataAlert = true
-                        }) {
-                            HStack {
-                                Image(systemName: "plus.square.fill")
-                                    .foregroundColor(.white)
-                                    .padding(8)
-                                    .background(Color.green)
-                                    .cornerRadius(8)
-                                
-                                Text("Generate Test Data")
-                                    .fontWeight(.semibold)
-                                
-                                Spacer()
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        
-                        // Delete All Transactions button
-                        Button(action: {
-                            confirmationAction = .deleteTransactions
-                            showConfirmationAlert = true
-                        }) {
-                            HStack {
-                                Image(systemName: "trash.fill")
-                                    .foregroundColor(.white)
-                                    .padding(8)
-                                    .background(Color.red)
-                                    .cornerRadius(8)
-                                
-                                Text("Delete All Transactions")
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.red)
-                                
-                                Spacer()
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        }
-                        .buttonStyle(PlainButtonStyle())
+//                        // Show onboarding again button
+//                        Button(action: {
+//                            showOnboardingSheet = true
+//                        }) {
+//                            HStack {
+//                                Image(systemName: "rectangle.and.pencil.and.ellipsis")
+//                                    .foregroundColor(.white)
+//                                    .padding(8)
+//                                    .background(viewModel.themeColor)
+//                                    .cornerRadius(8)
+//                                
+//                                Text("Show Onboarding Again")
+//                                    .fontWeight(.semibold)
+//                                
+//                                Spacer()
+//                                
+//                                Image(systemName: "chevron.right")
+//                                    .foregroundColor(.gray)
+//                            }
+//                            .padding()
+//                            .background(Color(.systemBackground))
+//                            .cornerRadius(12)
+//                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+//                        }
+//                        .buttonStyle(PlainButtonStyle())
 
-                        // Reset All Data button
-                        Button(action: {
-                            confirmationAction = .resetAllData
-                            showConfirmationAlert = true
-                        }) {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.white)
-                                    .padding(8)
-                                    .background(Color.red)
-                                    .cornerRadius(8)
-                                
-                                Text("Reset All Data")
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.red)
-                                
-                                Spacer()
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        }
-                        .buttonStyle(PlainButtonStyle())
+//                        // Add test data button
+//                        Button(action: {
+//                            viewModel.generateTestData()
+//                            showTestDataAlert = true
+//                        }) {
+//                            HStack {
+//                                Image(systemName: "plus.square.fill")
+//                                    .foregroundColor(.white)
+//                                    .padding(8)
+//                                    .background(Color.green)
+//                                    .cornerRadius(8)
+//                                
+//                                Text("Generate Test Data")
+//                                    .fontWeight(.semibold)
+//                                
+//                                Spacer()
+//                            }
+//                            .padding()
+//                            .background(Color(.systemBackground))
+//                            .cornerRadius(12)
+//                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+//                        }
+//                        .buttonStyle(PlainButtonStyle())
+                        
+//                        // Delete All Transactions button
+//                        Button(action: {
+//                            confirmationAction = .deleteTransactions
+//                            showConfirmationAlert = true
+//                        }) {
+//                            HStack {
+//                                Image(systemName: "trash.fill")
+//                                    .foregroundColor(.white)
+//                                    .padding(8)
+//                                    .background(Color.red)
+//                                    .cornerRadius(8)
+//                                
+//                                Text("Delete All Transactions")
+//                                    .fontWeight(.semibold)
+//                                    .foregroundColor(.red)
+//                                
+//                                Spacer()
+//                            }
+//                            .padding()
+//                            .background(Color(.systemBackground))
+//                            .cornerRadius(12)
+//                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+//                        }
+//                        .buttonStyle(PlainButtonStyle())
+//
+//                        // Reset All Data button
+//                        Button(action: {
+//                            confirmationAction = .resetAllData
+//                            showConfirmationAlert = true
+//                        }) {
+//                            HStack {
+//                                Image(systemName: "exclamationmark.triangle.fill")
+//                                    .foregroundColor(.white)
+//                                    .padding(8)
+//                                    .background(Color.red)
+//                                    .cornerRadius(8)
+//                                
+//                                Text("Reset All Data")
+//                                    .fontWeight(.semibold)
+//                                    .foregroundColor(.red)
+//                                
+//                                Spacer()
+//                            }
+//                            .padding()
+//                            .background(Color(.systemBackground))
+//                            .cornerRadius(12)
+//                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+//                        }
+//                        .buttonStyle(PlainButtonStyle())
 
                         // Import data button
                         NavigationLink(destination: ImportDataView()) {
@@ -485,7 +485,6 @@ struct SettingsView: View {
                     },
                     secondaryButton: .cancel()
                 )
-// MARK: - Delete Account Alert
             case .deleteAccount:
                         return Alert(
                             title: Text("Delete Account"),
@@ -699,12 +698,16 @@ struct SettingsView: View {
                             Button(action: {
                                 // Set the account to be deleted.
                                 accountToDelete = account.id
-                                // Specify the confirmation action.
-                                confirmationAction = .deleteAccount
+                                
+                                viewModel.deleteAccountAndTransactions(accountId: account.id)
+
+//                                // Specify the confirmation action.
+//                                confirmationAction = .deleteAccount
+//                                // Show the confirmation alert.
+//                                showConfirmationAlert = true
                                 // Hide the edit sheet to show the alert on the main view.
                                 showEditAccountSheet = false
-                                // Show the confirmation alert.
-                                showConfirmationAlert = true
+                                
                             }) {
                                 HStack {
                                     Image(systemName: "trash")

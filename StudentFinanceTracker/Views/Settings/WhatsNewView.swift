@@ -87,12 +87,6 @@ struct WhatsNewView: View {
                     iconColor: .red
                 )
                 
-                FeatureBullet(
-                    icon: "person.2.fill",
-                    title: "Split Payment Tracking",
-                    description: "Track expenses split with friends, noting who paid what and where the friend's portion went (e.g., cash, another account).",
-                    iconColor: .teal
-                )
             }
             .padding()
             .background(

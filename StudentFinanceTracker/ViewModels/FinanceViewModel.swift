@@ -426,6 +426,9 @@ class FinanceViewModel: ObservableObject {
         // Delete the account
         accounts.removeAll { $0.id == accountId }
 
+        // Delete associated pools stored in UserDefaults
+        UserDefaults.standard.removeObject(forKey: "pools_\(accountId.uuidString)")
+        
         // Save the changes
         DataService.shared.saveTransactions(transactions)
         DataService.shared.saveAccounts(accounts)
@@ -434,8 +437,11 @@ class FinanceViewModel: ObservableObject {
         recalcAccounts()
         handleTransactionChange()
         signalBalanceChange()
+        
+        // Update widget data if applicable
+        updateWidgetData()
     }
-
+    
     func updateThemeColor(newColorName: String) {
         themeColorName = newColorName
         DataService.shared.saveThemeColor(newColorName)
@@ -451,6 +457,9 @@ class FinanceViewModel: ObservableObject {
     }
 
     func resetAllData() {
+        // Backup current accounts to clean up pools
+        let oldAccounts = accounts
+        
         transactions = []
         accounts = []
         budgets = []
@@ -458,14 +467,20 @@ class FinanceViewModel: ObservableObject {
         expenseCategories = Category.defaultExpenseCategories
         userPreferences = UserPreferences.defaultPreferences
 
+        // Clean up pools for all deleted accounts
+        for account in oldAccounts {
+            UserDefaults.standard.removeObject(forKey: "pools_\(account.id.uuidString)")
+        }
+
         DataService.shared.saveTransactions(transactions)
         DataService.shared.saveAccounts(accounts)
         DataService.shared.saveBudgets(budgets)
         DataService.shared.saveCategories(incomeCategories, type: .income)
         DataService.shared.saveCategories(expenseCategories, type: .expense)
+        DataService.shared.saveThemeColor(themeColorName)
+        
         saveUserPreferences()
-
-        updateWidgetData() // Update widget after resetting
+        handleTransactionChange()
         signalBalanceChange()
     }
 
