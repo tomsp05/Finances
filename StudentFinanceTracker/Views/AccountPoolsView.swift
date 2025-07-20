@@ -5,7 +5,7 @@ struct AccountPoolsView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
 
-    // State for managing pools
+    // Pool assignment state
     @State private var accountPools: [Pool] = []
     @State private var showAddPoolSheet = false
     @State private var newPoolName = ""
@@ -15,6 +15,8 @@ struct AccountPoolsView: View {
     @State private var selectedPool: Pool? = nil
     @State private var showPoolTransactionsSheet = false
     @State private var selectedPoolForTransactions: Pool? = nil
+    @State private var showInlineAssignment: Bool = false // New state for inline assignment
+    @State private var selectedTransaction: Transaction? = nil // New state for inline assignment
 
     // Available theme colors with their visual representations
     let poolColorOptions = [
@@ -48,6 +50,11 @@ struct AccountPoolsView: View {
 
                 // Pools section
                 poolsSection
+
+                // Quick Assignment Section (inline)
+                if !accountPools.isEmpty {
+                    quickAssignmentSection
+                }
 
                 // Add pool button
                 addPoolButton
@@ -219,6 +226,71 @@ struct AccountPoolsView: View {
                     .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
             )
         }
+    }
+    
+    // MARK: - Quick Assignment Section
+    
+    private var quickAssignmentSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Quick Assign Transactions")
+                .font(.headline)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 5)
+            
+            VStack(spacing: 12) {
+                // Get fresh unassigned transactions for this account
+                let unassignedTransactions = getAccountTransactionsForAssignment(poolId: UUID()).filter { $0.poolId == nil }.prefix(5)
+                
+                if unassignedTransactions.isEmpty {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.green)
+                        Text("All transactions are assigned")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 15)
+                            .fill(Color.green.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                    )
+                } else {
+                    ForEach(Array(unassignedTransactions.enumerated()), id: \.element.id) { index, transaction in
+                        QuickAssignmentRow(
+                            transaction: transaction,
+                            availablePools: accountPools,
+                            onAssign: { pool in
+                                assignTransactionToPool(transaction: transaction, pool: pool)
+                            }
+                        )
+                    }
+                    
+                    if viewModel.transactions.filter({ 
+                        ($0.fromAccountId == account.id || $0.toAccountId == account.id) && $0.poolId == nil 
+                    }).count > 5 {
+                        Button(action: {
+                            selectedPool = accountPools.first
+                            showAssignTransactionSheet = true
+                        }) {
+                            Text("View All Unassigned (\(viewModel.transactions.filter({ 
+                                ($0.fromAccountId == account.id || $0.toAccountId == account.id) && $0.poolId == nil 
+                            }).count))")
+                                .font(.subheadline)
+                                .foregroundColor(viewModel.themeColor)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(Color(UIColor.secondarySystemBackground))
+                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+        )
     }
 
     // MARK: - Add Pool Sheet
@@ -677,6 +749,119 @@ struct PoolCardView: View {
                 secondaryButton: .cancel()
             )
         }
+    }
+}
+
+// MARK: - Quick Assignment Row
+
+struct QuickAssignmentRow: View {
+    let transaction: Transaction
+    let availablePools: [Pool]
+    let onAssign: (Pool) -> Void
+    
+    @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var transactionColor: Color {
+        switch transaction.type {
+        case .income: return .green
+        case .expense: return .red
+        case .transfer: return .blue
+        }
+    }
+    
+    private var categoryName: String {
+        if let category = viewModel.getCategory(id: transaction.categoryId) {
+            return category.name
+        }
+        return "Other"
+    }
+    
+    private func getPoolColor(_ colorName: String) -> Color {
+        let poolColorOptions = [
+            "Blue": Color(red: 0.20, green: 0.40, blue: 0.70),
+            "Green": Color(red: 0.20, green: 0.55, blue: 0.30),
+            "Orange": Color(red: 0.80, green: 0.40, blue: 0.20),
+            "Purple": Color(red: 0.50, green: 0.25, blue: 0.70),
+            "Red": Color(red: 0.70, green: 0.20, blue: 0.20),
+            "Teal": Color(red: 0.20, green: 0.50, blue: 0.60)
+        ]
+        return poolColorOptions[colorName] ?? .blue
+    }
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // Transaction info
+            HStack(spacing: 12) {
+                // Transaction icon
+                Circle()
+                    .fill(transactionColor.opacity(0.8))
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Image(systemName: transaction.type == .income ? "arrow.down" : 
+                                           transaction.type == .expense ? "arrow.up" : "arrow.left.arrow.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                    )
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(transaction.description)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    HStack(spacing: 8) {
+                        Text(categoryName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text("•")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(viewModel.formatCurrency(transaction.amount))
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(transactionColor)
+                    }
+                }
+                
+                Spacer()
+            }
+            
+            // Pool assignment buttons
+            if !availablePools.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(availablePools) { pool in
+                            Button(action: { onAssign(pool) }) {
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(getPoolColor(pool.color))
+                                        .frame(width: 12, height: 12)
+                                    Text(pool.name)
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(getPoolColor(pool.color).opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                )
+                                .foregroundColor(getPoolColor(pool.color))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(UIColor.tertiarySystemFill))
+        )
     }
 }
 

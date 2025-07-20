@@ -70,8 +70,22 @@ struct TransactionsListView: View {
                 passesAmountFilter = true
             }
             
+            // Apply pool filter
+            let passesPoolFilter: Bool
+            if filterState.selectedPools.isEmpty {
+                passesPoolFilter = true
+            } else {
+                if let poolId = transaction.poolId {
+                    passesPoolFilter = filterState.selectedPools.contains(poolId)
+                } else {
+                    // Include unassigned transactions if "Unassigned" pool is selected
+                    // We'll use a special UUID for "unassigned" in the filter state
+                    passesPoolFilter = false
+                }
+            }
+            
             return passesTimeFilter && passesRecurringFilter && passesTypeFilter &&
-                   passesCategoryFilter && passesAmountFilter
+                   passesCategoryFilter && passesAmountFilter && passesPoolFilter
         }
         
         // Group by the start of day for each transaction date.
@@ -183,6 +197,14 @@ struct TransactionsListView: View {
                             color: .purple
                         )
                     }
+                    
+                    if !filterState.selectedPools.isEmpty {
+                        filterTag(
+                            icon: "drop.fill",
+                            text: "\(filterState.selectedPools.count) Pool\(filterState.selectedPools.count == 1 ? "" : "s")",
+                            color: .cyan
+                        )
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 12)
@@ -219,6 +241,7 @@ struct TransactionsListView: View {
         if !filterState.selectedCategories.isEmpty { count += 1 }
         if filterState.minAmount != nil || filterState.maxAmount != nil { count += 1 }
         if filterState.onlyRecurring { count += 1 }
+        if !filterState.selectedPools.isEmpty { count += 1 }
         
         return count
     }
@@ -317,5 +340,29 @@ struct TransactionsListView_Previews: PreviewProvider {
         NavigationView {
             TransactionsListView().environmentObject(FinanceViewModel())
         }
+    }
+}
+
+// MARK: - Filter State
+
+struct TransactionFilterState {
+    var timeFilter: TransactionTimeFilter = .all
+    var selectedCategories: Set<UUID> = []
+    var transactionTypes: Set<TransactionType> = []
+    var minAmount: Double? = nil
+    var maxAmount: Double? = nil
+    var onlyRecurring: Bool = false
+    var selectedPools: Set<UUID> = [] // New pool filter
+    var customStartDate: Date? = nil
+    var customEndDate: Date? = nil
+    
+    var hasActiveFilters: Bool {
+        return timeFilter != .all ||
+               !selectedCategories.isEmpty ||
+               !transactionTypes.isEmpty ||
+               minAmount != nil ||
+               maxAmount != nil ||
+               onlyRecurring ||
+               !selectedPools.isEmpty // Include pool filter
     }
 }

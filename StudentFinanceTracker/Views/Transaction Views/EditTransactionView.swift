@@ -46,6 +46,7 @@ struct EditTransactionView: View {
         case basicInfo = "Basic Details"
         case category = "Category"
         case accounts = "Accounts"
+        case poolAssignment = "Pool Assignment"
         case recurring = "Timing Options"
     }
     
@@ -279,6 +280,8 @@ struct EditTransactionView: View {
                         categoryContent
                     case .accounts:
                         accountsContent
+                    case .poolAssignment:
+                        poolAssignmentContent
                     case .recurring:
                         recurringContent
                     }
@@ -463,6 +466,150 @@ struct EditTransactionView: View {
                 }
             }
         }
+    }
+    
+    // Pool assignment content
+    private var poolAssignmentContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Assign to Pool")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            let relevantAccountId = selectedFromAccountId ?? selectedToAccountId ?? 
+                                   transaction.fromAccountId ?? transaction.toAccountId
+            
+            if let accountId = relevantAccountId,
+               let availablePools = viewModel.getAccountPools(accountId), !availablePools.isEmpty {
+                
+                VStack(spacing: 12) {
+                    // Current assignment
+                    if let currentPoolId = transaction.poolId,
+                       let currentPool = availablePools.first(where: { $0.id == currentPoolId }) {
+                        HStack {
+                            Circle()
+                                .fill(getPoolColor(currentPool.color))
+                                .frame(width: 16, height: 16)
+                            Text("Currently assigned to: \(currentPool.name)")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(getPoolColor(currentPool.color).opacity(colorScheme == .dark ? 0.2 : 0.1))
+                        )
+                    } else {
+                        Text("Currently unassigned")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Available pools
+                    LazyVGrid(columns: [
+                        GridItem(.adaptive(minimum: 120, maximum: 160), spacing: 12)
+                    ], spacing: 12) {
+                        // Unassign option
+                        Button(action: {
+                            var updatedTransaction = transaction
+                            updatedTransaction.poolId = nil
+                            viewModel.updateTransaction(updatedTransaction)
+                        }) {
+                            VStack(spacing: 8) {
+                                Circle()
+                                    .stroke(Color.gray, lineWidth: 2)
+                                    .frame(width: 40, height: 40)
+                                    .overlay(
+                                        Image(systemName: "minus")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.gray)
+                                    )
+                                
+                                Text("Unassigned")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(transaction.poolId == nil ? Color.gray.opacity(0.2) : Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(transaction.poolId == nil ? Color.gray : Color.clear, lineWidth: 2)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        ForEach(availablePools) { pool in
+                            Button(action: {
+                                var updatedTransaction = transaction
+                                updatedTransaction.poolId = pool.id
+                                viewModel.updateTransaction(updatedTransaction)
+                            }) {
+                                VStack(spacing: 8) {
+                                    Circle()
+                                        .fill(getPoolColor(pool.color))
+                                        .frame(width: 40, height: 40)
+                                        .overlay(
+                                            Image(systemName: "drop.fill")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        )
+                                    
+                                    Text(pool.name)
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(transaction.poolId == pool.id ? 
+                                              getPoolColor(pool.color).opacity(0.2) : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(transaction.poolId == pool.id ? 
+                                                getPoolColor(pool.color) : Color.clear, lineWidth: 2)
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                }
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    
+                    Text("No pools available")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Create pools for this account to organize your transactions.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+    
+    // Helper function to get pool colors
+    private func getPoolColor(_ colorName: String) -> Color {
+        let poolColorOptions = [
+            "Blue": Color(red: 0.20, green: 0.40, blue: 0.70),
+            "Green": Color(red: 0.20, green: 0.55, blue: 0.30),
+            "Orange": Color(red: 0.80, green: 0.40, blue: 0.20),
+            "Purple": Color(red: 0.50, green: 0.25, blue: 0.70),
+            "Red": Color(red: 0.70, green: 0.20, blue: 0.20),
+            "Teal": Color(red: 0.20, green: 0.50, blue: 0.60)
+        ]
+        return poolColorOptions[colorName] ?? .blue
     }
     
     // Recurring options content
