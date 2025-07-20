@@ -16,6 +16,7 @@ class FinanceViewModel: ObservableObject {
     // User preferences
     @Published var userPreferences: UserPreferences = UserPreferences.defaultPreferences
     let defaults = UserDefaults(suiteName: "group.com.TomSpeake.StudentFinanceTracker")
+    let legacyDefaults = UserDefaults.standard
 
     // Theme color getter from user preferences
     var themeColorName: String {
@@ -53,6 +54,7 @@ class FinanceViewModel: ObservableObject {
     @Published var budgets: [Budget] = []
 
     init() {
+        migrateLegacyDataIfNeeded()
         loadUserPreferences()
         loadInitialData()
     }
@@ -123,6 +125,8 @@ class FinanceViewModel: ObservableObject {
         recalcAccounts()
         handleTransactionChange()
     }
+    
+    
 
     // Helper to migrate old account types to new ones
     private func migrateOldAccountTypes(_ oldAccounts: [Account]) -> [Account] {
@@ -296,18 +300,72 @@ class FinanceViewModel: ObservableObject {
         balanceDidChange.toggle()
     }
 
-    func addTransaction(_ transaction: Transaction) {
-        transactions.append(transaction)
-        updateAccounts(with: transaction)
-        DataService.shared.saveTransactions(transactions)
-        DataService.shared.saveAccounts(accounts)
-        signalBalanceChange()
-        handleTransactionChange()
-        updateWidgetData() // Update widget
-    }
+    // Modify updateTransaction function to update pool amounts when transactions are modified
 
     func updateTransaction(_ updatedTransaction: Transaction) {
+        // Find the original transaction
         if let index = transactions.firstIndex(where: { $0.id == updatedTransaction.id }) {
+            let originalTransaction = transactions[index]
+            
+            // Check if pool assignment has changed
+            if originalTransaction.poolId != updatedTransaction.poolId {
+                // If there was a previous pool assignment, adjust that pool's amount
+                if let oldPoolId = originalTransaction.poolId,
+                   let accountId = originalTransaction.type == .expense ? originalTransaction.fromAccountId : originalTransaction.toAccountId,
+                   var pools = getAccountPools(accountId),
+                   let poolIndex = pools.firstIndex(where: { $0.id == oldPoolId }) {
+                    
+                    // Restore amount to the old pool
+                    if originalTransaction.type == .expense {
+                        pools[poolIndex].amount += originalTransaction.amount
+                    } else if originalTransaction.type == .income {
+                        pools[poolIndex].amount -= originalTransaction.amount
+                    }
+                    
+                    // Save the updated pools
+                    saveAccountPools(accountId, pools: pools)
+                }
+                
+                // If there is a new pool assignment, adjust that pool's amount
+                if let newPoolId = updatedTransaction.poolId,
+                   let accountId = updatedTransaction.type == .expense ? updatedTransaction.fromAccountId : updatedTransaction.toAccountId,
+                   var pools = getAccountPools(accountId),
+                   let poolIndex = pools.firstIndex(where: { $0.id == newPoolId }) {
+                    
+                    // Deduct/add amount from/to the new pool
+                    if updatedTransaction.type == .expense {
+                        pools[poolIndex].amount -= updatedTransaction.amount
+                    } else if updatedTransaction.type == .income {
+                        pools[poolIndex].amount += updatedTransaction.amount
+                    }
+                    
+                    // Save the updated pools
+                    saveAccountPools(accountId, pools: pools)
+                }
+            }
+            // If the amount has changed but pool is the same
+            else if originalTransaction.amount != updatedTransaction.amount && updatedTransaction.poolId != nil {
+                if let poolId = updatedTransaction.poolId,
+                   let accountId = updatedTransaction.type == .expense ? updatedTransaction.fromAccountId : updatedTransaction.toAccountId,
+                   var pools = getAccountPools(accountId),
+                   let poolIndex = pools.firstIndex(where: { $0.id == poolId }) {
+                    
+                    // Calculate difference
+                    let difference = updatedTransaction.amount - originalTransaction.amount
+                    
+                    // Adjust pool amount
+                    if updatedTransaction.type == .expense {
+                        pools[poolIndex].amount -= difference
+                    } else if updatedTransaction.type == .income {
+                        pools[poolIndex].amount += difference
+                    }
+                    
+                    // Save the updated pools
+                    saveAccountPools(accountId, pools: pools)
+                }
+            }
+            
+            // Update the transaction
             transactions[index] = updatedTransaction
             recalcAccounts()
             DataService.shared.saveTransactions(transactions)
@@ -317,13 +375,64 @@ class FinanceViewModel: ObservableObject {
         }
     }
 
+    // Modify deleteTransaction to handle pools
     func deleteTransaction(at offsets: IndexSet) {
+        // Handle pool updates for each deleted transaction
+        for index in offsets {
+            let transaction = transactions[index]
+            if let poolId = transaction.poolId,
+               let accountId = transaction.type == .expense ? transaction.fromAccountId : transaction.toAccountId,
+               var pools = getAccountPools(accountId),
+               let poolIndex = pools.firstIndex(where: { $0.id == poolId }) {
+                
+                // Restore amount to the pool
+                if transaction.type == .expense {
+                    pools[poolIndex].amount += transaction.amount
+                } else if transaction.type == .income {
+                    pools[poolIndex].amount -= transaction.amount
+                }
+                
+                // Save the updated pools
+                saveAccountPools(accountId, pools: pools)
+            }
+        }
+        
+        // Delete the transactions
         transactions.remove(atOffsets: offsets)
         recalcAccounts()
         DataService.shared.saveTransactions(transactions)
         signalBalanceChange()
         handleTransactionChange()
         updateWidgetData() // Update widget
+    }
+
+    // Modify addTransaction to handle pools
+    func addTransaction(_ transaction: Transaction) {
+        // Add the transaction
+        transactions.append(transaction)
+        
+        // Update pool if transaction is assigned to one
+        if let poolId = transaction.poolId,
+           let accountId = transaction.type == .expense ? transaction.fromAccountId : transaction.toAccountId,
+           var pools = getAccountPools(accountId),
+           let poolIndex = pools.firstIndex(where: { $0.id == poolId }) {
+            
+            // Adjust pool amount
+            if transaction.type == .expense {
+                pools[poolIndex].amount -= transaction.amount
+            } else if transaction.type == .income {
+                pools[poolIndex].amount += transaction.amount
+            }
+            
+            // Save the updated pools
+            saveAccountPools(accountId, pools: pools)
+        }
+        
+        recalcAccounts()
+        handleTransactionChange()
+        signalBalanceChange()
+        DataService.shared.saveTransactions(transactions)
+        updateWidgetData() // Update widget data
     }
 
     func recalcAccounts() {
@@ -487,11 +596,11 @@ class FinanceViewModel: ObservableObject {
     func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencySymbol = userPreferences.currencySymbol
-        formatter.locale = Locale(identifier: userPreferences.locale)
+        formatter.currencySymbol = userPreferences.currency.rawValue
+        formatter.locale = Locale(identifier: userPreferences.currency.locale)
         formatter.maximumFractionDigits = 2
         formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "\(userPreferences.currencySymbol)0.00"
+        return formatter.string(from: NSNumber(value: value)) ?? "\(userPreferences.currency.rawValue)0.00"
     }
 
     // MARK: - Budget Management
@@ -1386,5 +1495,56 @@ extension FinanceViewModel {
             print("Error saving JSON file: \(error)")
             return nil
         }
+    }
+}
+
+extension FinanceViewModel {
+    /// Migrates user data from legacy storage (UserDefaults.standard and old file locations) into new group container if needed.
+    private func migrateLegacyDataIfNeeded() {
+        let migrationFlagKey = "didMigrateLegacyData"
+        guard defaults?.bool(forKey: migrationFlagKey) != true else { return }
+
+        // 1. Migrate user preferences (including onboarding status)
+        if let legacyPrefsData = legacyDefaults.data(forKey: "userPreferences"),
+           defaults?.data(forKey: "userPreferences") == nil {
+            defaults?.set(legacyPrefsData, forKey: "userPreferences")
+        }
+
+        // 2. Migrate theme color (legacy key)
+        if let legacyTheme = legacyDefaults.string(forKey: "themeColor"),
+           defaults?.string(forKey: "themeColor") == nil {
+            defaults?.set(legacyTheme, forKey: "themeColor")
+        }
+
+        // 3. Migrate accounts, categories, transactions, budgets files from old locations if present
+        let fileManager = FileManager.default
+        let docDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let groupDocDir = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.TomSpeake.StudentFinanceTracker") ?? docDir
+
+        // Helper to copy file if needed
+        func migrateFile(named name: String) {
+            let legacyURL = docDir.appendingPathComponent(name)
+            let newURL = groupDocDir.appendingPathComponent(name)
+            if fileManager.fileExists(atPath: legacyURL.path) && !fileManager.fileExists(atPath: newURL.path) {
+                try? fileManager.copyItem(at: legacyURL, to: newURL)
+            }
+        }
+
+        migrateFile(named: "accounts.json")
+        migrateFile(named: "incomeCategories.json")
+        migrateFile(named: "expenseCategories.json")
+        migrateFile(named: "transactions.json")
+        migrateFile(named: "budgets.json")
+
+        // 4. Migrate pools (if per-account pools were stored in UserDefaults)
+        // This migrates keys like pools_<accountId>
+        for (key, value) in legacyDefaults.dictionaryRepresentation() {
+            if key.starts(with: "pools_") && defaults?.object(forKey: key) == nil {
+                defaults?.set(value, forKey: key)
+            }
+        }
+
+        // 5. Mark migration as done
+        defaults?.set(true, forKey: migrationFlagKey)
     }
 }

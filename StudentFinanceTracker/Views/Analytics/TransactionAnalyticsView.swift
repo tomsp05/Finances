@@ -6,7 +6,7 @@ struct TransactionAnalyticsView: View {
     @Environment(\.colorScheme) var colorScheme
     
     // Filter state
-    @State private var filterState: AnalyticsFilterState = DataService.shared.loadAnalyticsFilterState() ?? AnalyticsFilterState()
+    @State private var filterState: AnalyticsFilterState = AnalyticsFilterState()
     
     @State private var showFilterSheet = false
     @State private var selectedChartStyle: String = "Pie"
@@ -36,7 +36,7 @@ struct TransactionAnalyticsView: View {
         switch filterState.timeFilter {
         case .week:
             var weekCal = calendar
-            weekCal.firstWeekday = 2
+            weekCal.firstWeekday = 2 // Monday
             guard let thisWeekStart = weekCal.dateInterval(of: .weekOfYear, for: now)?.start else {
                 endDate   = now
                 startDate = weekCal.date(byAdding: .day, value: -6, to: now)!
@@ -100,17 +100,14 @@ struct TransactionAnalyticsView: View {
             formatter.dateFormat = "yyyy"
             let year = formatter.string(from: dateRange.end)
             return "\(year) YTD"
-        case .pastYear:
-            formatter.dateFormat = "MMM d, yyyy"
-            return "\(formatter.string(from: dateRange.start)) - \(formatter.string(from: dateRange.end))"
-        case .year:
+        case .pastYear, .year:
             formatter.dateFormat = "MMM d, yyyy"
             return "\(formatter.string(from: dateRange.start)) - \(formatter.string(from: dateRange.end))"
         }
     }
     
     private var filteredTransactions: [Transaction] {
-        let transactions = viewModel.transactions.filter { transaction in
+        return viewModel.transactions.filter { transaction in
             let isInTimeRange = transaction.date >= dateRange.start && transaction.date <= dateRange.end
             
             let matchesType: Bool
@@ -124,8 +121,6 @@ struct TransactionAnalyticsView: View {
             
             return isInTimeRange && matchesType && matchesCategory
         }
-        
-        return transactions
     }
     
     private var filteredExpenses: [Transaction] { filteredTransactions.filter { $0.type == .expense } }
@@ -170,16 +165,6 @@ struct TransactionAnalyticsView: View {
     
     private var totalExpenses: Double { filteredExpenses.reduce(0, { $0 + $1.amount }) }
     private var totalIncome: Double { filteredIncomes.reduce(0, { $0 + $1.amount }) }
-    
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
-    }
     
     private func formatDateLabel(_ date: Date) -> String {
         let formatter = DateFormatter()
@@ -234,17 +219,19 @@ struct TransactionAnalyticsView: View {
                 }
             }
         }
-//        .navigationTitle("Spending Analytics")
+        .navigationTitle("Spending Analytics")
+        .navigationBarTitleDisplayMode(.inline)
         .navigationBarItems(trailing: filterButton)
         .sheet(isPresented: $showFilterSheet) {
             NavigationView { AnalyticsFilterView(filterState: $filterState) }
         }
-        .onChange(of: filterState) { _, newState in
-            DataService.shared.saveAnalyticsFilterState(newState)
+        .onChange(of: filterState) {
+            // Persist filter state when it changes
+            // DataService.shared.saveAnalyticsFilterState(newValue)
         }
-        .onChange(of: scrollOffset) { _, newValue in
+        .onChange(of: scrollOffset) {
             if initialScrollOffset == nil {
-                initialScrollOffset = newValue
+                initialScrollOffset = scrollOffset
             }
         }
     }
@@ -301,29 +288,29 @@ struct TransactionAnalyticsView: View {
         HStack {
             Button(action: { filterState.timeOffset -= 1 }) {
                 Image(systemName: "chevron.left")
-                    .foregroundColor(viewModel.adaptiveThemeColor)
-                    .font(.system(size: 16, weight: .medium)) // Smaller font
-                    .padding(8) // Smaller padding
-                    .background(Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1)))
+                    .foregroundColor(viewModel.themeColor)
+                    .font(.system(size: 16, weight: .medium))
+                    .padding(8)
+                    .background(Circle().fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1)))
             }
             Spacer()
             Text(timePeriodTitle)
-                .font(.system(size: 16, weight: .semibold)) // Smaller font
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(colorScheme == .dark ? .white : .primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer()
             Button(action: { if filterState.timeOffset < 0 { filterState.timeOffset += 1 } }) {
                 Image(systemName: "chevron.right")
-                    .foregroundColor(viewModel.adaptiveThemeColor)
-                    .font(.system(size: 16, weight: .medium)) // Smaller font
-                    .padding(8) // Smaller padding
-                    .background(Circle().fill(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.2 : 0.1)))
+                    .foregroundColor(viewModel.themeColor)
+                    .font(.system(size: 16, weight: .medium))
+                    .padding(8)
+                    .background(Circle().fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1)))
             }
             .disabled(filterState.timeOffset == 0).opacity(filterState.timeOffset == 0 ? 0.5 : 1.0)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8) // Reduced vertical padding
+        .padding(.vertical, 8)
     }
     
     private var chartTypeSelector: some View {
@@ -342,8 +329,8 @@ struct TransactionAnalyticsView: View {
                 Text(type).font(.subheadline)
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(selectedChartStyle == type ? viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.2) : Color(UIColor.tertiarySystemFill))
-            .foregroundColor(selectedChartStyle == type ? viewModel.adaptiveThemeColor : Color(UIColor.secondaryLabel))
+            .background(selectedChartStyle == type ? viewModel.themeColor.opacity(colorScheme == .dark ? 0.3 : 0.2) : Color(UIColor.tertiarySystemFill))
+            .foregroundColor(selectedChartStyle == type ? viewModel.themeColor : Color(UIColor.secondaryLabel))
             .cornerRadius(10)
         }
         .buttonStyle(PlainButtonStyle())
@@ -354,7 +341,7 @@ struct TransactionAnalyticsView: View {
             HStack(spacing: 16) {
                 VStack(spacing: 4) {
                     Text("Income").font(.subheadline).foregroundColor(.secondary)
-                    Text(formatCurrency(totalIncome)).font(.title2).fontWeight(.bold).foregroundColor(.green)
+                    Text(viewModel.formatCurrency(totalIncome)).font(.title2).fontWeight(.bold).foregroundColor(.green)
                     Text("\(filteredIncomes.count) transactions").font(.caption).foregroundColor(.secondary)
                 }
                 .padding().frame(maxWidth: .infinity).background(Color.green.opacity(colorScheme == .dark ? 0.2 : 0.1)).cornerRadius(12)
@@ -362,7 +349,7 @@ struct TransactionAnalyticsView: View {
                 
                 VStack(spacing: 4) {
                     Text("Expenses").font(.subheadline).foregroundColor(.secondary)
-                    Text(formatCurrency(totalExpenses)).font(.title2).fontWeight(.bold).foregroundColor(.red)
+                    Text(viewModel.formatCurrency(totalExpenses)).font(.title2).fontWeight(.bold).foregroundColor(.red)
                     Text("\(filteredExpenses.count) transactions").font(.caption).foregroundColor(.secondary)
                 }
                 .padding().frame(maxWidth: .infinity).background(Color.red.opacity(colorScheme == .dark ? 0.2 : 0.1)).cornerRadius(12)
@@ -370,13 +357,13 @@ struct TransactionAnalyticsView: View {
             }
             VStack(spacing: 4) {
                 Text("Net Savings").font(.subheadline).foregroundColor(.secondary)
-                Text(formatCurrency(totalIncome - totalExpenses)).font(.title2).fontWeight(.bold).foregroundColor(totalIncome >= totalExpenses ? .green : .red)
+                Text(viewModel.formatCurrency(totalIncome - totalExpenses)).font(.title2).fontWeight(.bold).foregroundColor(totalIncome >= totalExpenses ? .green : .red)
                 let savingsPercentage = totalIncome > 0 ? (totalIncome - totalExpenses) / totalIncome * 100 : 0
                 Text(String(format: "%.1f%% of income", savingsPercentage)).font(.caption).foregroundColor(.secondary)
             }
-            .padding().frame(maxWidth: .infinity).background(viewModel.cardBackgroundColor(for: colorScheme)).cornerRadius(12)
-            .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 1)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.3 : 0.1), lineWidth: 1))
+            .padding().frame(maxWidth: .infinity).background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+            .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.05), radius: 3, x: 0, y: 1)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(viewModel.themeColor.opacity(colorScheme == .dark ? 0.3 : 0.1), lineWidth: 1))
         }
     }
     
@@ -384,16 +371,16 @@ struct TransactionAnalyticsView: View {
         VStack(spacing: 16) {
             Image(systemName: "chart.bar.xaxis").font(.system(size: 42)).foregroundColor(.secondary)
             Text("No \(filterState.transactionType == .all ? "" : filterState.transactionType.rawValue.lowercased()) data for this period").font(.headline).foregroundColor(.secondary)
-            if filterState.hasActiveFilters {
+            if filterState.selectedCategories.count > 0 || filterState.transactionType != .all {
                 Button(action: { filterState = AnalyticsFilterState() }) {
                     Text("Reset Filters").font(.subheadline).foregroundColor(.white).padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(viewModel.adaptiveThemeColor).cornerRadius(8)
+                        .background(viewModel.themeColor).cornerRadius(8)
                 }
             }
         }
         .padding(.vertical, 30).padding(.horizontal).frame(maxWidth: .infinity)
-        .background(viewModel.cardBackgroundColor(for: colorScheme)).cornerRadius(12)
-        .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 2)
+        .background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+        .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
     
     @available(iOS 16.0, *)
@@ -412,8 +399,8 @@ struct TransactionAnalyticsView: View {
             .chartForegroundStyleScale(range: ChartColors.adaptiveColorArray(for: colorScheme))
             .frame(height: 240)
         }
-        .padding().background(viewModel.cardBackgroundColor(for: colorScheme)).cornerRadius(12)
-        .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 2)
+        .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+        .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
     
     @available(iOS 16.0, *)
@@ -424,14 +411,14 @@ struct TransactionAnalyticsView: View {
                 ForEach(chartData) { category in
                     BarMark(x: .value("Amount", category.amount), y: .value("Category", category.category.name))
                         .foregroundStyle(by: .value("Type", category.category.type.rawValue))
-                        .annotation(position: .trailing) { Text(formatCurrency(category.amount)).font(.caption).foregroundColor(.secondary) }
+                        .annotation(position: .trailing) { Text(viewModel.formatCurrency(category.amount)).font(.caption).foregroundColor(.secondary) }
                 }
             }
             .chartForegroundStyleScale(["income": Color.green, "expense": Color.red])
             .frame(height: min(CGFloat(chartData.count * 50), 300))
         }
-        .padding().background(viewModel.cardBackgroundColor(for: colorScheme)).cornerRadius(12)
-        .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 2)
+        .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+        .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
     
     @available(iOS 16.0, *)
@@ -441,19 +428,19 @@ struct TransactionAnalyticsView: View {
             Chart {
                 ForEach(transactionsByDate, id: \.date) { dataPoint in
                     LineMark(x: .value("Date", dataPoint.date), y: .value("Amount", dataPoint.amount))
-                        .foregroundStyle(viewModel.adaptiveThemeColor).interpolationMethod(.catmullRom)
+                        .foregroundStyle(viewModel.themeColor).interpolationMethod(.catmullRom)
                     AreaMark(x: .value("Date", dataPoint.date), y: .value("Amount", dataPoint.amount))
-                        .foregroundStyle(viewModel.adaptiveThemeColor.opacity(colorScheme == .dark ? 0.25 : 0.2)).interpolationMethod(.catmullRom)
+                        .foregroundStyle(viewModel.themeColor.opacity(colorScheme == .dark ? 0.25 : 0.2)).interpolationMethod(.catmullRom)
                     PointMark(x: .value("Date", dataPoint.date), y: .value("Amount", dataPoint.amount))
-                        .foregroundStyle(viewModel.adaptiveThemeColor)
+                        .foregroundStyle(viewModel.themeColor)
                 }
             }
             .chartXAxis { AxisMarks { value in if let date = value.as(Date.self) { AxisValueLabel { Text(formatDateLabel(date)) } } } }
-            .chartYAxis { AxisMarks { value in if let amount = value.as(Double.self) { AxisValueLabel { Text("£\(Int(amount))") } } } }
+            .chartYAxis { AxisMarks { value in if let amount = value.as(Double.self) { AxisValueLabel { Text("\(viewModel.userPreferences.currency.rawValue)\(Int(amount))") } } } }
             .frame(height: 240)
         }
-        .padding().background(viewModel.cardBackgroundColor(for: colorScheme)).cornerRadius(12)
-        .shadow(color: viewModel.shadowColor(for: colorScheme), radius: 3, x: 0, y: 2)
+        .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+        .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
     
     private var categorySpendingSection: some View {
@@ -469,7 +456,7 @@ struct TransactionAnalyticsView: View {
                         CategorySpendingRowView(
                             categorySpending: categorySpending,
                             totalAmount: totalForChart,
-                            formatCurrency: formatCurrency,
+                            formatCurrency: viewModel.formatCurrency,
                             colorScheme: colorScheme
                         )
                     }

@@ -5,45 +5,35 @@ struct ContentView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
-    
+
     @State private var previousBalance: Double = 0.0
     @State private var isAnimating: Bool = false
     @State private var animationScale: CGFloat = 1.0
     @State private var showChangeAmount: Bool = false
     @State private var viewDidAppear = false
-    
+
     var netCurrentBalance: Double {
         let currentBalance = viewModel.accounts.first(where: { $0.type == .current })?.balance ?? 0.0
         let creditCards = viewModel.accounts.filter { $0.type == .credit }
         let creditTotal = creditCards.reduce(0.0) { $0 + $1.balance }
         return currentBalance - creditTotal
     }
-    
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
-    }
-    
+
     private var recentGroupedTransactions: [(date: Date, transactions: [Transaction])] {
-        let recentTransactions = viewModel.transactions.sorted { $0.date > $1.date }.prefix(10) //change prefix number to change how many transactions are shown on home page
+        let recentTransactions = viewModel.transactions.sorted { $0.date > $1.date }.prefix(10)
         let groups = Dictionary(grouping: recentTransactions) { transaction in
             Calendar.current.startOfDay(for: transaction.date)
         }
         let sortedGroups = groups.sorted { $0.key > $1.key }
         return sortedGroups.map { (date: $0.key, transactions: $0.value.sorted { $0.date > $1.date }) }
     }
-    
+
     private func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         return formatter.string(from: date)
     }
-    
+
     private var balanceFontSize: CGFloat {
         if horizontalSizeClass == .compact {
             return verticalSizeClass == .compact ? 32 : 42
@@ -51,11 +41,22 @@ struct ContentView: View {
             return 50
         }
     }
-    
+
     private var horizontalPadding: CGFloat {
         horizontalSizeClass == .compact ? 16 : 24
     }
     
+    private var budgetsIconName: String {
+        switch viewModel.userPreferences.currency {
+        case .gbp:
+            return "sterlingsign.circle.fill"
+        case .usd:
+            return "dollarsign.circle.fill"
+        case .eur:
+            return "eurosign.circle.fill"
+        }
+    }
+
     func refreshBalanceDisplay() {
         viewModel.recalcAccounts()
         
@@ -97,43 +98,8 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                             
                             ZStack(alignment: .center) {
-                                CountingValueView(
-                                    value: netCurrentBalance,
-                                    fromValue: previousBalance,
-                                    isAnimating: isAnimating,
-                                    fontSize: balanceFontSize,
-                                    positiveColor: colorScheme == .dark ? .white : .white.opacity(1),
-                                    negativeColor: colorScheme == .dark ? .white : .white.opacity(1)
-                                )
-                                .scaleEffect(animationScale)
-                                .modifier(ShimmerEffect(
-                                    isAnimating: isAnimating,
-                                    isDarkMode: colorScheme == .dark
-                                ))
-                                
-                                if showChangeAmount && previousBalance != netCurrentBalance {
-                                    let difference = netCurrentBalance - previousBalance
-                                    VStack {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                                .foregroundColor(difference >= 0 ? .green : .red)
-                                                .font(.system(size: 16))
-                                            
-                                            Text(formatCurrency(abs(difference)))
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(difference >= 0 ? .green : .red)
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            Capsule()
-                                                .fill(Color(UIColor.secondarySystemBackground))
-                                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                                        )
-                                        .offset(y: -50)
-                                    }
-                                    .transition(.scale.combined(with: .opacity))
-                                }
+                                balanceDisplay
+                                balanceChangeIndicator
                             }
                             
                             HStack(spacing: 4) {
@@ -189,7 +155,6 @@ struct ContentView: View {
                         } else {
                             ForEach(recentGroupedTransactions, id: \.date) { group in
                                 VStack(alignment: .leading, spacing: 4) {
-                                    // Group header with date and divider
                                     Text(formattedDate(group.date))
                                         .font(.headline)
                                         .foregroundColor(.secondary)
@@ -241,7 +206,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .onChange(of: viewModel.balanceDidChange) { oldValue, newValue in
+            .onChange(of: viewModel.balanceDidChange) {
                 let newBalanceValue = netCurrentBalance
                 
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
@@ -266,6 +231,53 @@ struct ContentView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+    }
+
+    // MARK: - Refactored Helper Views
+    
+    @ViewBuilder
+    private var balanceDisplay: some View {
+        CountingValueView(
+            value: netCurrentBalance,
+            fromValue: previousBalance,
+            isAnimating: isAnimating,
+            fontSize: balanceFontSize,
+            currency: viewModel.userPreferences.currency,
+            positiveColor: .white,
+            negativeColor: .white
+        )
+        .scaleEffect(animationScale)
+        .modifier(ShimmerEffect(
+            isAnimating: isAnimating,
+            isDarkMode: colorScheme == .dark
+        ))
+    }
+    
+    @ViewBuilder
+    private var balanceChangeIndicator: some View {
+        if showChangeAmount && previousBalance != netCurrentBalance {
+            let difference = netCurrentBalance - previousBalance
+            VStack {
+                HStack(spacing: 4) {
+                    Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                        .foregroundColor(difference >= 0 ? .green : .red)
+                        .font(.system(size: 16))
+                    
+                    Text(viewModel.formatCurrency(abs(difference)))
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(difference >= 0 ? .green : .red)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(Color(UIColor.secondarySystemBackground))
+                        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                )
+                .offset(y: -50)
+            }
+            .transition(.scale.combined(with: .opacity))
+        }
     }
     
     private func adaptiveSpacing(_ defaultSpacing: CGFloat) -> CGFloat {
@@ -321,7 +333,7 @@ struct ContentView: View {
             NavCardView(
                 title: "Budgets",
                 subtitle: "Keep Track",
-                iconName: "sterlingsign.gauge.chart.leftthird.topthird.rightthird"
+                iconName: budgetsIconName
             )
         }
     }
@@ -393,3 +405,4 @@ struct ShimmerEffect: ViewModifier {
         }
     }
 }
+
