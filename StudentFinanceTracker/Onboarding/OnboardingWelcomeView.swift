@@ -91,6 +91,8 @@ struct OnboardingWelcomeView: View {
                         )
                     }
                     .padding(.horizontal, 40)
+                    .padding(.bottom, 40)
+
                     
                     if keyboardHeight == 0 {
                         VStack(alignment: .leading, spacing: 12) {

@@ -12,21 +12,10 @@ struct BudgetCardView: View {
     @Environment(\.colorScheme) var colorScheme
     let budget: Budget
     
-    // FIXED: Use computed property to get current budget state
+    // Use computed property to get current budget state from the viewModel
     private var currentBudget: Budget {
         viewModel.budgets.first(where: { $0.id == budget.id }) ?? budget
     }
-    
-    // Helper formatter for currency - FIXED: Make static to avoid recreation
-    private static let currencyFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter
-    }()
     
     var body: some View {
         NavigationLink(destination: BudgetDetailView(budget: currentBudget)) {
@@ -53,7 +42,7 @@ struct BudgetCardView: View {
                     budgetAmountView
                 }
                 
-                // Progress bar - FIXED: Simplified animation
+                // Progress bar
                 progressBarView
                 
                 // Spending summary
@@ -87,7 +76,7 @@ struct BudgetCardView: View {
     
     private var budgetAmountView: some View {
         VStack(alignment: .trailing, spacing: 4) {
-            Text(formatCurrency(currentBudget.amount))
+            Text(viewModel.formatCurrency(currentBudget.amount))
                 .font(.headline)
                 .foregroundColor(.primary)
                 .lineLimit(1)
@@ -130,13 +119,13 @@ struct BudgetCardView: View {
     
     private var spendingSummaryView: some View {
         HStack {
-            Text("Spent: \(formatCurrency(currentBudget.currentSpent))")
+            Text("Spent: \(viewModel.formatCurrency(currentBudget.currentSpent))")
                 .font(.caption)
                 .foregroundColor(.secondary)
             
             Spacer()
             
-            Text("Remaining: \(formatCurrency(currentBudget.remainingAmount))")
+            Text("Remaining: \(viewModel.formatCurrency(currentBudget.remainingAmount))")
                 .font(.caption)
                 .foregroundColor(remainingAmountColor)
         }
@@ -158,14 +147,22 @@ struct BudgetCardView: View {
     }
     
     private var remainingAmountColor: Color {
-        currentBudget.remainingAmount > 0 ? .secondary : .red
+        currentBudget.remainingAmount >= 0 ? .secondary : .red
     }
     
-    // Get budget icon based on budget type
+    // Get budget icon based on budget type and selected currency
     private func getBudgetIcon() -> String {
         switch currentBudget.type {
         case .overall:
-            return "sterlingsign.circle.fill"
+            // Dynamically change icon based on selected currency
+            switch viewModel.userPreferences.currency {
+            case .gbp:
+                return "sterlingsign.circle.fill"
+            case .usd:
+                return "dollarsign.circle.fill"
+            case .eur:
+                return "eurosign.circle.fill"
+            }
         case .category:
             return "tag.fill"
         case .account:
@@ -179,11 +176,6 @@ struct BudgetCardView: View {
         return baseColor.opacity(colorScheme == .dark ? 0.25 : 0.15)
     }
     
-    // Format currency - FIXED: Use static formatter
-    private func formatCurrency(_ value: Double) -> String {
-        return Self.currencyFormatter.string(from: NSNumber(value: value)) ?? "£0.00"
-    }
-    
     // Get color based on budget status with enhanced dark mode support
     private func getProgressColor() -> Color {
         let percentUsed = currentBudget.percentUsed
@@ -195,7 +187,7 @@ struct BudgetCardView: View {
         } else if percentUsed >= 0.7 {
             return colorScheme == .dark ? .yellow.opacity(0.9) : .yellow
         } else {
-            return viewModel.adaptiveThemeColor
+            return viewModel.themeColor
         }
     }
     

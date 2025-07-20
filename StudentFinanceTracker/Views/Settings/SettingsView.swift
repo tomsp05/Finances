@@ -221,7 +221,14 @@ struct SettingsView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         
-                        
+                        // Currency setting
+                        Picker("Currency", selection: $viewModel.userPreferences.currency) {
+                            ForEach(Currency.allCases, id: \.self) { currency in
+                                Text(currency.rawValue).tag(currency)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+
                     }
                 }
                 
@@ -229,55 +236,55 @@ struct SettingsView: View {
                 settingsSection(title: "Data Management", icon: "externaldrive.fill") {
                     VStack(alignment: .leading, spacing: 16) {
                         
-//                        // Show onboarding again button
-//                        Button(action: {
-//                            showOnboardingSheet = true
-//                        }) {
-//                            HStack {
-//                                Image(systemName: "rectangle.and.pencil.and.ellipsis")
-//                                    .foregroundColor(.white)
-//                                    .padding(8)
-//                                    .background(viewModel.themeColor)
-//                                    .cornerRadius(8)
-//                                
-//                                Text("Show Onboarding Again")
-//                                    .fontWeight(.semibold)
-//                                
-//                                Spacer()
-//                                
-//                                Image(systemName: "chevron.right")
-//                                    .foregroundColor(.gray)
-//                            }
-//                            .padding()
-//                            .background(Color(.systemBackground))
-//                            .cornerRadius(12)
-//                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-//                        }
-//                        .buttonStyle(PlainButtonStyle())
+                        // Show onboarding again button
+                        Button(action: {
+                            showOnboardingSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "rectangle.and.pencil.and.ellipsis")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(viewModel.themeColor)
+                                    .cornerRadius(8)
+                                
+                                Text("Show Onboarding Again")
+                                    .fontWeight(.semibold)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
 
-//                        // Add test data button
-//                        Button(action: {
-//                            viewModel.generateTestData()
-//                            showTestDataAlert = true
-//                        }) {
-//                            HStack {
-//                                Image(systemName: "plus.square.fill")
-//                                    .foregroundColor(.white)
-//                                    .padding(8)
-//                                    .background(Color.green)
-//                                    .cornerRadius(8)
-//                                
-//                                Text("Generate Test Data")
-//                                    .fontWeight(.semibold)
-//                                
-//                                Spacer()
-//                            }
-//                            .padding()
-//                            .background(Color(.systemBackground))
-//                            .cornerRadius(12)
-//                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-//                        }
-//                        .buttonStyle(PlainButtonStyle())
+                        // Add test data button
+                        Button(action: {
+                            viewModel.generateTestData()
+                            showTestDataAlert = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.square.fill")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.green)
+                                    .cornerRadius(8)
+
+                                Text("Generate Test Data")
+                                    .fontWeight(.semibold)
+
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                         
 //                        // Delete All Transactions button
 //                        Button(action: {
@@ -290,11 +297,11 @@ struct SettingsView: View {
 //                                    .padding(8)
 //                                    .background(Color.red)
 //                                    .cornerRadius(8)
-//                                
+//
 //                                Text("Delete All Transactions")
 //                                    .fontWeight(.semibold)
 //                                    .foregroundColor(.red)
-//                                
+//
 //                                Spacer()
 //                            }
 //                            .padding()
@@ -304,30 +311,29 @@ struct SettingsView: View {
 //                        }
 //                        .buttonStyle(PlainButtonStyle())
 //
-//                        // Reset All Data button
-//                        Button(action: {
-//                            confirmationAction = .resetAllData
-//                            showConfirmationAlert = true
-//                        }) {
-//                            HStack {
-//                                Image(systemName: "exclamationmark.triangle.fill")
-//                                    .foregroundColor(.white)
-//                                    .padding(8)
-//                                    .background(Color.red)
-//                                    .cornerRadius(8)
-//                                
-//                                Text("Reset All Data")
-//                                    .fontWeight(.semibold)
-//                                    .foregroundColor(.red)
-//                                
-//                                Spacer()
-//                            }
-//                            .padding()
-//                            .background(Color(.systemBackground))
-//                            .cornerRadius(12)
-//                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-//                        }
-//                        .buttonStyle(PlainButtonStyle())
+                        // Reset All Data button
+                        Button(action: {
+                            resetAllData()
+                        }) {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.red)
+                                    .cornerRadius(8)
+
+                                Text("Reset All Data")
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.red)
+
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
 
                         // Import data button
                         NavigationLink(destination: ImportDataView()) {
@@ -1013,6 +1019,7 @@ struct SettingsView: View {
             }
         }
         viewModel.updateAccountsSettings(updatedAccounts: updatedAccounts)
+        viewModel.saveUserPreferences()
         
         // Save theme color
         viewModel.updateThemeColor(newColorName: selectedTheme)
@@ -1048,17 +1055,11 @@ struct SettingsView: View {
     // MARK: - Helper Functions
     
     private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = viewModel.userPreferences.currencySymbol
-        formatter.locale = Locale(identifier: viewModel.userPreferences.locale)
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
+        return viewModel.formatCurrency(value)
     }
     
     private func formatPreviewCurrency(_ valueString: String) -> String {
-        guard let value = Double(valueString) else { return "£0.00" }
+        guard let value = Double(valueString) else { return viewModel.formatCurrency(0) }
         return formatCurrency(value)
     }
     

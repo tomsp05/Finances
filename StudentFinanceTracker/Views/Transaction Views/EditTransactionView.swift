@@ -56,8 +56,8 @@ struct EditTransactionView: View {
     
     // Helper properties
     private var formattedAmount: String {
-        guard let amountValue = Double(amount) else { return "£0.00" }
-        return formatCurrency(amountValue)
+        guard let amountValue = Double(amount) else { return viewModel.formatCurrency(0.0) }
+        return viewModel.formatCurrency(amountValue)
     }
     
     init(transaction: Transaction) {
@@ -346,10 +346,10 @@ struct EditTransactionView: View {
                     .foregroundColor(.secondary)
                 
                 HStack {
-                    Text("£")
+                    Text(viewModel.userPreferences.currency.rawValue)
                         .foregroundColor(.secondary)
                     
-                    TextField("0.00", text: $amount)
+                    TextField("\(viewModel.userPreferences.currency.rawValue)0.00", text: $amount)
                         .font(.headline)
                         .keyboardType(.decimalPad)
                     
@@ -715,17 +715,6 @@ struct EditTransactionView: View {
         }
         
         presentationMode.wrappedValue.dismiss()
-    }
-    
-    // Helper function to format currency
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
     }
 }
 

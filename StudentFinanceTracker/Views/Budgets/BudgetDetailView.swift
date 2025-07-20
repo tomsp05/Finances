@@ -154,7 +154,7 @@ struct BudgetDetailView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text(formatCurrency(currentBudget.amount))
+                    Text(viewModel.formatCurrency(currentBudget.amount))
                         .font(.headline)
                         .foregroundColor(.primary)
                 }
@@ -174,7 +174,7 @@ struct BudgetDetailView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text(formatCurrency(currentBudget.currentSpent))
+                    Text(viewModel.formatCurrency(currentBudget.currentSpent))
                         .font(.headline)
                         .foregroundColor(.primary)
                 }
@@ -194,7 +194,7 @@ struct BudgetDetailView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text(formatCurrency(currentBudget.remainingAmount))
+                    Text(viewModel.formatCurrency(currentBudget.remainingAmount))
                         .font(.headline)
                         .foregroundColor(getBudgetStatusColor())
                 }
@@ -404,16 +404,6 @@ struct BudgetDetailView: View {
         case .category: return "Category"
         case .account: return "Account"
         }
-    }
-    
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
     }
     
     private func formatDate(_ date: Date) -> String {
