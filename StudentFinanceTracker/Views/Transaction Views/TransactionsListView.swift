@@ -75,11 +75,12 @@ struct TransactionsListView: View {
             if filterState.selectedPools.isEmpty {
                 passesPoolFilter = true
             } else {
+                // Check if transaction is assigned to one of the selected pools
                 if let poolId = transaction.poolId {
                     passesPoolFilter = filterState.selectedPools.contains(poolId)
                 } else {
-                    // Include unassigned transactions if "Unassigned" pool is selected
-                    // We'll use a special UUID for "unassigned" in the filter state
+                    // For now, exclude unassigned transactions when pool filter is active
+                    // Future enhancement could add a special "Unassigned" filter option
                     passesPoolFilter = false
                 }
             }

@@ -148,6 +148,7 @@ struct TransactionCardView: View {
                                     .fill(Color.gray.opacity(colorScheme == .dark ? 0.2 : 0.1))
                             )
                             .foregroundColor(.gray)
+                            .opacity(0.7) // Make it less prominent but still visible
                         }
                         
                         if transaction.isSplit {
