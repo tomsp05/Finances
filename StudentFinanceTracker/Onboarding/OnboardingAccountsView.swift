@@ -9,7 +9,7 @@ struct OnboardingAccountsView: View {
         AccountSetup(name: "Credit Card", type: .credit, initialBalance: 0.0, isEnabled: false)
     ]
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 25) {
@@ -20,7 +20,7 @@ struct OnboardingAccountsView: View {
                         .fontWeight(.bold)
                         .foregroundColor(viewModel.themeColor)
                         .padding(.top, 30)
-                    
+
                     Text("Add your bank accounts and set their initial balances")
                         .font(.body)
                         .multilineTextAlignment(.center)
@@ -29,13 +29,13 @@ struct OnboardingAccountsView: View {
                 }
                 .opacity(animateElements ? 1 : 0)
                 .offset(y: animateElements ? 0 : 20)
-                
+
                 // Info card
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: "info.circle.fill")
                             .foregroundColor(viewModel.themeColor)
-                        
+
                         Text("You can add multiple accounts to track your finances across different banks and account types.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
@@ -50,7 +50,7 @@ struct OnboardingAccountsView: View {
                 .opacity(animateElements ? 1 : 0)
                 .offset(y: animateElements ? 0 : 20)
                 .animation(.easeOut.delay(0.1), value: animateElements)
-                
+
                 // Accounts section
                 VStack(spacing: 15) {
                     Text("Your Accounts")
@@ -61,7 +61,7 @@ struct OnboardingAccountsView: View {
                         .opacity(animateElements ? 1 : 0)
                         .offset(y: animateElements ? 0 : 20)
                         .animation(.easeOut.delay(0.2), value: animateElements)
-                    
+
                     // Accounts stack
                     VStack(spacing: 15) {
                         ForEach(0..<accounts.count, id: \.self) { index in
@@ -76,7 +76,7 @@ struct OnboardingAccountsView: View {
                     }
                     .padding(.horizontal)
                 }
-                
+
                 // Add account button
                 Button(action: {
                     withAnimation {
@@ -86,7 +86,7 @@ struct OnboardingAccountsView: View {
                     HStack {
                         Image(systemName: "plus.circle.fill")
                             .font(.title3)
-                        
+
                         Text("Add Another Account")
                             .fontWeight(.semibold)
                     }
@@ -107,7 +107,7 @@ struct OnboardingAccountsView: View {
                 .opacity(animateElements ? 1 : 0)
                 .offset(y: animateElements ? 0 : 20)
                 .animation(.easeOut.delay(0.5), value: animateElements)
-                
+
                 // Extra padding at the bottom to avoid the navigation controls
                 Spacer()
                     .frame(height: 150)
@@ -126,7 +126,7 @@ struct OnboardingAccountsView: View {
                     ))
                 }
             }
-            
+
             withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
                 animateElements = true
             }
@@ -135,10 +135,10 @@ struct OnboardingAccountsView: View {
             saveAccounts()
         }
     }
-    
+
     private func saveAccounts() {
         viewModel.accounts = []
-        
+
         for accountSetup in accounts where accountSetup.isEnabled {
             let newAccount = Account(
                 name: accountSetup.name,
@@ -148,7 +148,7 @@ struct OnboardingAccountsView: View {
             )
             viewModel.accounts.append(newAccount)
         }
-        
+
         DataService.shared.saveAccounts(viewModel.accounts)
     }
 }
@@ -169,6 +169,15 @@ struct ImprovedAccountRow: View {
     @State private var isExpanded: Bool = false
     @Environment(\.colorScheme) var colorScheme
     
+    private var currencyFormatter: NumberFormatter {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: viewModel.userPreferences.currency.locale)
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Button(action: {
@@ -181,29 +190,29 @@ struct ImprovedAccountRow: View {
                         Circle()
                             .fill(getAccountColor().opacity(colorScheme == .dark ? 0.3 : 0.2))
                             .frame(width: 40, height: 40)
-                        
+
                         Image(systemName: getAccountIcon())
                             .font(.system(size: 18))
                             .foregroundColor(getAccountColor())
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 2) {
                         Text(account.name)
                             .font(.headline)
                             .foregroundColor(.primary)
                             .lineLimit(1)
-                        
+
                         Text(account.type.rawValue.capitalized)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    
+
                     Spacer()
-                    
+
                     Toggle("", isOn: $account.isEnabled)
                         .labelsHidden()
                         .toggleStyle(SwitchToggleStyle(tint: viewModel.themeColor))
-                    
+
                     Image(systemName: "chevron.\(isExpanded ? "up" : "down")")
                         .font(.caption)
                         .foregroundColor(.gray)
@@ -213,31 +222,31 @@ struct ImprovedAccountRow: View {
                 .padding()
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             if isExpanded && account.isEnabled {
                 VStack(spacing: 15) {
                     Divider()
                         .padding(.horizontal)
-                    
+
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Account Name")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)
-                        
+
                         TextField("Account Name", text: $account.name)
                             .padding(12)
                             .background(colorScheme == .dark ? Color(.systemGray6).opacity(0.2) : Color(.systemGray6))
                             .cornerRadius(8)
                             .padding(.horizontal)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Account Type")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)
-                        
+
                         HStack(spacing: 10) {
                             ForEach(AccountType.allCases, id: \.self) { type in
                                 ImprovedAccountTypeButton(
@@ -253,14 +262,13 @@ struct ImprovedAccountRow: View {
                         }
                         .padding(.horizontal)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text("Initial Balance")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            // *** NEW: DONE BUTTON IS HERE ***
                             Button("Done") {
                                 hideKeyboard()
                             }
@@ -271,12 +279,12 @@ struct ImprovedAccountRow: View {
                         .padding(.horizontal)
 
                         HStack {
-                            Text(viewModel.userPreferences.currencySymbol)
+                            Text(viewModel.userPreferences.currency.rawValue)
                                 .foregroundColor(.secondary)
                                 .font(.headline)
                                 .padding(.leading, 12)
-                            
-                            TextField("0.00", value: $account.initialBalance, formatter: NumberFormatter.currencyFormatter)
+
+                            TextField("0.00", value: $account.initialBalance, formatter: currencyFormatter)
                                 .keyboardType(.decimalPad)
                                 .padding(12)
                         }
@@ -284,12 +292,12 @@ struct ImprovedAccountRow: View {
                         .cornerRadius(8)
                         .padding(.horizontal)
                     }
-                    
+
                     if account.type == .credit {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: "creditcard.fill")
                                 .foregroundColor(viewModel.themeColor)
-                            
+
                             Text("For credit cards, a positive balance means you owe money to the credit card company.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -307,14 +315,14 @@ struct ImprovedAccountRow: View {
                 .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         )
     }
-    
+
     private func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
-    
+
     private func getAccountIcon() -> String { getTypeIcon(account.type) }
     private func getAccountColor() -> Color { getTypeColor(account.type) }
-    
+
     private func getTypeIcon(_ type: AccountType) -> String {
         switch type {
         case .savings: return "building.columns.fill"
@@ -322,7 +330,7 @@ struct ImprovedAccountRow: View {
         case .credit: return "creditcard.fill"
         }
     }
-    
+
     private func getTypeColor(_ type: AccountType) -> Color {
         switch type {
         case .savings: return .blue
@@ -338,7 +346,7 @@ struct ImprovedAccountTypeButton: View {
     let isSelected: Bool
     let onTap: () -> Void
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 10) {
@@ -350,7 +358,7 @@ struct ImprovedAccountTypeButton: View {
                                 Color(.systemGray5).opacity(0.5) :
                                 Color(.systemGray5))
                         .frame(width: 52, height: 52)
-                    
+
                     Image(systemName: getTypeIcon(type))
                         .font(.system(size: 22))
                         .foregroundColor(isSelected ?
@@ -359,7 +367,7 @@ struct ImprovedAccountTypeButton: View {
                                             Color(.systemGray).opacity(0.8) :
                                             Color(.systemGray2))
                 }
-                
+
                 Text(getTypeName(type))
                     .font(.footnote)
                     .fontWeight(isSelected ? .semibold : .regular)
@@ -385,7 +393,7 @@ struct ImprovedAccountTypeButton: View {
                                     colorScheme == .dark ?
                                         Color.gray.opacity(0.3) :
                                         Color.clear,
-                                   lineWidth: isSelected ? 1.5 : colorScheme == .dark ? 0.5 : 0)
+                                    lineWidth: isSelected ? 1.5 : colorScheme == .dark ? 0.5 : 0)
                     )
             )
             .contentShape(Rectangle())
@@ -394,7 +402,7 @@ struct ImprovedAccountTypeButton: View {
         .scaleEffect(isSelected ? 1.05 : 1.0)
         .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
     }
-    
+
     private func getTypeIcon(_ type: AccountType) -> String {
         switch type {
         case .savings: return "building.columns.fill"
@@ -402,7 +410,7 @@ struct ImprovedAccountTypeButton: View {
         case .credit: return "creditcard.fill"
         }
     }
-    
+
     private func getTypeColor(_ type: AccountType) -> Color {
         switch type {
         case .savings: return .blue
@@ -410,7 +418,7 @@ struct ImprovedAccountTypeButton: View {
         case .credit: return .purple
         }
     }
-    
+
     private func getTypeName(_ type: AccountType) -> String {
         switch type {
         case .savings: return "Savings"
@@ -420,24 +428,13 @@ struct ImprovedAccountTypeButton: View {
     }
 }
 
-// Number formatter for currency
-extension NumberFormatter {
-    static var currencyFormatter: NumberFormatter {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter
-    }
-}
-
 struct OnboardingAccountsView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
             OnboardingAccountsView()
                 .environmentObject(FinanceViewModel())
                 .preferredColorScheme(.light)
-            
+
             OnboardingAccountsView()
                 .environmentObject(FinanceViewModel())
                 .preferredColorScheme(.dark)

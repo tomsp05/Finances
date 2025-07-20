@@ -16,6 +16,7 @@ class FinanceViewModel: ObservableObject {
     // User preferences
     @Published var userPreferences: UserPreferences = UserPreferences.defaultPreferences
     let defaults = UserDefaults(suiteName: "group.com.TomSpeake.StudentFinanceTracker")
+    let legacyDefaults = UserDefaults.standard
 
     // Theme color getter from user preferences
     var themeColorName: String {
@@ -53,6 +54,7 @@ class FinanceViewModel: ObservableObject {
     @Published var budgets: [Budget] = []
 
     init() {
+        migrateLegacyDataIfNeeded()
         loadUserPreferences()
         loadInitialData()
     }
@@ -123,6 +125,8 @@ class FinanceViewModel: ObservableObject {
         recalcAccounts()
         handleTransactionChange()
     }
+    
+    
 
     // Helper to migrate old account types to new ones
     private func migrateOldAccountTypes(_ oldAccounts: [Account]) -> [Account] {
@@ -592,11 +596,11 @@ class FinanceViewModel: ObservableObject {
     func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencySymbol = userPreferences.currencySymbol
-        formatter.locale = Locale(identifier: userPreferences.locale)
+        formatter.currencySymbol = userPreferences.currency.rawValue
+        formatter.locale = Locale(identifier: userPreferences.currency.locale)
         formatter.maximumFractionDigits = 2
         formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "\(userPreferences.currencySymbol)0.00"
+        return formatter.string(from: NSNumber(value: value)) ?? "\(userPreferences.currency.rawValue)0.00"
     }
 
     // MARK: - Budget Management
@@ -1491,5 +1495,56 @@ extension FinanceViewModel {
             print("Error saving JSON file: \(error)")
             return nil
         }
+    }
+}
+
+extension FinanceViewModel {
+    /// Migrates user data from legacy storage (UserDefaults.standard and old file locations) into new group container if needed.
+    private func migrateLegacyDataIfNeeded() {
+        let migrationFlagKey = "didMigrateLegacyData"
+        guard defaults?.bool(forKey: migrationFlagKey) != true else { return }
+
+        // 1. Migrate user preferences (including onboarding status)
+        if let legacyPrefsData = legacyDefaults.data(forKey: "userPreferences"),
+           defaults?.data(forKey: "userPreferences") == nil {
+            defaults?.set(legacyPrefsData, forKey: "userPreferences")
+        }
+
+        // 2. Migrate theme color (legacy key)
+        if let legacyTheme = legacyDefaults.string(forKey: "themeColor"),
+           defaults?.string(forKey: "themeColor") == nil {
+            defaults?.set(legacyTheme, forKey: "themeColor")
+        }
+
+        // 3. Migrate accounts, categories, transactions, budgets files from old locations if present
+        let fileManager = FileManager.default
+        let docDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let groupDocDir = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.TomSpeake.StudentFinanceTracker") ?? docDir
+
+        // Helper to copy file if needed
+        func migrateFile(named name: String) {
+            let legacyURL = docDir.appendingPathComponent(name)
+            let newURL = groupDocDir.appendingPathComponent(name)
+            if fileManager.fileExists(atPath: legacyURL.path) && !fileManager.fileExists(atPath: newURL.path) {
+                try? fileManager.copyItem(at: legacyURL, to: newURL)
+            }
+        }
+
+        migrateFile(named: "accounts.json")
+        migrateFile(named: "incomeCategories.json")
+        migrateFile(named: "expenseCategories.json")
+        migrateFile(named: "transactions.json")
+        migrateFile(named: "budgets.json")
+
+        // 4. Migrate pools (if per-account pools were stored in UserDefaults)
+        // This migrates keys like pools_<accountId>
+        for (key, value) in legacyDefaults.dictionaryRepresentation() {
+            if key.starts(with: "pools_") && defaults?.object(forKey: key) == nil {
+                defaults?.set(value, forKey: key)
+            }
+        }
+
+        // 5. Mark migration as done
+        defaults?.set(true, forKey: migrationFlagKey)
     }
 }

@@ -4,21 +4,10 @@ struct TransactionCardView: View {
     let transaction: Transaction
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
-    
+
     // Animation state
     @State private var isAppearing: Bool = false
-    
-    // Helper function to format currency
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
-    }
-    
+
     var transactionColor: Color {
         switch transaction.type {
         case .income:
@@ -140,16 +129,16 @@ struct TransactionCardView: View {
                     if transaction.isSplit {
                         // Show both amounts for split transactions with improved layout
                         VStack(alignment: .trailing, spacing: 0) {
-                            Text(formatCurrency(transaction.totalAmount))
+                            Text(viewModel.formatCurrency(transaction.amount))
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(transactionColor)
                             
-                            Text("You: \(formatCurrency(transaction.amount))")
+                            Text("You: \(viewModel.formatCurrency(transaction.userAmount))")
                                 .font(.system(size: 12))
                                 .foregroundColor(transactionColor.opacity(0.8))
                         }
                     } else {
-                        Text(formatCurrency(transaction.amount))
+                        Text(viewModel.formatCurrency(transaction.amount))
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(transactionColor)
                     }
@@ -187,7 +176,7 @@ struct TransactionCardView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.system(size: 10))
-                            Text(transaction.recurrenceInterval.description.uppercased())
+                            Text(transaction.recurrenceInterval.rawValue.uppercased())
                                 .font(.system(size: 10, weight: .bold))
                         }
                         .padding(.horizontal, 8)
