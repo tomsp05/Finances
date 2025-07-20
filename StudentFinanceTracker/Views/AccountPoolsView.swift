@@ -4,7 +4,7 @@ struct AccountPoolsView: View {
     let account: Account
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
-    
+
     // State for managing pools
     @State private var accountPools: [Pool] = []
     @State private var showAddPoolSheet = false
@@ -15,8 +15,8 @@ struct AccountPoolsView: View {
     @State private var selectedPool: Pool? = nil
     @State private var showPoolTransactionsSheet = false
     @State private var selectedPoolForTransactions: Pool? = nil
-    
-    // Available theme colours with their visual representations
+
+    // Available theme colors with their visual representations
     let poolColorOptions = [
         "Blue": Color(red: 0.20, green: 0.40, blue: 0.70),
         "Green": Color(red: 0.20, green: 0.55, blue: 0.30),
@@ -25,12 +25,12 @@ struct AccountPoolsView: View {
         "Red": Color(red: 0.70, green: 0.20, blue: 0.20),
         "Teal": Color(red: 0.20, green: 0.50, blue: 0.60)
     ]
-    
+
     private var unallocatedBalance: Double {
         let totalAllocated = accountPools.reduce(0.0) { $0 + $1.amount }
         return account.balance - totalAllocated
     }
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -40,15 +40,15 @@ struct AccountPoolsView: View {
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .padding(.vertical, 8)
-                    
+
                     Text("Account Balance")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 // Pools section
                 poolsSection
-                
+
                 // Add pool button
                 addPoolButton
             }
@@ -85,9 +85,9 @@ struct AccountPoolsView: View {
             }
         }
     }
-    
+
     // MARK: - Main View Components
-    
+
     private var poolsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             if accountPools.isEmpty {
@@ -97,7 +97,7 @@ struct AccountPoolsView: View {
                     .font(.headline)
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 5)
-                
+
                 ForEach(accountPools) { pool in
                     PoolCardView(
                         pool: pool,
@@ -116,22 +116,22 @@ struct AccountPoolsView: View {
                         assignedTransactionCount: viewModel.getTransactionsForPool(pool.id).count
                     )
                 }
-                
+
                 poolVisualizationSection
             }
         }
     }
-    
+
     private var emptyPoolsView: some View {
         VStack(spacing: 20) {
             Image(systemName: "tray")
                 .font(.system(size: 72))
                 .foregroundColor(viewModel.themeColor.opacity(0.5))
-            
+
             Text("No pools yet")
                 .font(.headline)
                 .foregroundColor(.primary)
-            
+
             Text("Create pools to organize your money")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -140,13 +140,13 @@ struct AccountPoolsView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
     }
-    
+
     private var poolVisualizationSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Pool Allocation")
                 .font(.headline)
                 .foregroundColor(.secondary)
-            
+
             GeometryReader { geometry in
                 HStack(spacing: 2) {
                     ForEach(accountPools) { pool in
@@ -156,7 +156,7 @@ struct AccountPoolsView: View {
                             .frame(width: max(5, geometry.size.width * CGFloat(proportion)))
                             .overlay(Text(proportion > 0.1 ? "\(Int(proportion * 100))%" : "").font(.system(size: 10)).foregroundColor(.white).padding(2))
                     }
-                    
+
                     if unallocatedBalance > 0 {
                         let unallocatedProportion = unallocatedBalance / max(0.01, account.balance)
                         RoundedRectangle(cornerRadius: 6)
@@ -170,7 +170,7 @@ struct AccountPoolsView: View {
             }
             .frame(height: 25)
             .padding(.vertical, 8)
-            
+
             ForEach(accountPools) { pool in
                 HStack(spacing: 8) {
                     RoundedRectangle(cornerRadius: 4).fill(getPoolColor(pool.color)).frame(width: 16, height: 16)
@@ -180,7 +180,7 @@ struct AccountPoolsView: View {
                 }
                 .padding(.vertical, 4)
             }
-            
+
             if unallocatedBalance > 0 || account.balance <= 0 {
                 HStack(spacing: 8) {
                     RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.5)).frame(width: 16, height: 16)
@@ -198,7 +198,7 @@ struct AccountPoolsView: View {
                 .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
         )
     }
-    
+
     private var addPoolButton: some View {
         Button(action: {
             newPoolName = ""
@@ -220,15 +220,15 @@ struct AccountPoolsView: View {
             )
         }
     }
-    
+
     // MARK: - Add Pool Sheet
-    
+
     private var addPoolSheet: some View {
         NavigationView {
             Form {
                 Section(header: Text("Pool Details")) {
                     TextField("Pool Name", text: $newPoolName)
-                    
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Amount").font(.subheadline).foregroundColor(.secondary)
                         HStack {
@@ -236,7 +236,7 @@ struct AccountPoolsView: View {
                             TextField("0.00", text: $newPoolAmount).keyboardType(.decimalPad)
                         }
                         Text("Available: \(viewModel.formatCurrency(unallocatedBalance))").font(.caption).foregroundColor(.secondary)
-                        
+
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 10) {
                                 ForEach(["25%", "50%", "75%", "100%"], id: \.self) { percentage in
@@ -251,7 +251,7 @@ struct AccountPoolsView: View {
                         }
                     }
                 }
-                
+
                 Section(header: Text("Pool Color")) {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 70))], spacing: 12) {
                         ForEach(Array(poolColorOptions.keys.sorted()), id: \.self) { colorName in
@@ -265,7 +265,7 @@ struct AccountPoolsView: View {
                         }
                     }
                     .padding(.vertical, 8)
-                    
+
                     RoundedRectangle(cornerRadius: 15)
                         .fill(getPoolColor(newPoolColor))
                         .frame(height: 60)
@@ -289,9 +289,9 @@ struct AccountPoolsView: View {
             )
         }
     }
-    
+
     // MARK: - Assign Transaction Sheet (IMPROVED)
-    
+
     private var assignTransactionSheet: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -310,12 +310,12 @@ struct AccountPoolsView: View {
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(Color(UIColor.secondarySystemBackground))
-                    
+
                     Divider()
-                    
+
                     // Get fresh transaction data each time the view is rendered
                     let accountTransactions = getAccountTransactionsForAssignment(poolId: pool.id)
-                    
+
                     if accountTransactions.isEmpty {
                         emptyTransactionsForAssignmentView
                     } else {
@@ -368,7 +368,7 @@ struct AccountPoolsView: View {
             }
         }
     }
-    
+
     private var emptyTransactionsForAssignmentView: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -395,7 +395,7 @@ struct AccountPoolsView: View {
                      // Get fresh transaction data each time the view is rendered
                      // Filter to transactions assigned to pool and related to this account
                      let poolTransactions = getPoolTransactions(poolId: pool.id)
-                     
+
                      if poolTransactions.isEmpty {
                          emptyTransactionsForAssignmentView
                      } else {
@@ -442,17 +442,17 @@ struct AccountPoolsView: View {
              }
          }
     }
-    
+
     // MARK: - Helper Functions
-    
+
     private func refreshData() {
         loadAccountPools()
     }
-    
+
     private func loadAccountPools() {
         accountPools = viewModel.getAccountPools(account.id) ?? []
     }
-    
+
     // Get fresh transaction data for assignment (not cached)
     // Includes only transactions related to this account (from or to) and unassigned or assigned to this pool
     // Sorted by date descending
@@ -461,7 +461,7 @@ struct AccountPoolsView: View {
             ($0.fromAccountId == account.id || $0.toAccountId == account.id) && ($0.poolId == nil || $0.poolId == poolId)
         }.sorted { $0.date > $1.date }
     }
-    
+
     // Get fresh transaction data for pool (not cached)
     // Includes only transactions assigned to this pool AND related to this account (from or to)
     // Sorted by date descending
@@ -470,7 +470,7 @@ struct AccountPoolsView: View {
             $0.poolId == poolId && ($0.fromAccountId == account.id || $0.toAccountId == account.id)
         }.sorted { $0.date > $1.date }
     }
-    
+
     // Group transactions by date string ("Today", "Yesterday", or formatted date)
     private func groupTransactionsByDate(_ transactions: [Transaction]) -> [(key: String, value: [Transaction])] {
         let calendar = Calendar.current
@@ -491,7 +491,7 @@ struct AccountPoolsView: View {
             formatter.dateStyle = .medium
             let date1: Date
             let date2: Date
-            
+
             if key1 == "Today" {
                 date1 = Date()
             } else if key1 == "Yesterday" {
@@ -499,7 +499,7 @@ struct AccountPoolsView: View {
             } else {
                 date1 = formatter.date(from: key1) ?? Date.distantPast
             }
-            
+
             if key2 == "Today" {
                 date2 = Date()
             } else if key2 == "Yesterday" {
@@ -509,7 +509,7 @@ struct AccountPoolsView: View {
             }
             return date1 > date2
         }
-        
+
         return sortedKeys.compactMap { key in
             if let value = grouped[key] {
                 return (key: key, value: value)
@@ -517,29 +517,29 @@ struct AccountPoolsView: View {
             return nil
         }
     }
-    
+
     private func assignTransactionToPool(transaction: Transaction, pool: Pool?) {
         var updatedTransaction = transaction
         let oldPoolId = updatedTransaction.poolId
         updatedTransaction.poolId = pool?.id
-        
+
         viewModel.updateTransaction(updatedTransaction)
-        
+
         if let oldPoolId = oldPoolId, var oldPool = accountPools.first(where: { $0.id == oldPoolId }) {
             if transaction.type == .expense { oldPool.amount += transaction.amount }
             else if transaction.type == .income { oldPool.amount -= transaction.amount }
             updatePool(oldPool)
         }
-        
+
         if let newPool = pool, var mutableNewPool = accountPools.first(where: { $0.id == newPool.id }) {
             if transaction.type == .expense { mutableNewPool.amount -= transaction.amount }
             else if transaction.type == .income { mutableNewPool.amount += transaction.amount }
             updatePool(mutableNewPool)
         }
-        
+
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
-        
+
         refreshData()
     }
 
@@ -550,23 +550,23 @@ struct AccountPoolsView: View {
             refreshData()
         }
     }
-    
+
     private func getPoolColor(_ colorName: String) -> Color {
         poolColorOptions[colorName] ?? .blue
     }
-    
+
     private func applyPercentage(_ percentageString: String) {
         let percentage = Double(percentageString.replacingOccurrences(of: "%", with: "")) ?? 0
         let amount = unallocatedBalance * (percentage / 100)
         newPoolAmount = String(format: "%.2f", amount)
     }
-    
+
     private func isPoolInputValid() -> Bool {
         guard !newPoolName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               let amount = Double(newPoolAmount) else { return false }
         return amount > 0 && amount <= unallocatedBalance
     }
-    
+
     private func addNewPool() {
         guard isPoolInputValid(), let amount = Double(newPoolAmount) else { return }
         let newPool = Pool(name: newPoolName, amount: amount, color: newPoolColor)
@@ -576,7 +576,7 @@ struct AccountPoolsView: View {
         generator.impactOccurred()
         refreshData()
     }
-    
+
     private func deletePool(_ pool: Pool) {
         let assignedTransactions = viewModel.getTransactionsForPool(pool.id)
         for transaction in assignedTransactions {
@@ -597,11 +597,11 @@ struct TransactionAssignmentRow: View {
     let transaction: Transaction
     let isAssigned: Bool
     let onToggle: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 12) {
             TransactionCardView(transaction: transaction)
-            
+
             Button(action: onToggle) {
                 Image(systemName: isAssigned ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 24, weight: .semibold))
@@ -621,9 +621,9 @@ struct PoolCardView: View {
     let onSelect: () -> Void
     let onAssign: () -> Void
     let assignedTransactionCount: Int
-    
+
     @State private var showDeleteAlert = false
-    
+
     var body: some View {
         Button(action: onSelect) {
             HStack {
@@ -631,7 +631,7 @@ struct PoolCardView: View {
                     .fill(poolColor)
                     .frame(width: 40, height: 40)
                     .overlay(Image(systemName: "drop.fill").foregroundColor(.white))
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(pool.name).font(.headline)
                     HStack {
@@ -643,9 +643,9 @@ struct PoolCardView: View {
                         }
                     }
                 }
-                
+
                 Spacer()
-                
+
                 Menu {
                     Button(action: onSelect) { Label("View Transactions", systemImage: "list.bullet") }
                     Button(action: onAssign) { Label("Assign Transaction", systemImage: "arrow.right") }
@@ -694,7 +694,7 @@ extension FinanceViewModel {
         }
         return []
     }
-    
+
     func saveAccountPools(_ accountId: UUID, pools: [Pool]) {
         do {
             let data = try JSONEncoder().encode(pools)
@@ -703,7 +703,7 @@ extension FinanceViewModel {
             print("Error saving pools: \(error)")
         }
     }
-    
+
     /// Note: Caller is responsible for sorting transactions by date if needed
     func getTransactionsForPool(_ poolId: UUID) -> [Transaction] {
         return transactions.filter { $0.poolId == poolId }
