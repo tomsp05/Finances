@@ -229,31 +229,31 @@ struct SettingsView: View {
                 settingsSection(title: "Data Management", icon: "externaldrive.fill") {
                     VStack(alignment: .leading, spacing: 16) {
                         
-//                        // Show onboarding again button
-//                        Button(action: {
-//                            showOnboardingSheet = true
-//                        }) {
-//                            HStack {
-//                                Image(systemName: "rectangle.and.pencil.and.ellipsis")
-//                                    .foregroundColor(.white)
-//                                    .padding(8)
-//                                    .background(viewModel.themeColor)
-//                                    .cornerRadius(8)
-//                                
-//                                Text("Show Onboarding Again")
-//                                    .fontWeight(.semibold)
-//                                
-//                                Spacer()
-//                                
-//                                Image(systemName: "chevron.right")
-//                                    .foregroundColor(.gray)
-//                            }
-//                            .padding()
-//                            .background(Color(.systemBackground))
-//                            .cornerRadius(12)
-//                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-//                        }
-//                        .buttonStyle(PlainButtonStyle())
+                        // Show onboarding again button
+                        Button(action: {
+                            showOnboardingSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "rectangle.and.pencil.and.ellipsis")
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(viewModel.themeColor)
+                                    .cornerRadius(8)
+                                
+                                Text("Show Onboarding Again")
+                                    .fontWeight(.semibold)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
 
 //                        // Add test data button
 //                        Button(action: {

@@ -17,12 +17,12 @@ enum RecurrenceInterval: String, Codable, CaseIterable {
     
     var description: String {
         switch self {
-        case .none: return "One-time"
+        case .none: return "None"
         case .daily: return "Daily"
         case .weekly: return "Weekly"
-        case .biweekly: return "Every 2 weeks"
+        case .biweekly: return "Every 2 Weeks"
         case .monthly: return "Monthly"
-        case .quarterly: return "Every 3 months"
+        case .quarterly: return "Every 3 Months"
         case .yearly: return "Yearly"
         }
     }
@@ -38,6 +38,7 @@ struct Transaction: Identifiable, Codable {
     var fromAccountId: UUID?
     var toAccountId: UUID?
     var type: TransactionType
+    
     /// Category ID for the transaction
     var categoryId: UUID
     
@@ -58,6 +59,9 @@ struct Transaction: Identifiable, Codable {
     var recurrenceInterval: RecurrenceInterval = .none
     var recurrenceEndDate: Date? = nil
     var parentTransactionId: UUID? = nil // For recurring transactions
+    
+    // New property for pool assignment
+    var poolId: UUID? = nil
     
     // Helper computed property to get total amount
     var totalAmount: Double {
