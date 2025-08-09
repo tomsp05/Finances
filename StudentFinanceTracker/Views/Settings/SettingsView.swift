@@ -236,6 +236,18 @@ struct SettingsView: View {
                 settingsSection(title: "Data Management", icon: "externaldrive.fill") {
                     VStack(alignment: .leading, spacing: 16) {
                         
+                        // Data storage location indicator
+                        HStack(spacing: 10) {
+                            Image(systemName: viewModel.isUsingICloud ? "icloud.fill" : "internaldrive.fill")
+                                .foregroundColor(viewModel.isUsingICloud ? .blue : .gray)
+                                .font(.title3)
+                            Text(viewModel.isUsingICloud ? "Data stored in iCloud" : "Data stored locally")
+                                .foregroundColor(.secondary)
+                                .font(.subheadline)
+                            Spacer()
+                        }
+                        .padding(.bottom, 6)
+                        
                         // Show onboarding again button
                         Button(action: {
                             showOnboardingSheet = true
@@ -1230,3 +1242,4 @@ struct SettingsView: View {
         }
     }
 }
+

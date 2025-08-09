@@ -18,6 +18,10 @@ class DataService {
     private var expenseCategoriesURL: URL {
         documentsDirectory.appendingPathComponent(expenseCategsFile)
     }
+    
+    private var ubiquityContainerURL: URL? {
+            return FileManager.default.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents")
+        }
 
     // MARK: - Theme Color Persistence
 
@@ -51,8 +55,14 @@ class DataService {
     private let transactionsFile = "transactions.json"
     
     private var documentsDirectory: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-    }
+           if let iCloudURL = ubiquityContainerURL {
+               print("Using iCloud container: \(iCloudURL)")
+               return iCloudURL
+           } else {
+               print("iCloud not available, using local documents directory.")
+               return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+           }
+       }
     
     private var accountsURL: URL {
         documentsDirectory.appendingPathComponent(accountsFile)
