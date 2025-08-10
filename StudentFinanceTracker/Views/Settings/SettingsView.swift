@@ -51,6 +51,8 @@ struct SettingsView: View {
                     Text("Settings")
                         .font(.largeTitle)
                         .fontWeight(.bold)
+                        .minimumScaleFactor(0.85)
+                        .lineLimit(1)
                     
                     
                     Spacer()
@@ -63,6 +65,8 @@ struct SettingsView: View {
                             .padding(.vertical, 8)
                             .background(viewModel.themeColor)
                             .cornerRadius(10)
+                            .minimumScaleFactor(0.85)
+                            .lineLimit(1)
                     }
                 }
                 .padding(.top, 12)
@@ -73,17 +77,22 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Theme Color")
                             .font(.headline)
+                            .minimumScaleFactor(0.85)
+                            .lineLimit(1)
                         
                         VStack(spacing: 12) {
                             // Color preview row
-                            HStack(spacing: 15) {
-                                ForEach(themeOptions, id: \.self) { option in
-                                    ThemeColorButton(
-                                        colorName: option,
-                                        isSelected: selectedTheme == option,
-                                        onTap: { selectedTheme = option }
-                                    )
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 15) {
+                                    ForEach(themeOptions, id: \.self) { option in
+                                        ThemeColorButton(
+                                            colorName: option,
+                                            isSelected: selectedTheme == option,
+                                            onTap: { selectedTheme = option }
+                                        )
+                                    }
                                 }
+                                .padding(.horizontal, 4)
                             }
                             
                             // Preview card with selected theme
@@ -91,6 +100,8 @@ struct SettingsView: View {
                                 Text("Preview")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
                                 
                                 RoundedRectangle(cornerRadius: 15)
                                     .fill(getThemeColor(name: selectedTheme))
@@ -99,12 +110,16 @@ struct SettingsView: View {
                                         HStack {
                                             Image(systemName: "creditcard.fill")
                                                 .font(.title2)
+                                                .scaledToFit()
+                                                .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                                                 .foregroundColor(.white)
                                                 .padding(.leading)
                                             
                                             Text("Theme Preview")
                                                 .foregroundColor(.white)
                                                 .fontWeight(.semibold)
+                                                .minimumScaleFactor(0.85)
+                                                .lineLimit(1)
                                             
                                             Spacer()
                                         }
@@ -120,6 +135,8 @@ struct SettingsView: View {
                         HStack {
                             Text("Manage Accounts")
                                 .font(.headline)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             
                             Spacer()
                             
@@ -128,6 +145,8 @@ struct SettingsView: View {
                             }) {
                                 Label("Add", systemImage: "plus.circle")
                                     .foregroundColor(viewModel.themeColor)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
                             }
                         }
                         
@@ -142,6 +161,8 @@ struct SettingsView: View {
                                     Text("No accounts added yet")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
+                                        .minimumScaleFactor(0.85)
+                                        .lineLimit(1)
                                 }
                                 Spacer()
                             }
@@ -159,10 +180,12 @@ struct SettingsView: View {
                                         ZStack {
                                             Circle()
                                                 .fill(getAccountColor(account.type).opacity(0.2))
-                                                .frame(width: 40, height: 40)
+                                                .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                                             
                                             Image(systemName: getAccountIcon(account.type))
                                                 .font(.system(size: 18))
+                                                .scaledToFit()
+                                                .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                                 .foregroundColor(getAccountColor(account.type))
                                         }
                                         
@@ -170,10 +193,14 @@ struct SettingsView: View {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(account.name)
                                                 .font(.headline)
+                                                .minimumScaleFactor(0.85)
+                                                .lineLimit(1)
                                             
                                             Text(formatCurrency(account.balance))
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
+                                                .minimumScaleFactor(0.85)
+                                                .lineLimit(1)
                                         }
                                         
                                         Spacer()
@@ -205,9 +232,13 @@ struct SettingsView: View {
                                     .padding(8)
                                     .background(viewModel.themeColor)
                                     .cornerRadius(8)
+                                    .scaledToFit()
+                                    .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                 
                                 Text("Manage Categories")
                                     .fontWeight(.semibold)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
                                 
                                 Spacer()
                                 
@@ -241,9 +272,13 @@ struct SettingsView: View {
                             Image(systemName: viewModel.isUsingICloud ? "icloud.fill" : "internaldrive.fill")
                                 .foregroundColor(viewModel.isUsingICloud ? .blue : .gray)
                                 .font(.title3)
+                                .scaledToFit()
+                                .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                             Text(viewModel.isUsingICloud ? "Data stored in iCloud" : "Data stored locally")
                                 .foregroundColor(.secondary)
                                 .font(.subheadline)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             Spacer()
                         }
                         .padding(.bottom, 6)
@@ -333,10 +368,14 @@ struct SettingsView: View {
                                     .padding(8)
                                     .background(Color.red)
                                     .cornerRadius(8)
+                                    .scaledToFit()
+                                    .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
 
                                 Text("Reset All Data")
                                     .fontWeight(.semibold)
                                     .foregroundColor(.red)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
 
                                 Spacer()
                             }
@@ -355,9 +394,13 @@ struct SettingsView: View {
                                     .padding(8)
                                     .background(viewModel.themeColor)
                                     .cornerRadius(8)
+                                    .scaledToFit()
+                                    .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                 
                                 Text("Import Data")
                                     .fontWeight(.semibold)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
                                 
                                 Spacer()
                                 
@@ -379,9 +422,13 @@ struct SettingsView: View {
                                     .padding(8)
                                     .background(viewModel.themeColor)
                                     .cornerRadius(8)
+                                    .scaledToFit()
+                                    .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                 
                                 Text("Export Data")
                                     .fontWeight(.semibold)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
                                 
                                 Spacer()
                                 
@@ -419,15 +466,23 @@ struct SettingsView: View {
                         HStack {
                             Text("Version")
                                 .foregroundColor(.secondary)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             Spacer()
                             Text("1.0.0")
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                         }
                         
                         HStack {
                             Text("Developer")
                                 .foregroundColor(.secondary)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             Spacer()
                             Text("Tom Speake")
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                         }
                         
                         // What's New/Known Issues Button
@@ -440,9 +495,13 @@ struct SettingsView: View {
                                     .padding(8)
                                     .background(viewModel.themeColor.opacity(0.1))
                                     .cornerRadius(8)
+                                    .scaledToFit()
+                                    .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                 
                                 Text("What's New / Known Issues")
                                     .fontWeight(.semibold)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
                                 
                                 Spacer()
                                 
@@ -459,6 +518,7 @@ struct SettingsView: View {
                     }
                 }
             }
+            .frame(maxWidth: 600)
             .padding(.bottom, 30)
         }
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
@@ -566,10 +626,12 @@ struct SettingsView: View {
                             ZStack {
                                 Circle()
                                     .fill(getAccountColor(accountTypes[account.id] ?? account.type).opacity(0.2))
-                                    .frame(width: 80, height: 80)
+                                    .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                                 
                                 Image(systemName: getAccountIcon(accountTypes[account.id] ?? account.type))
                                     .font(.system(size: 36))
+                                    .scaledToFit()
+                                    .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                                     .foregroundColor(getAccountColor(accountTypes[account.id] ?? account.type))
                             }
                             .padding(.top, 12)
@@ -578,11 +640,15 @@ struct SettingsView: View {
                             Text("Current Balance")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             
                             Text(formatCurrency(account.balance))
                                 .font(.title)
                                 .fontWeight(.bold)
                                 .foregroundColor(getBalanceColor(account))
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, 8)
@@ -592,6 +658,8 @@ struct SettingsView: View {
                             Text("Account Name")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 15)
@@ -613,6 +681,8 @@ struct SettingsView: View {
                             Text("Account Type")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             
                             HStack(spacing: 12) {
                                 ForEach(AccountType.allCases, id: \.self) { type in
@@ -633,6 +703,8 @@ struct SettingsView: View {
                             Text("Initial Balance")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 15)
@@ -654,6 +726,8 @@ struct SettingsView: View {
                                         .font(.headline)
                                         .foregroundColor(.secondary)
                                         .padding(.trailing)
+                                        .minimumScaleFactor(0.85)
+                                        .lineLimit(1)
                                 }
                             }
                             .frame(height: 60)
@@ -665,25 +739,35 @@ struct SettingsView: View {
                             Text("About Initial Balance")
                                 .font(.headline)
                                 .padding(.horizontal)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(alignment: .top, spacing: 12) {
                                     Image(systemName: "info.circle.fill")
                                         .foregroundColor(viewModel.themeColor)
+                                        .scaledToFit()
+                                        .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                     
                                     Text("Initial balance is the starting amount for your account. The app will recalculate your current balance based on all transactions.")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
+                                        .minimumScaleFactor(0.85)
+                                        .lineLimit(3)
                                 }
                                 
                                 if (accountTypes[account.id] ?? account.type) == .credit {
                                     HStack(alignment: .top, spacing: 12) {
                                         Image(systemName: "creditcard.fill")
                                             .foregroundColor(viewModel.themeColor)
+                                            .scaledToFit()
+                                            .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                         
                                         Text("For credit cards, the balance represents your debt. A positive balance means you owe money to the credit card company.")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
+                                            .minimumScaleFactor(0.85)
+                                            .lineLimit(3)
                                     }
                                 }
                             }
@@ -708,6 +792,8 @@ struct SettingsView: View {
                                     .background(viewModel.themeColor)
                                     .cornerRadius(15)
                                     .shadow(color: viewModel.themeColor.opacity(0.4), radius: 5, x: 0, y: 3)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
                             }
                             .padding(.horizontal)
                             
@@ -737,12 +823,16 @@ struct SettingsView: View {
                                 .padding()
                                 .background(Color.red.opacity(0.1))
                                 .cornerRadius(15)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                             }
                             .padding(.horizontal)
                         }
                         .padding(.top, 12)
                     }
                 }
+                .padding(.horizontal)
+                .frame(maxWidth: 500)
                 .padding(.bottom, 30)
                 .onAppear {
                     // Make sure the account data is available when the sheet appears
@@ -805,8 +895,12 @@ struct SettingsView: View {
                 Image(systemName: icon)
                     .font(.headline)
                     .foregroundColor(viewModel.themeColor)
+                    .scaledToFit()
+                    .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                 Text(title)
                     .font(.headline)
+                    .minimumScaleFactor(0.85)
+                    .lineLimit(1)
                 Spacer()
             }
             
@@ -821,6 +915,7 @@ struct SettingsView: View {
                 .cornerRadius(15)
                 .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         }
+        .frame(maxWidth: 600)
         .padding(.horizontal)
     }
     
@@ -834,10 +929,12 @@ struct SettingsView: View {
                         ZStack {
                             Circle()
                                 .fill(getAccountColor(newAccountType).opacity(0.2))
-                                .frame(width: 80, height: 80)
+                                .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                             
                             Image(systemName: getAccountIcon(newAccountType))
                                 .font(.system(size: 36))
+                                .scaledToFit()
+                                .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                                 .foregroundColor(getAccountColor(newAccountType))
                         }
                         .padding(.top, 12)
@@ -846,6 +943,8 @@ struct SettingsView: View {
                         Text("New Account")
                             .font(.headline)
                             .foregroundColor(.secondary)
+                            .minimumScaleFactor(0.85)
+                            .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 8)
@@ -855,6 +954,8 @@ struct SettingsView: View {
                         Text("Account Name")
                             .font(.headline)
                             .foregroundColor(.secondary)
+                            .minimumScaleFactor(0.85)
+                            .lineLimit(1)
                         
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 15)
@@ -873,6 +974,8 @@ struct SettingsView: View {
                         Text("Account Type")
                             .font(.headline)
                             .foregroundColor(.secondary)
+                            .minimumScaleFactor(0.85)
+                            .lineLimit(1)
                         
                         HStack(spacing: 12) {
                             ForEach(AccountType.allCases, id: \.self) { type in
@@ -893,6 +996,8 @@ struct SettingsView: View {
                         Text("Initial Balance")
                             .font(.headline)
                             .foregroundColor(.secondary)
+                            .minimumScaleFactor(0.85)
+                            .lineLimit(1)
                         
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 15)
@@ -911,6 +1016,8 @@ struct SettingsView: View {
                                     .font(.headline)
                                     .foregroundColor(.secondary)
                                     .padding(.trailing)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
                             }
                         }
                         .frame(height: 60)
@@ -922,25 +1029,35 @@ struct SettingsView: View {
                         Text("About Initial Balance")
                             .font(.headline)
                             .padding(.horizontal)
+                            .minimumScaleFactor(0.85)
+                            .lineLimit(1)
                         
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: "info.circle.fill")
                                     .foregroundColor(viewModel.themeColor)
+                                    .scaledToFit()
+                                    .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                 
                                 Text("Initial balance is the starting amount for your account. The app will recalculate your current balance based on all transactions.")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(3)
                             }
                             
                             if newAccountType == .credit {
                                 HStack(alignment: .top, spacing: 12) {
                                     Image(systemName: "creditcard.fill")
                                         .foregroundColor(viewModel.themeColor)
+                                        .scaledToFit()
+                                        .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
                                     
                                     Text("For credit cards, the balance represents your debt. A positive balance means you owe money to the credit card company.")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
+                                        .minimumScaleFactor(0.85)
+                                        .lineLimit(3)
                                 }
                             }
                         }
@@ -963,11 +1080,15 @@ struct SettingsView: View {
                             .background(newAccountName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : viewModel.themeColor)
                             .cornerRadius(15)
                             .shadow(color: (newAccountName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : viewModel.themeColor).opacity(0.4), radius: 5, x: 0, y: 3)
+                            .minimumScaleFactor(0.85)
+                            .lineLimit(1)
                     }
                     .disabled(newAccountName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .padding(.horizontal)
                     .padding(.top, 12)
                 }
+                .padding(.horizontal)
+                .frame(maxWidth: 500)
                 .padding(.bottom, 30)
             }
             .navigationTitle("Add Account")
@@ -1144,13 +1265,13 @@ struct SettingsView: View {
                 ZStack {
                     Circle()
                         .fill(getThemeColorPreview(name: colorName))
-                        .frame(width: 40, height: 40)
+                        .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                         .shadow(color: getThemeColorPreview(name: colorName).opacity(0.4), radius: 3, x: 0, y: 2)
                     
                     if isSelected {
                         Circle()
                             .strokeBorder(Color.white, lineWidth: 2)
-                            .frame(width: 40, height: 40)
+                            .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                         
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
@@ -1195,17 +1316,20 @@ struct SettingsView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(isSelected ? getTypeColor(type).opacity(0.2) : Color(.systemGray5))
-                            .frame(width: 100, height: 80)
+                            .frame(minWidth: 80, maxWidth: 120, minHeight: 60, maxHeight: 90)
                         
                         VStack(spacing: 8) {
                             Image(systemName: getTypeIcon(type))
-                                .font(.system(size: 24))
+                                .scaledToFit()
+                                .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
                                 .foregroundColor(isSelected ? getTypeColor(type) : .gray)
                             
                             Text(getTypeDisplayName(type))
                                 .font(.caption)
                                 .fontWeight(isSelected ? .bold : .regular)
                                 .foregroundColor(isSelected ? getTypeColor(type) : .gray)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
                         }
                     }
                     .overlay(
@@ -1242,4 +1366,3 @@ struct SettingsView: View {
         }
     }
 }
-
