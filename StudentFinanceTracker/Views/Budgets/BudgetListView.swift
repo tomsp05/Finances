@@ -4,90 +4,144 @@ struct BudgetListView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @State private var showingAddBudget = false
     @State private var selectedBudgetForEdit: Budget? = nil
+    @State private var searchText = ""
+    @State private var selectedFilter: BudgetFilter = .all
+    @State private var showingBudgetInsights = false
+    @State private var selectedBudgetForDetails: Budget? = nil
     @Environment(\.colorScheme) var colorScheme
-
+    
+    enum BudgetFilter: String, CaseIterable {
+        case all = "All"
+        case onTrack = "On Track"
+        case warning = "Warning"
+        case overBudget = "Over Budget"
+        case nearExpiry = "Expiring Soon"
+    }
     
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Header with summary
+                // Enhanced header with summary and quick actions
                 summaryCard
                 
+                // Search and filter bar
+                searchAndFilterBar
+                
+
+                
                 // Budget sections
-                if !overallBudgets.isEmpty {
-                    budgetSection(title: "Overall Budgets", icon: "chart.pie.fill", budgets: overallBudgets)
+                if !filteredOverallBudgets.isEmpty {
+                    budgetSection(title: "Overall Budgets", icon: "chart.pie.fill", budgets: filteredOverallBudgets)
                 }
                 
-                if !categoryBudgets.isEmpty {
-                    budgetSection(title: "Category Budgets", icon: "tag.fill", budgets: categoryBudgets)
+                if !filteredCategoryBudgets.isEmpty {
+                    budgetSection(title: "Category Budgets", icon: "tag.fill", budgets: filteredCategoryBudgets)
                 }
                 
-                if !accountBudgets.isEmpty {
-                    budgetSection(title: "Account Budgets", icon: "creditcard.fill", budgets: accountBudgets)
+                if !filteredAccountBudgets.isEmpty {
+                    budgetSection(title: "Account Budgets", icon: "creditcard.fill", budgets: filteredAccountBudgets)
                 }
                 
                 // Empty state
-                if viewModel.budgets.isEmpty {
+                if filteredBudgets.isEmpty {
                     emptyState
                 }
                 
-                // Add budget button
-                addBudgetButton
+                // Add budget button with quick templates
+                addBudgetSection
             }
             .padding(.bottom, 20)
         }
         .navigationTitle("Budgets")
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
+        .refreshable {
+            await refreshBudgets()
+        }
         .sheet(isPresented: $showingAddBudget) {
             NavigationView {
                 BudgetEditView(isPresented: $showingAddBudget, budget: nil)
                     .navigationTitle("Add Budget")
-                    .navigationBarItems(
-                        leading: Button("Cancel") {
-                            showingAddBudget = false
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Cancel") {
+                                showingAddBudget = false
+                            }
                         }
-                    )
+                    }
             }
         }
         .sheet(item: $selectedBudgetForEdit) { budget in
             NavigationView {
-                BudgetEditView(isPresented: $showingAddBudget, budget: budget)
+                BudgetEditView(isPresented: .constant(true), budget: budget)
                     .navigationTitle("Edit Budget")
-                    .navigationBarItems(
-                        leading: Button("Cancel") {
-                            selectedBudgetForEdit = nil
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Cancel") {
+                                selectedBudgetForEdit = nil
+                            }
                         }
-                    )
+                    }
             }
         }
+        .sheet(item: $selectedBudgetForDetails) { budget in
+            BudgetDetailView(budget: budget)
+        }
+
     }
     
-    // MARK: - Helper Views
+    // MARK: - Enhanced Helper Views
     
     private var summaryCard: some View {
         VStack(spacing: 16) {
-            Text("Budget Overview")
-                .font(.headline)
-                .foregroundColor(.white)
+            HStack {
+                Text("Budget Overview")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                // Quick add button
+                Button(action: {
+                    showingAddBudget = true
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.white)
+                }
+            }
             
-            HStack(spacing: 20) {
+            // Enhanced stats grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
                 budgetStat(
                     icon: "chart.pie.fill",
                     value: "\(viewModel.budgets.count)",
-                    label: "Active Budgets"
+                    label: "Active Budgets",
+                    color: .white
                 )
-                
-                Divider()
-                    .background(Color.white.opacity(0.5))
-                    .frame(height: 40)
                 
                 budgetStat(
                     icon: "exclamationmark.triangle.fill",
                     value: "\(overBudgetCount)",
-                    label: "Over Budget"
+                    label: "Over Budget",
+                    color: overBudgetCount > 0 ? .orange : .white
+                )
+                
+                budgetStat(
+                    icon: "checkmark.circle.fill",
+                    value: "\(onTrackCount)",
+                    label: "On Track",
+                    color: .green
+                )
+                
+                budgetStat(
+                    icon: "clock.fill",
+                    value: "\(expiringCount)",
+                    label: "Expiring Soon",
+                    color: expiringCount > 0 ? .yellow : .white
                 )
             }
-            .padding(.vertical, 8)
         }
         .padding(20)
         .frame(maxWidth: .infinity)
@@ -107,27 +161,120 @@ struct BudgetListView: View {
         .padding(.top)
     }
     
-    private func budgetStat(icon: String, value: String, label: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.headline)
-                .foregroundColor(.white)
+    private var searchAndFilterBar: some View {
+        VStack(spacing: 12) {
+            // Search bar
+//            HStack {
+//                Image(systemName: "magnifyingglass")
+//                    .foregroundColor(.secondary)
+//                
+//                TextField("Search budgets...", text: $searchText)
+//                    .textFieldStyle(RoundedBorderTextFieldStyle())
+//                
+//                if !searchText.isEmpty {
+//                    Button(action: {
+//                        searchText = ""
+//                    }) {
+//                        Image(systemName: "xmark.circle.fill")
+//                            .foregroundColor(.secondary)
+//                    }
+//                }
+//            }
+//            .padding(.horizontal)
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(value)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Text(label)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+            // Filter pills
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(BudgetFilter.allCases, id: \.self) { filter in
+                        filterPill(for: filter)
+                    }
+                }
+                .padding(.horizontal)
             }
         }
     }
     
+    private func filterPill(for filter: BudgetFilter) -> some View {
+        Button(action: {
+            selectedFilter = filter
+        }) {
+            HStack(spacing: 6) {
+                filterIcon(for: filter)
+                
+                Text(filter.rawValue)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                
+                if filterCount(for: filter) > 0 && filter != .all {
+                    Text("\(filterCount(for: filter))")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.white.opacity(0.3))
+                        .cornerRadius(8)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                selectedFilter == filter
+                    ? viewModel.themeColor
+                    : Color.secondary.opacity(0.2)
+            )
+            .foregroundColor(
+                selectedFilter == filter
+                    ? .white
+                    : .primary
+            )
+            .cornerRadius(16)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private func filterIcon(for filter: BudgetFilter) -> some View {
+        Group {
+            switch filter {
+            case .all:
+                Image(systemName: "list.bullet")
+            case .onTrack:
+                Image(systemName: "checkmark.circle")
+            case .warning:
+                Image(systemName: "exclamationmark.triangle")
+            case .overBudget:
+                Image(systemName: "exclamationmark.octagon")
+            case .nearExpiry:
+                Image(systemName: "clock")
+            }
+        }
+        .font(.caption)
+    }
+    
+
+    
+    
+    private func budgetStat(icon: String, value: String, label: String, color: Color = .white) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.callout)
+                .foregroundColor(color)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(color)
+                
+                Text(label)
+                    .font(.caption2)
+                    .foregroundColor(color.opacity(0.8))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
     private func budgetSection(title: String, icon: String, budgets: [Budget]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section header
+            // Enhanced section header
             HStack {
                 Image(systemName: icon)
                     .foregroundColor(viewModel.themeColor)
@@ -138,19 +285,43 @@ struct BudgetListView: View {
                 
                 Spacer()
                 
+                // Progress indicator for section
                 Text("\(budgets.count)")
                     .font(.callout)
                     .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.2))
+                    .cornerRadius(8)
             }
             .padding(.horizontal)
             
-            // Budget items
+            // Budget items with enhanced interaction
             ForEach(budgets) { budget in
                 Button(action: {
-                    selectedBudgetForEdit = budget
+                    selectedBudgetForDetails = budget
                 }) {
-                    BudgetCardView(budget: budget)
+                    EnhancedBudgetCardView(budget: budget, viewModel: viewModel)
                         .padding(.horizontal)
+                        .contextMenu {
+                            Button(action: {
+                                selectedBudgetForEdit = budget
+                            }) {
+                                Label("Edit Budget", systemImage: "pencil")
+                            }
+                            
+                            Button(action: {
+                                // Add quick actions
+                            }) {
+                                Label("View Transactions", systemImage: "list.bullet")
+                            }
+                            
+                            Button(role: .destructive, action: {
+                                deleteBudget(budget)
+                            }) {
+                                Label("Delete Budget", systemImage: "trash")
+                            }
+                        }
                 }
                 .buttonStyle(PlainButtonStyle())
             }
@@ -159,60 +330,304 @@ struct BudgetListView: View {
     
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "chart.pie")
+            Image(systemName: searchText.isEmpty ? "chart.pie" : "magnifyingglass")
                 .font(.system(size: 48))
                 .foregroundColor(.gray.opacity(0.7))
             
-            Text("No Budgets Set")
+            Text(searchText.isEmpty ? "No Budgets Set" : "No Results Found")
                 .font(.headline)
                 .foregroundColor(.secondary)
             
-            Text("Start tracking your spending by creating budgets")
+            Text(searchText.isEmpty
+                 ? "Start tracking your spending by creating budgets"
+                 : "Try adjusting your search or filters")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
+            
+            if !searchText.isEmpty {
+                Button(action: {
+                    searchText = ""
+                    selectedFilter = .all
+                }) {
+                    Text("Clear Search")
+                        .font(.callout)
+                        .foregroundColor(viewModel.themeColor)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(30)
     }
     
-    private var addBudgetButton: some View {
-        Button(action: {
-            showingAddBudget = true
-        }) {
-            HStack {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                
-                Text("Add New Budget")
-                    .fontWeight(.semibold)
+    private var addBudgetSection: some View {
+        VStack(spacing: 12) {
+            // Main add button
+            Button(action: {
+                showingAddBudget = true
+            }) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                    
+                    Text("Add New Budget")
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(viewModel.themeColor)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(viewModel.themeColor.opacity(0.1))
+                .cornerRadius(15)
             }
-            .foregroundColor(viewModel.themeColor)
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(viewModel.themeColor.opacity(0.1))
-            .cornerRadius(15)
+            .buttonStyle(PlainButtonStyle())
+            
+            // Quick budget templates
+            if viewModel.budgets.isEmpty {
+                Text("Quick Start Templates:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 8) {
+                    quickTemplateButton(title: "Monthly", icon: "calendar", amount: 1000)
+                    quickTemplateButton(title: "Groceries", icon: "cart", amount: 400)
+                    quickTemplateButton(title: "Entertainment", icon: "tv", amount: 200)
+                }
+            }
         }
-        .buttonStyle(PlainButtonStyle())
         .padding(.horizontal)
     }
     
-    // MARK: - Helper Properties
-    
-    private var overallBudgets: [Budget] {
-        viewModel.budgets.filter { $0.type == .overall }
+    private func quickTemplateButton(title: String, icon: String, amount: Double) -> some View {
+        Button(action: {
+            createQuickBudget(title: title, amount: amount)
+        }) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.callout)
+                
+                Text(title)
+                    .font(.caption2)
+                
+                Text(viewModel.formatCurrency(amount))
+                    .font(.caption2)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(viewModel.themeColor)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(viewModel.themeColor.opacity(0.1))
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
     
-    private var categoryBudgets: [Budget] {
-        viewModel.budgets.filter { $0.type == .category }
+    // MARK: - Enhanced Helper Properties
+    
+    private var filteredBudgets: [Budget] {
+        let filtered = viewModel.budgets.filter { budget in
+            let matchesSearch = searchText.isEmpty ||
+                               budget.name.localizedCaseInsensitiveContains(searchText)
+            
+            let matchesFilter: Bool
+            switch selectedFilter {
+            case .all:
+                matchesFilter = true
+            case .onTrack:
+                matchesFilter = budget.currentSpent <= budget.amount * 0.8
+            case .warning:
+                matchesFilter = budget.currentSpent > budget.amount * 0.8 && budget.currentSpent <= budget.amount
+            case .overBudget:
+                matchesFilter = budget.currentSpent > budget.amount
+            case .nearExpiry:
+                // Assuming budget has endDate property
+                matchesFilter = isNearExpiry(budget)
+            }
+            
+            return matchesSearch && matchesFilter
+        }
+        
+        return filtered
     }
     
-    private var accountBudgets: [Budget] {
-        viewModel.budgets.filter { $0.type == .account }
+    private var filteredOverallBudgets: [Budget] {
+        filteredBudgets.filter { $0.type == .overall }
+    }
+    
+    private var filteredCategoryBudgets: [Budget] {
+        filteredBudgets.filter { $0.type == .category }
+    }
+    
+    private var filteredAccountBudgets: [Budget] {
+        filteredBudgets.filter { $0.type == .account }
     }
     
     private var overBudgetCount: Int {
         viewModel.budgets.filter { $0.currentSpent > $0.amount }.count
     }
+    
+    private var onTrackCount: Int {
+        viewModel.budgets.filter { $0.currentSpent <= $0.amount * 0.8 }.count
+    }
+    
+    private var expiringCount: Int {
+        viewModel.budgets.filter { isNearExpiry($0) }.count
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func filterCount(for filter: BudgetFilter) -> Int {
+        switch filter {
+        case .all:
+            return viewModel.budgets.count
+        case .onTrack:
+            return onTrackCount
+        case .warning:
+            return viewModel.budgets.filter {
+                $0.currentSpent > $0.amount * 0.8 && $0.currentSpent <= $0.amount
+            }.count
+        case .overBudget:
+            return overBudgetCount
+        case .nearExpiry:
+            return expiringCount
+        }
+    }
+    
+    private func isNearExpiry(_ budget: Budget) -> Bool {
+        // Implement logic based on budget end date
+        // This would depend on your Budget model having an endDate property
+        return false // Placeholder
+    }
+    
+    private func refreshBudgets() async {
+        viewModel.loadBudgets()
+        viewModel.handleTransactionChange()
+    }
+    
+    private func deleteBudget(_ budget: Budget) {
+        viewModel.deleteBudget(budget)
+    }
+    
+    private func createQuickBudget(title: String, amount: Double) {
+        // Create a quick budget template
+        // This would integrate with your budget creation logic
+    }
 }
+
+// MARK: - Enhanced Budget Card View
+
+struct EnhancedBudgetCardView: View {
+    let budget: Budget
+    let viewModel: FinanceViewModel
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(budget.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    Text(budget.type.rawValue.capitalized)
+                        .font(.caption)
+                        .foregroundColor(Color.secondary.opacity(colorScheme == .dark ? 0.7 : 1))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(colorScheme == .dark ? 0.15 : 0.2))
+                        .cornerRadius(6)
+                }
+                
+                Spacer()
+                
+                // Status indicator
+                statusIndicator
+            }
+            
+            // Progress section
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(viewModel.formatCurrency(budget.currentSpent))
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundColor(progressColor)
+                    
+                    Text("of \(viewModel.formatCurrency(budget.amount))")
+                        .font(.callout)
+                        .foregroundColor(Color.secondary.opacity(colorScheme == .dark ? 0.7 : 1))
+                    
+                    Spacer()
+                    
+                    Text("\(Int(progressPercentage))%")
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .foregroundColor(progressColor)
+                }
+                
+                // Progress bar
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.gray.opacity(colorScheme == .dark ? 0.15 : 0.3))
+                            .frame(height: 6)
+                            .cornerRadius(3)
+                        
+                        Rectangle()
+                            .fill(progressColor)
+                            .frame(
+                                width: min(geometry.size.width,
+                                         geometry.size.width * CGFloat(progressPercentage / 100)),
+                                height: 6
+                            )
+                            .cornerRadius(3)
+                            .animation(.easeInOut(duration: 0.3), value: progressPercentage)
+                    }
+                }
+                .frame(height: 6)
+            }
+            
+            // Time remaining (if applicable)
+            if let timeRemaining = timeRemainingText {
+                Text(timeRemaining)
+                    .font(.caption)
+                    .foregroundColor(Color.secondary.opacity(colorScheme == .dark ? 0.7 : 1))
+            }
+        }
+        .padding()
+        .background(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
+        .cornerRadius(18)
+        .shadow(color: colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.1), radius: colorScheme == .dark ? 8 : 5, x: 0, y: colorScheme == .dark ? 3 : 2)
+    }
+    
+    private var statusIndicator: some View {
+        Circle()
+            .fill(progressColor)
+            .frame(width: 12, height: 12)
+            .overlay(
+                Circle()
+                    .stroke(Color.white, lineWidth: 2)
+            )
+    }
+    
+    private var progressColor: Color {
+        if progressPercentage <= 80 {
+            return .green
+        } else if progressPercentage <= 100 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+    
+    private var progressPercentage: Double {
+        guard budget.amount > 0 else { return 0 }
+        return (budget.currentSpent / budget.amount) * 100
+    }
+    
+    private var timeRemainingText: String? {
+        // Implement based on your budget period logic
+        return nil // Placeholder
+    }
+}
+

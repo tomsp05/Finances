@@ -13,7 +13,8 @@ struct SettingsView: View {
     @State private var accountPresets: [UUID: String] = [:]
     @State private var accountTypes: [UUID: AccountType] = [:]
     @State private var editingAccount: Account? = nil
-    @State private var showEditAccountSheet = false
+    // Removed showEditAccountSheet
+    
     @State private var showTestDataAlert = false
     
     // Add state variable to track which action is being confirmed
@@ -95,6 +96,22 @@ struct SettingsView: View {
                                 .padding(.horizontal, 4)
                             }
                             
+                            // Currency picker moved here from Preferences section
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Currency")
+                                    .font(.headline)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
+                                Picker("Currency", selection: $viewModel.userPreferences.currency) {
+                                    ForEach(Currency.allCases, id: \.self) { currency in
+                                        Text(currency.rawValue).tag(currency)
+                                    }
+                                }
+                                .pickerStyle(SegmentedPickerStyle())
+                            }
+                            
+                            Divider()
+                            
                             // Preview card with selected theme
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Preview")
@@ -168,53 +185,19 @@ struct SettingsView: View {
                             }
                             .padding(.vertical, 20)
                         } else {
-                            // List of accounts with minimal information
-                            ForEach(viewModel.accounts) { account in
-                                Button(action: {
-                                    // Pre-populate account details for editing
-                                    // Ensure dictionaries are populated before showing the sheet
-                                    prepareEditAccount(account)
-                                }) {
-                                    HStack(spacing: 16) {
-                                        // Account type indicator
-                                        ZStack {
-                                            Circle()
-                                                .fill(getAccountColor(account.type).opacity(0.2))
-                                                .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
-                                            
-                                            Image(systemName: getAccountIcon(account.type))
-                                                .font(.system(size: 18))
-                                                .scaledToFit()
-                                                .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
-                                                .foregroundColor(getAccountColor(account.type))
-                                        }
-                                        
-                                        // Account name and balance
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(account.name)
-                                                .font(.headline)
-                                                .minimumScaleFactor(0.85)
-                                                .lineLimit(1)
-                                            
-                                            Text(formatCurrency(account.balance))
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                                .minimumScaleFactor(0.85)
-                                                .lineLimit(1)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
-                                    }
-                                    .padding(.vertical, 8)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                
-                                if account.id != viewModel.accounts.last?.id {
-                                    Divider()
+                            // Updated to use new account cards
+                            VStack(spacing: 16) {
+                                ForEach(viewModel.accounts) { account in
+                                    SettingsAccountCard(
+                                        account: account,
+                                        accountName: accountNames[account.id] ?? account.name,
+                                        accountType: accountTypes[account.id] ?? account.type,
+                                        accountPreset: accountPresets[account.id] ?? String(format: "%.2f", account.initialBalance),
+                                        onTapEdit: {
+                                            prepareEditAccount(account)
+                                        },
+                                        viewModel: viewModel
+                                    )
                                 }
                             }
                         }
@@ -251,15 +234,6 @@ struct SettingsView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
-                        // Currency setting
-                        Picker("Currency", selection: $viewModel.userPreferences.currency) {
-                            ForEach(Currency.allCases, id: \.self) { currency in
-                                Text(currency.rawValue).tag(currency)
-                            }
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-
                     }
                 }
                 
@@ -532,8 +506,9 @@ struct SettingsView: View {
         .sheet(isPresented: $showAddAccountSheet) {
             addAccountSheet
         }
-        .sheet(isPresented: $showEditAccountSheet) {
-            editAccountSheet
+        // Changed sheet presentation for editing accounts to use .sheet(item:)
+        .sheet(item: $editingAccount) { account in
+            editAccountSheet(account: account)
         }
         .sheet(isPresented: $showOnboardingSheet) {
             OnboardingContainerView(isFromSettings: true)
@@ -570,7 +545,7 @@ struct SettingsView: View {
                             primaryButton: .destructive(Text("Delete")) {
                                 if let id = accountToDelete {
                                     viewModel.deleteAccountAndTransactions(accountId: id)
-                                    showEditAccountSheet = false  // Dismiss the sheet after deletion
+                                    editingAccount = nil  // Dismiss the sheet after deletion
                                     accountToDelete = nil  // Reset the state
                                 }
                             },
@@ -608,257 +583,371 @@ struct SettingsView: View {
         accountPresets[account.id] = String(format: "%.2f", account.initialBalance)
         accountTypes[account.id] = account.type
         
-        // Set the editing account
+        // Set the editing account (always set to ensure sheet presents)
         editingAccount = account
         
-        // Now show the sheet
-        showEditAccountSheet = true
+        // No longer using showEditAccountSheet
     }
     
-    private var editAccountSheet: some View {
+    private func editAccountSheet(account: Account) -> some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 24) {
-                    if let account = editingAccount {
-                        // Header with account type icon
-                        VStack(spacing: 8) {
-                            // Account icon
-                            ZStack {
-                                Circle()
-                                    .fill(getAccountColor(accountTypes[account.id] ?? account.type).opacity(0.2))
-                                    .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
-                                
-                                Image(systemName: getAccountIcon(accountTypes[account.id] ?? account.type))
-                                    .font(.system(size: 36))
-                                    .scaledToFit()
-                                    .frame(minWidth: 40, maxWidth: 60, minHeight: 40, maxHeight: 60)
-                                    .foregroundColor(getAccountColor(accountTypes[account.id] ?? account.type))
-                            }
-                            .padding(.top, 12)
-                            
-                            // Account current balance
+                LazyVStack(spacing: 28) {
+                    // Header section: Icon + Balance
+                    VStack(spacing: 12) {
+                        ZStack {
+                            // Background circle with subtle gradient
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        gradient: Gradient(colors: [
+                                            getAccountColor(accountTypes[account.id] ?? account.type).opacity(0.3),
+                                            getAccountColor(accountTypes[account.id] ?? account.type).opacity(0.15)
+                                        ]),
+                                        center: .center,
+                                        startRadius: 10,
+                                        endRadius: 40
+                                    )
+                                )
+                                .frame(width: 80, height: 80)
+                                .shadow(color: getAccountColor(accountTypes[account.id] ?? account.type).opacity(0.2), radius: 12, x: 0, y: 4)
+
+                            Image(systemName: getAccountIcon(accountTypes[account.id] ?? account.type))
+                                .font(.system(size: 38, weight: .semibold))
+                                .foregroundColor(getAccountColor(accountTypes[account.id] ?? account.type))
+                        }
+                        .padding(.top, 20)
+                        
+                        VStack(spacing: 4) {
                             Text("Current Balance")
                                 .font(.subheadline)
+                                .fontWeight(.medium)
                                 .foregroundColor(.secondary)
-                                .minimumScaleFactor(0.85)
-                                .lineLimit(1)
+                                .textCase(.uppercase)
+                                .tracking(0.5)
                             
                             Text(formatCurrency(account.balance))
-                                .font(.title)
-                                .fontWeight(.bold)
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
                                 .foregroundColor(getBalanceColor(account))
-                                .minimumScaleFactor(0.85)
+                                .minimumScaleFactor(0.7)
                                 .lineLimit(1)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.bottom, 8)
-                        
-                        // Account name field
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Account Name")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                                .minimumScaleFactor(0.85)
-                                .lineLimit(1)
-                            
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 15)
-                                    .fill(Color(UIColor.secondarySystemBackground))
-                                    .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                                
-                                TextField("Account Name", text: Binding(
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(.ultraThinMaterial)
+                            .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 2)
+                    )
+                    .padding(.horizontal, 20)
+                    
+                    // Account Details Card
+                    CardView(title: "Account Details", icon: "person.text.rectangle") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            InputField(
+                                label: "Account Name",
+                                text: Binding(
                                     get: { accountNames[account.id] ?? account.name },
                                     set: { accountNames[account.id] = $0 }
-                                ))
-                                .padding()
-                            }
-                            .frame(height: 60)
+                                ),
+                                placeholder: "Enter account name"
+                            )
                         }
-                        .padding(.horizontal)
-                        
-                        // Account type picker
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Account Type")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                                .minimumScaleFactor(0.85)
-                                .lineLimit(1)
-                            
-                            HStack(spacing: 12) {
-                                ForEach(AccountType.allCases, id: \.self) { type in
-                                    AccountTypeButton(
-                                        type: type,
-                                        isSelected: accountTypes[account.id] ?? account.type == type,
-                                        onTap: {
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Type Selection Card
+                    CardView(title: "Account Type", icon: "list.bullet.rectangle") {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 16) {
+                            ForEach(AccountType.allCases, id: \.self) { type in
+                                AccountTypeButton(
+                                    type: type,
+                                    isSelected: accountTypes[account.id] ?? account.type == type,
+                                    onTap: {
+                                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                             accountTypes[account.id] = type
                                         }
-                                    )
-                                }
+                                    }
+                                )
+                                .frame(height: 85)
                             }
                         }
-                        .padding(.horizontal)
-                        
-                        // Initial balance field
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Initial Balance")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                                .minimumScaleFactor(0.85)
-                                .lineLimit(1)
-                            
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 15)
-                                    .fill(Color(UIColor.secondarySystemBackground))
-                                    .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                                
-                                HStack {
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Starting Balance Card
+                    CardView(title: "Starting Balance", icon: "dollarsign.circle") {
+                        VStack(spacing: 16) {
+                            HStack(spacing: 16) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Amount")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                        .textCase(.uppercase)
+                                        .tracking(0.3)
+                                    
                                     TextField("0.00", text: Binding(
                                         get: { accountPresets[account.id] ?? String(format: "%.2f", account.initialBalance) },
                                         set: { accountPresets[account.id] = $0 }
                                     ))
                                     .keyboardType(.decimalPad)
-                                    .padding()
+                                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 14)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(Color(.quaternarySystemFill))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .stroke(getAccountColor(accountTypes[account.id] ?? account.type).opacity(0.3), lineWidth: 1)
+                                            )
+                                    )
+                                }
+                                
+                                // Currency preview
+                                VStack(alignment: .trailing, spacing: 6) {
+                                    Text("Preview")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                        .textCase(.uppercase)
+                                        .tracking(0.3)
                                     
-                                    Spacer()
-                                    
-                                    // Preview formatted currency
                                     Text(formatPreviewCurrency(accountPresets[account.id] ?? String(format: "%.2f", account.initialBalance)))
-                                        .font(.headline)
-                                        .foregroundColor(.secondary)
-                                        .padding(.trailing)
-                                        .minimumScaleFactor(0.85)
-                                        .lineLimit(1)
+                                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            Capsule()
+                                                .fill(getAccountColor(accountTypes[account.id] ?? account.type).opacity(0.12))
+                                        )
+                                        .foregroundColor(getAccountColor(accountTypes[account.id] ?? account.type))
+                                        .minimumScaleFactor(0.8)
                                 }
                             }
-                            .frame(height: 60)
                         }
-                        .padding(.horizontal)
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Information Cards
+                    VStack(spacing: 16) {
+                        InfoCard(
+                            icon: "info.circle.fill",
+                            iconColor: viewModel.themeColor,
+                            text: "Initial balance is the starting amount for your account. The app will recalculate your current balance based on all transactions."
+                        )
                         
-                        // Information about initial balance
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("About Initial Balance")
-                                .font(.headline)
-                                .padding(.horizontal)
-                                .minimumScaleFactor(0.85)
-                                .lineLimit(1)
-                            
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .top, spacing: 12) {
-                                    Image(systemName: "info.circle.fill")
-                                        .foregroundColor(viewModel.themeColor)
-                                        .scaledToFit()
-                                        .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
-                                    
-                                    Text("Initial balance is the starting amount for your account. The app will recalculate your current balance based on all transactions.")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .minimumScaleFactor(0.85)
-                                        .lineLimit(3)
-                                }
-                                
-                                if (accountTypes[account.id] ?? account.type) == .credit {
-                                    HStack(alignment: .top, spacing: 12) {
-                                        Image(systemName: "creditcard.fill")
-                                            .foregroundColor(viewModel.themeColor)
-                                            .scaledToFit()
-                                            .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
-                                        
-                                        Text("For credit cards, the balance represents your debt. A positive balance means you owe money to the credit card company.")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                            .minimumScaleFactor(0.85)
-                                            .lineLimit(3)
-                                    }
-                                }
-                            }
-                            .padding()
-                            .background(viewModel.themeColor.opacity(0.1))
-                            .cornerRadius(12)
-                            .padding(.horizontal)
+                        if (accountTypes[account.id] ?? account.type) == .credit {
+                            InfoCard(
+                                icon: "creditcard.fill",
+                                iconColor: .orange,
+                                text: "For credit cards, the balance represents your debt. A positive balance means you owe money to the credit card company."
+                            )
                         }
-                        
-                        // Action buttons
-                        VStack(spacing: 12) {
-                            // Save button
-                            Button(action: {
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Action Buttons
+                    VStack(spacing: 16) {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
                                 saveAccountChanges()
-                                showEditAccountSheet = false
-                            }) {
+                                editingAccount = nil
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 18, weight: .semibold))
                                 Text("Save Changes")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(viewModel.themeColor)
-                                    .cornerRadius(15)
-                                    .shadow(color: viewModel.themeColor.opacity(0.4), radius: 5, x: 0, y: 3)
-                                    .minimumScaleFactor(0.85)
-                                    .lineLimit(1)
+                                    .font(.system(size: 18, weight: .semibold))
                             }
-                            .padding(.horizontal)
-                            
-                            // MARK: - Delete Account Button
-                            // This button initiates the delete process for the selected account.
-                            Button(action: {
-                                // Set the account to be deleted.
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [viewModel.themeColor, viewModel.themeColor.opacity(0.8)]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .shadow(color: viewModel.themeColor.opacity(0.3), radius: 8, x: 0, y: 4)
+                            )
+                        }
+                        .buttonStyle(ScaleButtonStyle())
+                        
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
                                 accountToDelete = account.id
-                                
                                 viewModel.deleteAccountAndTransactions(accountId: account.id)
-
-//                                // Specify the confirmation action.
-//                                confirmationAction = .deleteAccount
-//                                // Show the confirmation alert.
-//                                showConfirmationAlert = true
-                                // Hide the edit sheet to show the alert on the main view.
-                                showEditAccountSheet = false
-                                
-                            }) {
-                                HStack {
-                                    Image(systemName: "trash")
-                                    Text("Delete Account")
-                                }
-                                .font(.headline)
-                                .foregroundColor(.red)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.red.opacity(0.1))
-                                .cornerRadius(15)
-                                .minimumScaleFactor(0.85)
-                                .lineLimit(1)
+                                editingAccount = nil
                             }
-                            .padding(.horizontal)
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "trash.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Delete Account")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .fill(Color.red.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 18)
+                                            .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                                    )
+                            )
                         }
-                        .padding(.top, 12)
+                        .buttonStyle(ScaleButtonStyle(scale: 0.97))
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    
+                    Spacer(minLength: 20)
                 }
-                .padding(.horizontal)
-                .frame(maxWidth: 500)
-                .padding(.bottom, 30)
-                .onAppear {
-                    // Make sure the account data is available when the sheet appears
-                    if let account = editingAccount {
-                        if accountNames[account.id] == nil {
-                            accountNames[account.id] = account.name
-                        }
-                        if accountPresets[account.id] == nil {
-                            accountPresets[account.id] = String(format: "%.2f", account.initialBalance)
-                        }
-                        if accountTypes[account.id] == nil {
-                            accountTypes[account.id] = account.type
-                        }
-                    }
-                }
+                .padding(.top, 12)
+                .padding(.bottom, 32)
             }
             .navigationTitle("Edit Account")
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    showEditAccountSheet = false
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            editingAccount = nil
+                        }
+                    }
+                    .foregroundColor(viewModel.themeColor)
                 }
-            )
+            }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
         }
     }
-    
+
+    // MARK: - Supporting Views
+
+    struct CardView<Content: View>: View {
+        let title: String
+        let icon: String
+        let content: Content
+        
+        init(title: String, icon: String, @ViewBuilder content: () -> Content) {
+            self.title = title
+            self.icon = icon
+            self.content = content()
+        }
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 10) {
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    
+                    Text(title)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                }
+                
+                content
+            }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.regularMaterial)
+                    .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 2)
+            )
+        }
+    }
+
+    struct InputField: View {
+        let label: String
+        @Binding var text: String
+        let placeholder: String
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(label)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                
+                TextField(placeholder, text: $text)
+                    .font(.system(size: 17, weight: .medium))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.quaternarySystemFill))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color(.separator).opacity(0.5), lineWidth: 0.5)
+                            )
+                    )
+            }
+        }
+    }
+
+    struct InfoCard: View {
+        let icon: String
+        let iconColor: Color
+        let text: String
+        
+        var body: some View {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(iconColor.opacity(0.15))
+                        .frame(width: 32, height: 32)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(iconColor)
+                }
+                
+                Text(text)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(2)
+                
+                Spacer()
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(iconColor.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(iconColor.opacity(0.1), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    struct ScaleButtonStyle: ButtonStyle {
+        let scale: CGFloat
+        
+        init(scale: CGFloat = 0.95) {
+            self.scale = scale
+        }
+        
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .scaleEffect(configuration.isPressed ? scale : 1.0)
+                .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+        }
+    }
     private func saveAccountChanges() {
         guard let account = editingAccount else { return }
         
@@ -1363,6 +1452,145 @@ struct SettingsView: View {
             case .current: return "Current"
             case .credit: return "Credit"
             }
+        }
+    }
+    
+    /// New Account Card View for Settings accounts list, styled like AccountsListView cards
+    struct SettingsAccountCard: View {
+        let account: Account
+        let accountName: String
+        let accountType: AccountType
+        let accountPreset: String
+        let onTapEdit: () -> Void
+        @ObservedObject var viewModel: FinanceViewModel
+        @Environment(\.colorScheme) var colorScheme
+        
+        var body: some View {
+            Button(action: onTapEdit) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .center, spacing: 16) {
+                        
+                        ZStack {
+                            Circle()
+                                .fill(getAccountColor(accountType).opacity(0.2))
+                                .frame(width: 56, height: 56)
+                            
+                            Image(systemName: getAccountIcon(accountType))
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundColor(getAccountColor(accountType))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(accountName)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
+                            
+                            HStack(spacing: 8) {
+                                Text(getAccountTypeDisplay(accountType))
+                                    .font(.caption)
+                                    .bold()
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(getAccountColor(accountType).opacity(0.15))
+                                    .foregroundColor(getAccountColor(accountType))
+                                    .cornerRadius(8)
+                                
+                                if account.pools.count > 0 {
+                                    Text("\(account.pools.count) Pool\(account.pools.count > 1 ? "s" : "")")
+                                        .font(.caption)
+                                        .bold()
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(viewModel.themeColor.opacity(0.15))
+                                        .foregroundColor(viewModel.themeColor)
+                                        .cornerRadius(8)
+                                }
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text(formatCurrency(account.balance))
+                                .font(.headline)
+                                .foregroundColor(getBalanceColor(account))
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
+                            
+                            Text("Initial: \(formatPreviewCurrency(accountPreset))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+                .padding()
+                .background(
+                    colorScheme == .dark
+                    ? Color(UIColor.secondarySystemBackground)
+                    : Color(UIColor.systemBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 15)
+                        .stroke(
+                            getAccountColor(accountType)
+                                .opacity(colorScheme == .dark ? 0.4 : 0.2),
+                            lineWidth: 1.5
+                        )
+                )
+                .shadow(color: colorScheme == .dark
+                        ? Color.white.opacity(0.1)
+                        : Color.black.opacity(0.06), radius: 5, x: 0, y: 3)
+                .cornerRadius(15)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        
+        private func getAccountTypeDisplay(_ type: AccountType) -> String {
+            switch type {
+            case .savings:
+                return "Savings"
+            case .current:
+                return "Current"
+            case .credit:
+                return "Credit"
+            }
+        }
+        
+        private func getAccountIcon(_ type: AccountType) -> String {
+            switch type {
+            case .savings: return "building.columns.fill"
+            case .current: return "banknote.fill"
+            case .credit: return "creditcard.fill"
+            }
+        }
+        
+        private func getAccountColor(_ type: AccountType) -> Color {
+            switch type {
+            case .savings: return .blue
+            case .current: return .green
+            case .credit: return .purple
+            }
+        }
+        
+        private func getBalanceColor(_ account: Account) -> Color {
+            if account.type == .credit {
+                return account.balance > 0 ? .red : .green
+            } else {
+                return account.balance >= 0 ? .green : .red
+            }
+        }
+        
+        private func formatCurrency(_ value: Double) -> String {
+            return viewModel.formatCurrency(value)
+        }
+        
+        private func formatPreviewCurrency(_ valueString: String) -> String {
+            guard let value = Double(valueString) else { return viewModel.formatCurrency(0) }
+            return formatCurrency(value)
         }
     }
 }
