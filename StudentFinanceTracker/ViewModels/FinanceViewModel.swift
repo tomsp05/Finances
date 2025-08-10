@@ -4,6 +4,17 @@ import SwiftUI
 import WidgetKit
 
 class FinanceViewModel: ObservableObject {
+    /// Returns true if iCloud is available on this device
+    var iCloudAvailable: Bool {
+        FileManager.default.url(forUbiquityContainerIdentifier: nil) != nil
+    }
+
+    /// Returns true if data has been migrated to iCloud and iCloud is available
+    var isUsingICloud: Bool {
+        let migrationFlag = UserDefaults.standard.bool(forKey: "didMigrateToiCloud")
+        return migrationFlag && iCloudAvailable
+    }
+
     @Published var accounts: [Account] = []
     @Published var transactions: [Transaction] = []
     @Published var incomeCategories: [Category] = []
@@ -54,10 +65,77 @@ class FinanceViewModel: ObservableObject {
     @Published var budgets: [Budget] = []
 
     init() {
+        migrateDataToiCloudIfNeeded()
         migrateLegacyDataIfNeeded()
         loadUserPreferences()
         loadInitialData()
     }
+    
+    private func migrateDataToiCloudIfNeeded() {
+            let migrationKey = "didMigrateToiCloud"
+            let defaults = UserDefaults.standard
+
+            // 1. Check if migration has already been done
+            if defaults.bool(forKey: migrationKey) {
+                print("iCloud migration already completed.")
+                return
+            }
+
+            // 2. Check if the user is logged into iCloud
+            guard let iCloudDirectory = FileManager.default.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents") else {
+                print("iCloud is not available. Skipping migration for now.")
+                return
+            }
+            
+            // 3. Get the old local directory
+            let localDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+
+            let filesToMigrate = [
+                "accounts.json",
+                "transactions.json",
+                "incomeCategories.json",
+                "expenseCategories.json",
+                "budgets.json",
+                "userPreferences.json",
+                "themeColor.json",
+                "analyticsFilterState.json"
+            ]
+
+            var allFilesMigratedSuccessfully = true
+            
+            // 4. Loop through files and copy them to iCloud
+            for fileName in filesToMigrate {
+                let localFileURL = localDirectory.appendingPathComponent(fileName)
+                let iCloudFileURL = iCloudDirectory.appendingPathComponent(fileName)
+                
+                if FileManager.default.fileExists(atPath: localFileURL.path) {
+                    do {
+                        // Ensure the iCloud "Documents" directory exists
+                        try FileManager.default.createDirectory(at: iCloudDirectory, withIntermediateDirectories: true, attributes: nil)
+                        
+                        // Copy the file
+                        try FileManager.default.copyItem(at: localFileURL, to: iCloudFileURL)
+                        print("Successfully migrated \(fileName) to iCloud.")
+                        
+                        // Optional: You could delete the local file after successful migration,
+                        // but it's safer to leave it for a while.
+                        // try FileManager.default.removeItem(at: localFileURL)
+
+                    } catch {
+                        print("Error migrating \(fileName): \(error)")
+                        allFilesMigratedSuccessfully = false
+                        // Stop if any file fails to migrate
+                        break
+                    }
+                }
+            }
+
+            // 5. If all files were migrated, set the flag
+            if allFilesMigratedSuccessfully {
+                defaults.set(true, forKey: migrationKey)
+                print("iCloud migration completed and flag is set.")
+            }
+        }
 
     func loadUserPreferences() {
         if let preferences = DataService.shared.loadUserPreferences() {
