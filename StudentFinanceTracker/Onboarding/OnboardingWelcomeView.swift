@@ -9,157 +9,189 @@ struct OnboardingWelcomeView: View {
     @State private var animateImage = false
     @State private var keyboardHeight: CGFloat = 0
     @Environment(\.colorScheme) var colorScheme
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         GeometryReader { geometry in
-            // Responsive scaling constants based on screen width
+            // Responsive scaling constants based on screen width and keyboard state
             let width = geometry.size.width
-            let logoSize = min(max(width * 0.3, 80), 180) // Circle diameter scales with width, bounded min/max
-            let imageSize = logoSize * 0.67                  // Image inside circle scales proportionally
-            let hPadding = min(max(width * 0.10, 20), 60)  // Horizontal padding scales responsively
-            let contentSpacing: CGFloat = min(max(width * 0.06, 18), 40) // Vertical spacing scales responsively
-            let featureCornerRadius: CGFloat = min(max(width * 0.06, 10), 24) // Feature card corner radius scales
-            let bottomInset: CGFloat = min(max(width * 0.13, 40), 100) // Bottom safe area inset scales
+            let availableHeight = geometry.size.height - keyboardHeight
+            let isKeyboardVisible = keyboardHeight > 0
             
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: contentSpacing) {
-                    // Add dynamic top spacing when keyboard is visible to center content
-                    if keyboardHeight > 0 {
-                        // Use proportional spacing based on available height and keyboard height
-                        Spacer()
-                            .frame(height: (geometry.size.height - keyboardHeight - 350) / 2)
-                            .frame(maxHeight: 100) // Limit max spacing
-                    }
-                    
-                    ZStack {
-                        Circle()
-                            .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
-                            .frame(width: logoSize, height: logoSize) // Responsive circle size
+            // Adaptive sizing based on keyboard visibility
+            let logoSize = isKeyboardVisible ? 
+                min(max(width * 0.2, 60), 120) : // Smaller when keyboard is visible
+                min(max(width * 0.3, 80), 180)   // Original size when keyboard hidden
+            let imageSize = logoSize * 0.67
+            let hPadding = min(max(width * 0.10, 20), 60)
+            let contentSpacing: CGFloat = isKeyboardVisible ? 
+                min(max(width * 0.03, 10), 20) : // Tighter spacing when keyboard visible
+                min(max(width * 0.06, 18), 40)   // Original spacing
+            let featureCornerRadius: CGFloat = min(max(width * 0.06, 10), 24)
+            
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: contentSpacing) {
+                        // Dynamic top spacing for better keyboard layout
+                        if isKeyboardVisible {
+                            Spacer()
+                                .frame(height: max(20, (availableHeight - 400) / 4))
+                                .frame(maxHeight: 60)
+                        } else {
+                            Spacer()
+                                .frame(height: 40)
+                        }
                         
-                        Image(systemName: "sterlingsign.ring.dashed")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: imageSize, height: imageSize) // Responsive image size
+                        // Logo with adaptive sizing
+                        ZStack {
+                            Circle()
+                                .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                                .frame(width: logoSize, height: logoSize)
+                            
+                            Image(systemName: "sterlingsign.ring.dashed")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: imageSize, height: imageSize)
+                                .foregroundColor(viewModel.themeColor)
+                        }
+                        .scaleEffect(animateImage ? 1.0 : 0.5)
+                        .opacity(animateImage ? 1.0 : 0.0)
+                        .animation(.easeOut(duration: 0.3), value: isKeyboardVisible)
+                        
+                        // Welcome title with adaptive font sizing
+                        Text("Welcome to Doughs")
+                            .font(.system(size: isKeyboardVisible ? 
+                                         min(max(width * 0.055, 18), 28) : // Smaller when keyboard visible
+                                         min(max(width * 0.073, 23), 36),  // Original size
+                                         weight: .bold))
                             .foregroundColor(viewModel.themeColor)
-                    }
-                    .scaleEffect(animateImage ? 1.0 : 0.5)
-                    .opacity(animateImage ? 1.0 : 0.0)
-                    
-                    // Welcome title - scaled font size and adjusted spacing
-                    Text("Welcome to Doughs")
-                        .font(.system(size: min(max(width * 0.073, 23), 36), weight: .bold)) // Responsive font size
-                        .foregroundColor(viewModel.themeColor)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, hPadding) // Responsive horizontal padding
-                        .padding(.top, keyboardHeight > 0 ? 0 : 5)
-                        .opacity(animateTitle ? 1.0 : 0.0)
-                        .offset(y: animateTitle ? 0 : 20)
-                    
-                    // Introduction text - only show when keyboard is hidden, scaled font size
-                    if keyboardHeight == 0 {
-                        Text("Let's set up your personal finance tracker to help you manage your money effectively.")
-                            .font(.headline)
-                            .font(.system(size: min(max(width * 0.045, 15), 22), weight: .semibold)) // Responsive font size
-                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .secondary)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, hPadding) // Responsive horizontal padding
-                            .padding(.top, -5) // Negative padding to bring closer to title
+                            .padding(.horizontal, hPadding)
+                            .padding(.top, isKeyboardVisible ? 0 : 5)
+                            .opacity(animateTitle ? 1.0 : 0.0)
+                            .offset(y: animateTitle ? 0 : 20)
+                            .animation(.easeOut(duration: 0.3), value: isKeyboardVisible)
+                        
+                        // Introduction text - hide when keyboard is visible
+                        if !isKeyboardVisible {
+                            Text("Let's set up your personal finance tracker to help you manage your money effectively.")
+                                .font(.system(size: min(max(width * 0.045, 15), 22), weight: .semibold))
+                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, hPadding)
+                                .padding(.top, -5)
+                                .opacity(animateText ? 1.0 : 0.0)
+                                .offset(y: animateText ? 0 : 20)
+                        }
+                        
+                        // Name input section with improved keyboard handling
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What should we call you?")
+                                .font(isKeyboardVisible ? .subheadline : .headline)
+                                .foregroundColor(colorScheme == .dark ? .white : .primary)
+                                .animation(.easeOut(duration: 0.3), value: isKeyboardVisible)
+                            
+                            HStack {
+                                Image(systemName: "person")
+                                    .foregroundColor(viewModel.themeColor)
+                                    .padding(.leading, 12)
+                                
+                                TextField("Your Name", text: $userName)
+                                    .focused($isTextFieldFocused)
+                                    .padding(.vertical, isKeyboardVisible ? 10 : 12)
+                                    .onChange(of: userName) { _, newValue in
+                                        viewModel.userPreferences.userName = newValue
+                                        viewModel.saveUserPreferences()
+                                    }
+                                    .onSubmit {
+                                        hideKeyboard()
+                                    }
+                                
+                                if isKeyboardVisible {
+                                    Button("Done") {
+                                        hideKeyboard()
+                                    }
+                                    .foregroundColor(viewModel.themeColor)
+                                    .padding(.trailing, 12)
+                                } else {
+                                    Spacer()
+                                    Spacer()
+                                    Spacer()
+                                }
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(colorScheme == .dark ?
+                                          Color(.systemGray6).opacity(0.2) :
+                                          Color(.systemGray6))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(isTextFieldFocused ? viewModel.themeColor : viewModel.themeColor.opacity(0.3), lineWidth: isTextFieldFocused ? 2 : 1)
+                                    )
+                            )
+                            .animation(.easeOut(duration: 0.2), value: isTextFieldFocused)
+                        }
+                        .padding(.horizontal, hPadding)
+                        .padding(.bottom, isKeyboardVisible ? hPadding * 0.5 : hPadding * 0.9)
+                        .id("nameInput") // Add ID for scroll targeting
+                        
+                        // Features section - only show when keyboard is hidden
+                        if !isKeyboardVisible {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("See what you can do:")
+                                    .font(.headline)
+                                    .padding(.bottom, 2)
+                                
+                                FeatureRow(
+                                    icon: "banknote.fill",
+                                    color: .green,
+                                    text: "Track all your accounts in one place"
+                                )
+                                
+                                FeatureRow(
+                                    icon: "chart.pie.fill",
+                                    color: .blue,
+                                    text: "Visualise your spending habits"
+                                )
+                                
+                                FeatureRow(
+                                    icon: "alarm.fill",
+                                    color: .orange,
+                                    text: "Set budgets and financial goals"
+                                )
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: featureCornerRadius)
+                                    .fill(colorScheme == .dark ?
+                                          Color(.systemGray6).opacity(0.2) :
+                                          Color(.systemBackground))
+                                    .shadow(color: colorScheme == .dark ?
+                                            Color.clear :
+                                            Color.black.opacity(0.05),
+                                           radius: 5, x: 0, y: 2)
+                            )
+                            .padding(.horizontal, hPadding * 0.75)
+                            .padding(.top, 5)
                             .opacity(animateText ? 1.0 : 0.0)
                             .offset(y: animateText ? 0 : 20)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("What should we call you?")
-                            .font(.headline)
-                            .foregroundColor(colorScheme == .dark ? .white : .primary)
+                            .animation(.easeOut.delay(0.2), value: animateText)
+                        }
                         
-                        HStack {
-                            Image(systemName: "person")
-                                .foregroundColor(viewModel.themeColor)
-                                .padding(.leading, 12)
-                            
-                            TextField("Your Name", text: $userName)
-                                .padding(.vertical, 12)
-                                .onChange(of: userName) { newValue in
-                                    viewModel.userPreferences.userName = newValue
-                                    viewModel.saveUserPreferences()
-                                }
-                            Spacer()
-                            Spacer()
-                            Spacer()
-
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(colorScheme == .dark ?
-                                      Color(.systemGray6).opacity(0.2) :
-                                      Color(.systemGray6))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(viewModel.themeColor.opacity(0.3), lineWidth: 1)
-                                )
-                        )
-                    }
-                    .padding(.horizontal, hPadding) // Responsive horizontal padding
-                    .padding(.bottom, hPadding * 0.9) // Responsive bottom padding
-                    
-                    
-                    if keyboardHeight == 0 {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("See what you can do:")
-                                .font(.headline)
-                                .padding(.bottom, 2)
-                            
-                            FeatureRow(
-                                icon: "banknote.fill",
-                                color: .green,
-                                text: "Track all your accounts in one place"
-                            )
-                            
-                            FeatureRow(
-                                icon: "chart.pie.fill",
-                                color: .blue,
-                                text: "Visualise your spending habits"
-                            )
-                            
-                            FeatureRow(
-                                icon: "alarm.fill",
-                                color: .orange,
-                                text: "Set budgets and financial goals"
-                            )
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: featureCornerRadius) // Responsive corner radius
-                                .fill(colorScheme == .dark ?
-                                      Color(.systemGray6).opacity(0.2) :
-                                      Color(.systemBackground))
-                                .shadow(color: colorScheme == .dark ?
-                                        Color.clear :
-                                        Color.black.opacity(0.05),
-                                       radius: 5, x: 0, y: 2)
-                        )
-                        .padding(.horizontal, hPadding * 0.75) // Responsive horizontal padding
-                        .padding(.top, 5)
-                        .opacity(animateText ? 1.0 : 0.0)
-                        .offset(y: animateText ? 0 : 20)
-                        .animation(.easeOut.delay(0.2), value: animateText)
-                    }
-                    
-                    // Add bottom spacing when keyboard is visible to balance the layout
-                    if keyboardHeight > 0 {
+                        // Dynamic bottom spacing
                         Spacer()
-                            .frame(height: (geometry.size.height - keyboardHeight - 350) / 2)
-                            .frame(maxHeight: 100) // Limit max spacing
-                    } else {
-                        // Use safe area inset for bottom padding
+                            .frame(height: isKeyboardVisible ? 20 : 60)
                     }
+                    .animation(.easeOut(duration: 0.3), value: isKeyboardVisible)
+                    .frame(minHeight: availableHeight)
                 }
-                .animation(.easeOut(duration: 0.2), value: keyboardHeight)
-                .frame(minHeight: geometry.size.height)
-                // Add safe area inset at bottom instead of fixed spacer
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    Color.clear.frame(height: bottomInset)
+                .onChange(of: isTextFieldFocused) { _, focused in
+                    if focused {
+                        // Scroll to the name input when focused
+                        withAnimation(.easeOut(duration: 0.5)) {
+                            proxy.scrollTo("nameInput", anchor: .center)
+                        }
+                    }
                 }
             }
         }
@@ -246,4 +278,3 @@ struct OnboardingWelcomeView_Previews: PreviewProvider {
         }
     }
 }
-
