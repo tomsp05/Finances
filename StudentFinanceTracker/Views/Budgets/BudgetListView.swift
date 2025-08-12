@@ -319,12 +319,6 @@ struct BudgetListView: View {
                                 Label("Edit Budget", systemImage: "pencil")
                             }
                             
-                            Button(action: {
-                                // Add quick actions
-                            }) {
-                                Label("View Transactions", systemImage: "list.bullet")
-                            }
-                            
                             Button(role: .destructive, action: {
                                 deleteBudget(budget)
                             }) {
