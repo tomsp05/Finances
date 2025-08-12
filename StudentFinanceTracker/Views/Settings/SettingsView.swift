@@ -775,8 +775,7 @@ struct SettingsView: View {
                                             endPoint: .trailing
                                         )
                                     )
-                                    .shadow(color: viewModel.themeColor.opacity(0.3), radius: 8, x: 0, y: 4)
-                            )
+                                    .shadow(color: viewModel.themeColor.opacity(0.3), radius: 8, x: 0, y: 4))
                         }
                         .buttonStyle(ScaleButtonStyle())
                         
@@ -1591,6 +1590,74 @@ struct SettingsView: View {
         private func formatPreviewCurrency(_ valueString: String) -> String {
             guard let value = Double(valueString) else { return viewModel.formatCurrency(0) }
             return formatCurrency(value)
+        }
+    }
+}
+
+struct CurrencySelectionCard: View {
+    let currency: Currency
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 8) {
+                // Currency symbol in a circle
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? getCurrencyColor().opacity(0.2) : Color(.systemGray6))
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            Circle()
+                                .stroke(isSelected ? getCurrencyColor() : Color.clear, lineWidth: 2)
+                        )
+                    
+                    Text(currency.rawValue)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(isSelected ? getCurrencyColor() : .secondary)
+                }
+                
+                // Currency name
+                Text(currency.name)
+                    .font(.caption)
+                    .fontWeight(isSelected ? .semibold : .medium)
+                    .foregroundColor(isSelected ? getCurrencyColor() : .secondary)
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? getCurrencyColor().opacity(0.08) : Color(.systemGray6).opacity(0.3))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(isSelected ? getCurrencyColor().opacity(0.3) : Color.clear, lineWidth: 1.5)
+                    )
+            )
+            .shadow(
+                color: isSelected ? getCurrencyColor().opacity(0.2) : Color.black.opacity(0.05),
+                radius: isSelected ? 8 : 2,
+                x: 0,
+                y: isSelected ? 4 : 1
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .scaleEffect(isSelected ? 1.02 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+    }
+    
+    private func getCurrencyColor() -> Color {
+        switch currency {
+        case .gbp:
+            return Color(red: 0.2, green: 0.4, blue: 0.8) // British Blue
+        case .usd:
+            return Color(red: 0.0, green: 0.5, blue: 0.3) // Dollar Green
+        case .eur:
+            return Color(red: 0.9, green: 0.6, blue: 0.1) // Euro Gold
         }
     }
 }
