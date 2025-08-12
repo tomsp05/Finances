@@ -17,14 +17,6 @@ struct AddTransactionView: View {
     @State private var selectedToAccountId: UUID? = nil
     @State private var selectedCategory: UUID? = nil
     
-    // Split payment fields
-    @State private var friendName: String = ""
-    @State private var friendAmount: String = "0.00"
-    @State private var userAmount: String = "0.00"
-    @State private var friendPaymentDestination: String = ""
-    @State private var friendPaymentAccountId: UUID? = nil
-    @State private var friendPaymentIsOther: Bool = false
-    
     // Recurring transaction fields
     @State private var isRecurring: Bool = false
     @State private var recurrenceInterval: RecurrenceInterval = .monthly
@@ -35,19 +27,13 @@ struct AddTransactionView: View {
     @State private var currentStep: FormStep = .basicInfo
     @State private var amountBeingEdited: AmountField = .total // Track which amount is being edited
     
+    // Warning state for description field
+    @State private var showDescriptionWarning: Bool = false
+    
     // Helper properties
     private var formattedAmount: String {
         guard let amountValue = Double(amount) else { return "\(viewModel.userPreferences.currency.rawValue)0.00" }
         return viewModel.formatCurrency(amountValue)
-    }
-    
-    // Check if split payment has data filled in
-    private var isSplitPaymentFilled: Bool {
-        return !friendName.isEmpty &&
-               (Double(userAmount) ?? 0) > 0 &&
-               (Double(friendAmount) ?? 0) > 0 &&
-               (!friendPaymentIsOther || !friendPaymentDestination.isEmpty) &&
-               (friendPaymentIsOther || friendPaymentAccountId != nil)
     }
     
     // Filtered categories based on transaction type
@@ -62,7 +48,7 @@ struct AddTransactionView: View {
     
     // Form steps enum
     enum FormStep {
-        case basicInfo, category, accounts, split, review
+        case basicInfo, category, accounts, review
     }
     
     // Which amount field is being edited
@@ -83,8 +69,6 @@ struct AddTransactionView: View {
                         categorySection
                     case .accounts:
                         accountsSection
-                    case .split:
-                        splitPaymentSection
                     case .review:
                         reviewSection
                     }
@@ -109,11 +93,6 @@ struct AddTransactionView: View {
                 selectedToAccountId = viewModel.accounts[0].id
                 selectedToAccount = viewModel.accounts[0].type
             }
-            
-            // Default friend payment account
-            if friendPaymentAccountId == nil && !viewModel.accounts.isEmpty {
-                friendPaymentAccountId = viewModel.accounts[0].id
-            }
         }
     }
     
@@ -136,11 +115,6 @@ struct AddTransactionView: View {
                             action: {
                                 transactionType = type
                                 selectedCategory = nil
-                                
-                                // Reset split on type change
-                                if type != .expense {
-                                    clearSplitData()
-                                }
                             }
                         )
                     }
@@ -166,13 +140,7 @@ struct AddTransactionView: View {
                             .font(.system(size: 24, weight: .bold))
                             .keyboardType(.decimalPad)
                             .onChange(of: amount) { newValue in
-                                // When changing total amount
                                 amountBeingEdited = .total
-                                
-                                // Update split amounts maintaining proportions if possible
-                                if isSplitPaymentStarted() {
-                                    updateSplitAmounts()
-                                }
                             }
                     }
                     .padding(.vertical)
@@ -191,9 +159,19 @@ struct AddTransactionView: View {
                     RoundedRectangle(cornerRadius: 15)
                         .fill(Color(UIColor.secondarySystemBackground))
                         .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 15)
+                                .stroke(Color.red, lineWidth: 2)
+                                .opacity(showDescriptionWarning && description.isEmpty ? 1 : 0)
+                        )
                     
                     TextField("Enter description", text: $description)
                         .padding()
+                        .onChange(of: description) { newValue in
+                            if !newValue.isEmpty {
+                                showDescriptionWarning = false
+                            }
+                        }
                 }
                 .frame(height: 60)
             }
@@ -347,310 +325,7 @@ struct AddTransactionView: View {
         }
     }
     
-    // Step 4: Split Payment (only for expenses, but can be skipped)
-    private var splitPaymentSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if transactionType == .expense {
-                
-                Text("Fill this in if you're splitting the expense, or skip to the next step")
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 8)
-                
-                // Friend name input
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Friend's Name")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 15)
-                            .fill(Color(UIColor.secondarySystemBackground))
-                            .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                        
-                        TextField("Friend's name", text: $friendName)
-                            .padding()
-                    }
-                    .frame(height: 60)
-                }
-                
-                // Split amount inputs section
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Payment Distribution")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    // Your amount input
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("You Paid")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(UIColor.secondarySystemBackground))
-                                .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                            
-                            HStack {
-                                Text(viewModel.userPreferences.currency.rawValue)
-                                    .foregroundColor(.secondary)
-                                    .padding(.leading)
-                                
-                                TextField("0.00", text: $userAmount)
-                                    .keyboardType(.decimalPad)
-                                    .onChange(of: userAmount) { newValue in
-                                        amountBeingEdited = .user
-                                        updateFriendAmount()
-                                    }
-                            }
-                            .padding(.vertical)
-                        }
-                        .frame(height: 60)
-                    }
-                    
-                    // Friend amount input (user can edit this one too)
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("\(friendName.isEmpty ? "Friend" : friendName) Paid")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(UIColor.secondarySystemBackground))
-                                .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                            
-                            HStack {
-                                Text(viewModel.userPreferences.currency.rawValue)
-                                    .foregroundColor(.secondary)
-                                    .padding(.leading)
-                                
-                                TextField("0.00", text: $friendAmount)
-                                    .keyboardType(.decimalPad)
-                            }
-                            .padding(.vertical)
-                        }
-                        .frame(height: 60)
-                    }
-                    
-                    // Total for reference (display only)
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Total")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text(formattedAmount)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
-                // Quick split buttons
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Quick Split")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 12) {
-                        Button(action: { splitEvenly() }) {
-                            Text("50/50")
-                                .font(.system(size: 14, weight: .medium))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray5))
-                                .cornerRadius(8)
-                        }
-                        
-                        Button(action: { splitCustom(yourPercent: 70) }) {
-                            Text("70/30")
-                                .font(.system(size: 14, weight: .medium))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray5))
-                                .cornerRadius(8)
-                        }
-                        
-                        Button(action: { splitCustom(yourPercent: 25) }) {
-                            Text("25/75")
-                                .font(.system(size: 14, weight: .medium))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray5))
-                                .cornerRadius(8)
-                        }
-                        
-                        Button(action: { userAmount = amount; friendAmount = "0.00" }) {
-                            Text("All You")
-                                .font(.system(size: 14, weight: .medium))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray5))
-                                .cornerRadius(8)
-                        }
-                    }
-                }
-                .padding(.vertical, 4)
-                
-                // Split distribution visualization
-                if let totalAmount = Double(amount), totalAmount > 0,
-                   let yourAmount = Double(userAmount), yourAmount > 0,
-                   let friendAmount = Double(friendAmount), friendAmount > 0 {
-                    let yourPercent = yourAmount / (yourAmount + friendAmount)
-                    let friendPercent = friendAmount / (yourAmount + friendAmount)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Split Distribution")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text("\(Int(yourPercent * 100))% / \(Int(friendPercent * 100))%")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        // Visual split indicator
-                        GeometryReader { geometry in
-                            HStack(spacing: 2) {
-                                Rectangle()
-                                    .fill(viewModel.themeColor)
-                                    .frame(width: geometry.size.width * CGFloat(yourPercent))
-                                
-                                Rectangle()
-                                    .fill(Color.orange)
-                                    .frame(width: geometry.size.width * CGFloat(friendPercent))
-                            }
-                            .cornerRadius(6)
-                        }
-                        .frame(height: 12)
-                        
-                        HStack {
-                            HStack {
-                                Rectangle()
-                                    .fill(viewModel.themeColor)
-                                    .frame(width: 12, height: 12)
-                                    .cornerRadius(3)
-                                
-                                Text("You")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            HStack {
-                                Rectangle()
-                                    .fill(Color.orange)
-                                    .frame(width: 12, height: 12)
-                                    .cornerRadius(3)
-                                
-                                Text(friendName.isEmpty ? "Friend" : friendName)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemBackground))
-                    .cornerRadius(15)
-                    .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                }
-                
-                // Friend's payment destination - redesigned
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Friend's Payment Method")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    // Account options
-                    ForEach(viewModel.accounts) { account in
-                        AccountSelectionRow(
-                            account: account,
-                            isSelected: !friendPaymentIsOther && friendPaymentAccountId == account.id,
-                            onTap: {
-                                friendPaymentIsOther = false
-                                friendPaymentAccountId = account.id
-                            }
-                        )
-                    }
-                    
-                    // Other option
-                    HStack(spacing: 16) {
-                        // "Other" icon
-                        ZStack {
-                            Circle()
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 40, height: 40)
-                            
-                            Image(systemName: "ellipsis.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.gray)
-                        }
-                        
-                        // Label and text field
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Other")
-                                .font(.headline)
-                            
-                            if friendPaymentIsOther {
-                                TextField("Cash, etc", text: $friendPaymentDestination)
-                                    .font(.subheadline)
-                            } else {
-                                Text("External payment method")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        if friendPaymentIsOther {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(viewModel.themeColor)
-                                .font(.title3)
-                        }
-                    }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(friendPaymentIsOther ? viewModel.themeColor.opacity(0.1) : Color(.systemBackground))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(friendPaymentIsOther ? viewModel.themeColor : Color.gray.opacity(0.2), lineWidth: 1)
-                    )
-                    .onTapGesture {
-                        friendPaymentIsOther = true
-                    }
-                }
-                
-                // Clear button (to reset split data)
-                Button(action: clearSplitData) {
-                    HStack {
-                        Image(systemName: "trash")
-                        Text("Clear Split Data")
-                    }
-                    .foregroundColor(.red)
-                    .padding(.vertical, 10)
-                }
-                .disabled(friendName.isEmpty && (Double(userAmount) ?? 0) == 0)
-                .opacity(friendName.isEmpty && (Double(userAmount) ?? 0) == 0 ? 0.5 : 1)
-                
-            } else {
-                // For income and transfers
-                Text("Split payment is only available for expenses")
-                    .foregroundColor(.secondary)
-                    .padding()
-            }
-        }
-    }
-    
-    // Step 5: Review
+    // Step 4: Review
     private var reviewSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Review Transaction")
@@ -738,53 +413,6 @@ struct AddTransactionView: View {
                         Spacer()
                         Text(account.name)
                             .fontWeight(.medium)
-                    }
-                }
-                
-                if isSplitPaymentFilled {
-                    Divider()
-                    
-                    HStack {
-                        Text("Split with")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(friendName)
-                            .fontWeight(.medium)
-                    }
-                    
-                    HStack {
-                        Text("Friend paid")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(viewModel.formatCurrency(Double(friendAmount) ?? 0))
-                            .fontWeight(.medium)
-                    }
-                    
-                    HStack {
-                        Text("You paid")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(viewModel.formatCurrency(Double(userAmount) ?? 0))
-                            .fontWeight(.medium)
-                    }
-                    
-                    if !friendPaymentIsOther, let accountId = friendPaymentAccountId,
-                       let account = viewModel.accounts.first(where: { $0.id == accountId }) {
-                        HStack {
-                            Text("Friend paid to")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text(account.name)
-                                .fontWeight(.medium)
-                        }
-                    } else if friendPaymentIsOther && !friendPaymentDestination.isEmpty {
-                        HStack {
-                            Text("Friend paid via")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text(friendPaymentDestination)
-                                .fontWeight(.medium)
-                        }
                     }
                 }
                 
@@ -922,15 +550,16 @@ struct AddTransactionView: View {
         withAnimation {
             switch currentStep {
             case .basicInfo:
+                if description.isEmpty {
+                    showDescriptionWarning = true
+                    return
+                }
                 currentStep = .category
             case .category:
                 currentStep = .accounts
             case .accounts:
-                currentStep = transactionType == .expense ? .split : .review
-            case .split:
                 currentStep = .review
             case .review:
-                // Should never happen
                 break
             }
         }
@@ -940,16 +569,13 @@ struct AddTransactionView: View {
         withAnimation {
             switch currentStep {
             case .basicInfo:
-                // Should never happen
                 break
             case .category:
                 currentStep = .basicInfo
             case .accounts:
                 currentStep = .category
-            case .split:
-                currentStep = .accounts
             case .review:
-                currentStep = transactionType == .expense ? .split : .accounts
+                currentStep = .accounts
             }
         }
     }
@@ -957,7 +583,7 @@ struct AddTransactionView: View {
     private func canMoveToNextStep() -> Bool {
         switch currentStep {
         case .basicInfo:
-            return !amount.isEmpty && Double(amount) != nil
+            return !amount.isEmpty && Double(amount) != nil && !description.isEmpty
         case .category:
             return selectedCategory != nil
         case .accounts:
@@ -967,26 +593,6 @@ struct AddTransactionView: View {
                 return selectedToAccountId != nil
             }
             return false
-        case .split:
-            // Split page can always be skipped, no validation required to move forward
-            // If there is data, validate that it's complete
-            if (Double(userAmount) ?? 0) > 0 || !friendName.isEmpty || (Double(friendAmount) ?? 0) > 0 {
-                // If some fields are filled, validate everything
-                if !friendName.isEmpty &&
-                   Double(userAmount) != nil && Double(userAmount) ?? 0 > 0 &&
-                   Double(friendAmount) != nil && Double(friendAmount) ?? 0 > 0 {
-                    
-                    // Validate friend payment details
-                    if friendPaymentIsOther {
-                        return !friendPaymentDestination.isEmpty
-                    } else {
-                        return friendPaymentAccountId != nil
-                    }
-                }
-                return false
-            }
-            // Empty split form can be skipped
-            return true
         case .review:
             return isFormValid()
         }
@@ -1009,111 +615,7 @@ struct AddTransactionView: View {
             return false
         }
         
-        // Split validation (only if split has data)
-        if isSplitPaymentStarted() {
-            guard !friendName.isEmpty,
-                  let friendAmountValue = Double(friendAmount), friendAmountValue > 0,
-                  let userAmountValue = Double(userAmount), userAmountValue > 0 else {
-                return false
-            }
-            
-            // If using "Other" payment method, need a destination
-            if friendPaymentIsOther && friendPaymentDestination.isEmpty {
-                return false
-            }
-            
-            // If not using "Other", need an account
-            if !friendPaymentIsOther && friendPaymentAccountId == nil {
-                return false
-            }
-        }
-        
         return true
-    }
-    
-    // MARK: - Split Payment Helpers
-    
-    private func isSplitPaymentStarted() -> Bool {
-        return !friendName.isEmpty || (Double(userAmount) ?? 0) > 0 || (Double(friendAmount) ?? 0) > 0
-    }
-    
-    // Clear all split payment data
-    private func clearSplitData() {
-        friendName = ""
-        userAmount = "0.00"
-        friendAmount = "0.00"
-        friendPaymentDestination = ""
-        friendPaymentIsOther = false
-        // Don't clear friendPaymentAccountId as it's a useful default
-    }
-    
-    // Update amounts based on which field was edited
-    private func updateSplitAmounts() {
-        switch amountBeingEdited {
-        case .total:
-            // Adjust both amounts proportionally if possible
-            if let totalAmount = Double(amount),
-               let oldUserAmount = Double(userAmount), oldUserAmount > 0,
-               let oldFriendAmount = Double(friendAmount), oldFriendAmount > 0 {
-                
-                let oldTotal = oldUserAmount + oldFriendAmount
-                let userRatio = oldUserAmount / oldTotal
-                
-                let newUserAmount = totalAmount * userRatio
-                let newFriendAmount = totalAmount - newUserAmount
-                
-                userAmount = String(format: "%.2f", newUserAmount)
-                friendAmount = String(format: "%.2f", newFriendAmount)
-            } else {
-                // If no existing split, default to even split
-                splitEvenly()
-            }
-            
-        case .user:
-            updateFriendAmount()
-            
-        case .friend:
-            updateUserAmount()
-        }
-    }
-    
-    // Update friend's amount based on user's input
-    private func updateFriendAmount() {
-        if let totalAmount = Double(amount), let userPaid = Double(userAmount) {
-            // Friend paid the remainder of the total
-            let friendPaid = max(0, totalAmount - userPaid)
-            friendAmount = String(format: "%.2f", friendPaid)
-        } else {
-            friendAmount = "0.00"
-        }
-    }
-    
-    // Update user's amount based on friend's input
-    private func updateUserAmount() {
-        if let totalAmount = Double(amount), let friendPaid = Double(friendAmount) {
-            // User paid the remainder of the total
-            let userPaid = max(0, totalAmount - friendPaid)
-            userAmount = String(format: "%.2f", userPaid)
-        } else {
-            userAmount = "0.00"
-        }
-    }
-    
-    private func splitEvenly() {
-        if let totalAmountDouble = Double(amount) {
-            let halfAmount = totalAmountDouble / 2
-            userAmount = String(format: "%.2f", halfAmount)
-            friendAmount = String(format: "%.2f", halfAmount)
-        }
-    }
-    
-    private func splitCustom(yourPercent: Double) {
-        if let totalAmountDouble = Double(amount) {
-            let yourPortion = totalAmountDouble * (yourPercent / 100)
-            let friendPortion = totalAmountDouble - yourPortion
-            userAmount = String(format: "%.2f", yourPortion)
-            friendAmount = String(format: "%.2f", friendPortion)
-        }
     }
     
     // MARK: - Helper Methods
@@ -1126,8 +628,6 @@ struct AddTransactionView: View {
             return "Select Category"
         case .accounts:
             return "Select Accounts"
-        case .split:
-            return "Split Payment (Optional)"
         case .review:
             return "Review"
         }
@@ -1161,7 +661,7 @@ struct AddTransactionView: View {
         
         var newTransaction = Transaction(
             date: date,
-            amount: isSplitPaymentFilled ? Double(userAmount) ?? 0.0 : amountValue,
+            amount: amountValue,
             description: description,
             fromAccount: transactionType == .income ? nil : selectedFromAccount,
             toAccount: transactionType == .expense ? nil : selectedToAccount,
@@ -1172,17 +672,6 @@ struct AddTransactionView: View {
                              viewModel.incomeCategories[0].id :
                              viewModel.expenseCategories[0].id)
         )
-        
-        // Set split payment values if applicable
-        if isSplitPaymentFilled {
-            newTransaction.isSplit = true
-            newTransaction.friendName = friendName
-            newTransaction.friendAmount = Double(friendAmount) ?? 0.0
-            newTransaction.userAmount = Double(userAmount) ?? 0.0
-            newTransaction.friendPaymentDestination = friendPaymentIsOther ? friendPaymentDestination : ""
-            newTransaction.friendPaymentAccountId = friendPaymentIsOther ? nil : friendPaymentAccountId
-            newTransaction.friendPaymentIsAccount = !friendPaymentIsOther
-        }
         
         // Set recurring values (removed future transaction toggle)
         newTransaction.isFutureTransaction = date > Date() // Simply use date comparison
@@ -1208,13 +697,13 @@ struct AddTransactionView: View {
 }
 
 
-// Progress bar for step-by-step transaction flow (5 steps)
+// Progress bar for step-by-step transaction flow (4 steps)
 struct ProgressBar: View {
     var currentStep: AddTransactionView.FormStep
     
     var body: some View {
         HStack(spacing: 8) {
-            ForEach(0..<5) { index in
+            ForEach(0..<4) { index in
                 let stepCompleted = stepValue(for: currentStep) > index
                 let isCurrentStep = stepValue(for: currentStep) == index
                 
@@ -1239,8 +728,7 @@ struct ProgressBar: View {
         case .basicInfo: return 0
         case .category: return 1
         case .accounts: return 2
-        case .split: return 3
-        case .review: return 4
+        case .review: return 3
         }
     }
 }
@@ -1391,3 +879,4 @@ struct AccountSelectionRow: View {
         }
     }
 }
+
