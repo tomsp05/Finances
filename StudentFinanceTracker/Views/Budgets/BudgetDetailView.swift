@@ -2,13 +2,18 @@ import SwiftUI
 
 struct BudgetDetailView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
-    @State private var showingEditSheet = false
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
+    
+    // New state variables for editing
+    @State private var showEditSheet = false
+    @State private var editableBudget: Budget? = nil
     
     // Animation state
     @State private var isAppearing: Bool = false
-
+    
     var budget: Budget
+    var showsCloseButton: Bool = true
     
     // The actual budget might update in the ViewModel, need to find it
     private var currentBudget: Budget {
@@ -78,27 +83,43 @@ struct BudgetDetailView: View {
             }
             .padding(.bottom, 20)
         }
-        .navigationTitle(currentBudget.name)
+        .navigationBarTitleDisplayMode(.inline)
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
+        .navigationTitle(showsCloseButton ? "" : currentBudget.name)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                if showsCloseButton {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(viewModel.themeColor)
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-                    showingEditSheet = true
+                    editableBudget = currentBudget
+                    showEditSheet = true
                 }) {
                     Text("Edit")
                         .foregroundColor(viewModel.themeColor)
                 }
             }
         }
-        .sheet(isPresented: $showingEditSheet) {
+        .sheet(isPresented: $showEditSheet) {
             NavigationView {
-                BudgetEditView(isPresented: $showingEditSheet, budget: currentBudget)
-                    .navigationTitle("Edit Budget")
-                    .navigationBarItems(
-                        leading: Button("Cancel") {
-                            showingEditSheet = false
+                if let editableBudget = editableBudget {
+                    BudgetEditView(isPresented: $showEditSheet, budget: editableBudget)
+                        .navigationTitle("Edit Budget")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("Cancel") {
+                                    showEditSheet = false
+                                    self.editableBudget = nil
+                                }
+                            }
                         }
-                    )
+                }
             }
         }
         .onAppear {

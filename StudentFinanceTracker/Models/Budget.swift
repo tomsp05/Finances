@@ -6,7 +6,7 @@ enum BudgetType: String, Codable, CaseIterable {
     case account
 }
 
-struct Budget: Identifiable, Codable {
+struct Budget: Identifiable, Codable, Hashable {
     var id = UUID()
     var name: String
     var amount: Double

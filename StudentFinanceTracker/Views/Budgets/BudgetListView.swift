@@ -27,7 +27,7 @@ struct BudgetListView: View {
                 // Search and filter bar
                 searchAndFilterBar
                 
-
+                
                 
                 // Budget sections
                 if !filteredOverallBudgets.isEmpty {
@@ -57,7 +57,9 @@ struct BudgetListView: View {
         .refreshable {
             await refreshBudgets()
         }
-        .sheet(isPresented: $showingAddBudget) {
+        .sheet(isPresented: $showingAddBudget, onDismiss: {
+            selectedBudgetForEdit = nil
+        }) {
             NavigationView {
                 BudgetEditView(isPresented: $showingAddBudget, budget: nil)
                     .navigationTitle("Add Budget")
@@ -71,9 +73,12 @@ struct BudgetListView: View {
                     }
             }
         }
-        .sheet(item: $selectedBudgetForEdit) { budget in
+        .sheet(item: $selectedBudgetForEdit, onDismiss: { selectedBudgetForEdit = nil }) { budget in
             NavigationView {
-                BudgetEditView(isPresented: .constant(true), budget: budget)
+                BudgetEditView(isPresented: Binding(
+                    get: { selectedBudgetForEdit != nil },
+                    set: { if !$0 { selectedBudgetForEdit = nil } }
+                ), budget: budget)
                     .navigationTitle("Edit Budget")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -86,7 +91,11 @@ struct BudgetListView: View {
             }
         }
         .sheet(item: $selectedBudgetForDetails) { budget in
-            BudgetDetailView(budget: budget)
+            NavigationView {
+                BudgetDetailView(budget: budget)
+                    .navigationTitle(budget.name)
+                    .navigationBarTitleDisplayMode(.inline)
+            }
         }
 
     }

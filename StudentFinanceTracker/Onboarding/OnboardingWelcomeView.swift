@@ -12,10 +12,20 @@ struct OnboardingWelcomeView: View {
     
     var body: some View {
         GeometryReader { geometry in
+            // Responsive scaling constants based on screen width
+            let width = geometry.size.width
+            let logoSize = min(max(width * 0.3, 80), 180) // Circle diameter scales with width, bounded min/max
+            let imageSize = logoSize * 0.67                  // Image inside circle scales proportionally
+            let hPadding = min(max(width * 0.10, 20), 60)  // Horizontal padding scales responsively
+            let contentSpacing: CGFloat = min(max(width * 0.06, 18), 40) // Vertical spacing scales responsively
+            let featureCornerRadius: CGFloat = min(max(width * 0.06, 10), 24) // Feature card corner radius scales
+            let bottomInset: CGFloat = min(max(width * 0.13, 40), 100) // Bottom safe area inset scales
+            
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 25) {
+                VStack(spacing: contentSpacing) {
                     // Add dynamic top spacing when keyboard is visible to center content
                     if keyboardHeight > 0 {
+                        // Use proportional spacing based on available height and keyboard height
                         Spacer()
                             .frame(height: (geometry.size.height - keyboardHeight - 350) / 2)
                             .frame(maxHeight: 100) // Limit max spacing
@@ -24,35 +34,35 @@ struct OnboardingWelcomeView: View {
                     ZStack {
                         Circle()
                             .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
-                            .frame(width: 120, height: 120)
+                            .frame(width: logoSize, height: logoSize) // Responsive circle size
                         
                         Image(systemName: "sterlingsign.ring.dashed")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 80, height: 80)
+                            .frame(width: imageSize, height: imageSize) // Responsive image size
                             .foregroundColor(viewModel.themeColor)
                     }
                     .scaleEffect(animateImage ? 1.0 : 0.5)
                     .opacity(animateImage ? 1.0 : 0.0)
                     
-                    // Welcome title - more compact spacing
+                    // Welcome title - scaled font size and adjusted spacing
                     Text("Welcome to Doughs")
-                        .font(.title)
-                        .fontWeight(.bold)
+                        .font(.system(size: min(max(width * 0.073, 23), 36), weight: .bold)) // Responsive font size
                         .foregroundColor(viewModel.themeColor)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                        .padding(.horizontal, hPadding) // Responsive horizontal padding
                         .padding(.top, keyboardHeight > 0 ? 0 : 5)
                         .opacity(animateTitle ? 1.0 : 0.0)
                         .offset(y: animateTitle ? 0 : 20)
                     
-                    // Introduction text - only show when keyboard is hidden
+                    // Introduction text - only show when keyboard is hidden, scaled font size
                     if keyboardHeight == 0 {
                         Text("Let's set up your personal finance tracker to help you manage your money effectively.")
                             .font(.headline)
+                            .font(.system(size: min(max(width * 0.045, 15), 22), weight: .semibold)) // Responsive font size
                             .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .secondary)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                            .padding(.horizontal, hPadding) // Responsive horizontal padding
                             .padding(.top, -5) // Negative padding to bring closer to title
                             .opacity(animateText ? 1.0 : 0.0)
                             .offset(y: animateText ? 0 : 20)
@@ -90,9 +100,9 @@ struct OnboardingWelcomeView: View {
                                 )
                         )
                     }
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 40)
-
+                    .padding(.horizontal, hPadding) // Responsive horizontal padding
+                    .padding(.bottom, hPadding * 0.9) // Responsive bottom padding
+                    
                     
                     if keyboardHeight == 0 {
                         VStack(alignment: .leading, spacing: 12) {
@@ -120,7 +130,7 @@ struct OnboardingWelcomeView: View {
                         }
                         .padding()
                         .background(
-                            RoundedRectangle(cornerRadius: 15)
+                            RoundedRectangle(cornerRadius: featureCornerRadius) // Responsive corner radius
                                 .fill(colorScheme == .dark ?
                                       Color(.systemGray6).opacity(0.2) :
                                       Color(.systemBackground))
@@ -129,7 +139,7 @@ struct OnboardingWelcomeView: View {
                                         Color.black.opacity(0.05),
                                        radius: 5, x: 0, y: 2)
                         )
-                        .padding(.horizontal, 30)
+                        .padding(.horizontal, hPadding * 0.75) // Responsive horizontal padding
                         .padding(.top, 5)
                         .opacity(animateText ? 1.0 : 0.0)
                         .offset(y: animateText ? 0 : 20)
@@ -142,13 +152,15 @@ struct OnboardingWelcomeView: View {
                             .frame(height: (geometry.size.height - keyboardHeight - 350) / 2)
                             .frame(maxHeight: 100) // Limit max spacing
                     } else {
-                        // Extra padding at the bottom to avoid the navigation controls when keyboard is hidden
-                        Spacer()
-                            .frame(height: 100)
+                        // Use safe area inset for bottom padding
                     }
                 }
                 .animation(.easeOut(duration: 0.2), value: keyboardHeight)
                 .frame(minHeight: geometry.size.height)
+                // Add safe area inset at bottom instead of fixed spacer
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Color.clear.frame(height: bottomInset)
+                }
             }
         }
         .onAppear {
@@ -234,3 +246,4 @@ struct OnboardingWelcomeView_Previews: PreviewProvider {
         }
     }
 }
+

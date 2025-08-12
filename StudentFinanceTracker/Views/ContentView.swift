@@ -5,6 +5,9 @@ struct ContentView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
+    @Environment(\.dynamicTypeSize) var dynamicTypeSize
+
+    private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibility }
 
     @State private var previousBalance: Double = 0.0
     @State private var isAnimating: Bool = false
@@ -56,6 +59,10 @@ struct ContentView: View {
             return "eurosign.circle.fill"
         }
     }
+    
+    private var showNavIcon: Bool {
+        !(horizontalSizeClass == .compact && verticalSizeClass == .compact) && !isAccessibilitySize
+    }
 
     func refreshBalanceDisplay() {
         viewModel.recalcAccounts()
@@ -96,6 +103,8 @@ struct ContentView: View {
                             Text("Net Balance")
                                 .font(.headline)
                                 .foregroundColor(.white)
+                                .minimumScaleFactor(0.7)
+                                .lineLimit(1)
                             
                             ZStack(alignment: .center) {
                                 balanceDisplay
@@ -106,6 +115,8 @@ struct ContentView: View {
                                 Text("View Accounts")
                                     .font(.caption)
                                     .foregroundColor(.white)
+                                    .minimumScaleFactor(0.7)
+                                    .lineLimit(1)
                                 
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
@@ -145,10 +156,14 @@ struct ContentView: View {
                                 Text("No transactions yet")
                                     .font(.headline)
                                     .foregroundColor(.secondary)
+                                    .minimumScaleFactor(0.7)
+                                    .lineLimit(1)
                                 
                                 Text("Tap 'Add Transaction' to get started")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                    .minimumScaleFactor(0.7)
+                                    .lineLimit(1)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 40)
@@ -159,6 +174,8 @@ struct ContentView: View {
                                         .font(.headline)
                                         .foregroundColor(.secondary)
                                         .padding(.vertical, 4)
+                                        .minimumScaleFactor(0.7)
+                                        .lineLimit(1)
                                     
                                     Divider()
                                     
@@ -181,13 +198,17 @@ struct ContentView: View {
                                     .frame(maxWidth: .infinity)
                                     .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
                                     .cornerRadius(15)
+                                    .minimumScaleFactor(0.7)
+                                    .lineLimit(1)
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
                     }
                     .padding(.horizontal, horizontalPadding)
+                    .dynamicTypeSize(.xSmall ... .accessibility3)
                 }
                 .padding(.bottom, 20)
+                .dynamicTypeSize(.xSmall ... .accessibility3)
             }
             .navigationTitle("Doughs")
             .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
@@ -231,6 +252,7 @@ struct ContentView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .dynamicTypeSize(.xSmall ... .accessibility3)
     }
 
     // MARK: - Refactored Helper Views
@@ -247,6 +269,8 @@ struct ContentView: View {
             negativeColor: .white
         )
         .scaleEffect(animationScale)
+        .minimumScaleFactor(0.7)
+        .lineLimit(1)
         .modifier(ShimmerEffect(
             isAnimating: isAnimating,
             isDarkMode: colorScheme == .dark
@@ -266,6 +290,8 @@ struct ContentView: View {
                     Text(viewModel.formatCurrency(abs(difference)))
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(difference >= 0 ? .green : .red)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -299,6 +325,7 @@ struct ContentView: View {
                 }
             }
             .padding(.horizontal, horizontalPadding)
+            .dynamicTypeSize(.xSmall ... .accessibility3)
         } else if horizontalSizeClass == .compact && verticalSizeClass == .compact {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
@@ -313,6 +340,7 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, horizontalPadding)
             }
+            .dynamicTypeSize(.xSmall ... .accessibility3)
         } else {
             let columns = [
                 GridItem(.adaptive(minimum: 200, maximum: 300), spacing: 16)
@@ -325,15 +353,17 @@ struct ContentView: View {
                 navCardSettings
             }
             .padding(.horizontal, horizontalPadding)
+            .dynamicTypeSize(.xSmall ... .accessibility3)
         }
     }
     
+    // MARK: - Navigation Cards Updated without showText flag
     private var navCardBudgets: some View {
         NavigationLink(destination: BudgetListView()) {
             NavCardView(
                 title: "Budgets",
-                subtitle: "Keep Track",
-                iconName: budgetsIconName
+                subtitle: isAccessibilitySize ? "" : "Keep Track",
+                iconName: showNavIcon ? budgetsIconName : nil
             )
         }
     }
@@ -342,8 +372,8 @@ struct ContentView: View {
         NavigationLink(destination: TransactionAnalyticsView()) {
             NavCardView(
                 title: "Analytics",
-                subtitle: "View Spending",
-                iconName: "chart.pie.fill"
+                subtitle: isAccessibilitySize ? "" : "Insights",
+                iconName: showNavIcon ? "chart.pie.fill" : nil
             )
         }
     }
@@ -352,8 +382,8 @@ struct ContentView: View {
         NavigationLink(destination: AddTransactionView()) {
             NavCardView(
                 title: "Add",
-                subtitle: "Transaction",
-                iconName: "plus.circle.fill"
+                subtitle: isAccessibilitySize ? "" : "Transaction",
+                iconName: showNavIcon ? "plus.circle.fill" : nil
             )
         }
     }
@@ -362,10 +392,16 @@ struct ContentView: View {
         NavigationLink(destination: SettingsView()) {
             NavCardView(
                 title: "Settings",
-                subtitle: "Customise",
-                iconName: "gear"
+                subtitle: isAccessibilitySize ? "" : "Customise",
+                iconName: showNavIcon ? "gear" : nil
             )
         }
+    }
+}
+
+extension DynamicTypeSize {
+    var isAccessibility: Bool {
+        self >= .accessibility1
     }
 }
 
@@ -405,4 +441,3 @@ struct ShimmerEffect: ViewModifier {
         }
     }
 }
-

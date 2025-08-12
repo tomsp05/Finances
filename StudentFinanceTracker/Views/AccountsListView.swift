@@ -1,5 +1,60 @@
 import SwiftUI
 
+// MARK: - Animated Circle Progress Shape for Circular Progress Indicator
+
+struct AnimatedCircleProgress: Shape {
+    var progress: CGFloat // 0 to 1
+    
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        let startAngle = Angle(degrees: -90)
+        let endAngle = Angle(degrees: -90 + 360 * Double(progress))
+        
+        path.addArc(center: center,
+                    radius: radius,
+                    startAngle: startAngle,
+                    endAngle: endAngle,
+                    clockwise: false)
+        return path
+    }
+}
+
+// MARK: - Animated Pie Segment for Pie Chart
+
+struct AnimatedPieSegment: Shape {
+    var startAngle: Angle
+    var endAngle: Angle
+    var progress: CGFloat // 0 to 1
+    
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        let adjustedEnd = Angle(degrees: startAngle.degrees + (endAngle.degrees - startAngle.degrees) * Double(progress))
+        
+        path.move(to: center)
+        path.addArc(center: center,
+                    radius: radius,
+                    startAngle: startAngle,
+                    endAngle: adjustedEnd,
+                    clockwise: false)
+        path.closeSubpath()
+        return path
+    }
+}
+
 struct AccountsListView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @Environment(\.colorScheme) var colorScheme
@@ -7,6 +62,15 @@ struct AccountsListView: View {
     @State private var isAppearing: Bool = false
     @State private var selectedFinancialInsight: Int = 0
     @State private var showingHealthScoreDetails: Bool = false
+    
+    // MARK: - New State vars for Pie Chart Animation, Animated Net Worth, and Financial Health Animation
+    
+    @State private var pieAnimationProgress: CGFloat = 0
+    @State private var animatedNetWorth: Double = 0
+    
+    // New states for animated financial health circle and score number
+    @State private var healthAnimationProgress: CGFloat = 0
+    @State private var animatedHealthScore: Double = 0
     
     private var netCurrentBalance: Double {
         let currentBalance = viewModel.accounts.first(where: { $0.type == .current })?.balance ?? 0.0
@@ -51,16 +115,16 @@ struct AccountsListView: View {
         switch score {
         case 80...100:
             status = "Excellent"
-            color = .green
+            color = Color(red: 0.20, green: 0.55, blue: 0.30)
         case 60...79:
             status = "Good"
-            color = .blue
+            color = Color(red: 0.20, green: 0.40, blue: 0.70)
         case 40...59:
             status = "Fair"
-            color = .orange
+            color = Color(red: 0.80, green: 0.40, blue: 0.20)
         default:
             status = "Needs Attention"
-            color = .red
+            color = Color(red: 0.70, green: 0.20, blue: 0.20)
         }
         
         return (score, status, color)
@@ -91,7 +155,7 @@ struct AccountsListView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Financial Health Header
+                // Financial Health Header with animated circle and number
                 financialHealthCard()
                 
                 // Net Worth and Balance Cards
@@ -118,9 +182,8 @@ struct AccountsListView: View {
                     
                     if !viewModel.accounts.isEmpty {
                         enhancedAccountDistributionView()
-                            .offset(y: isAppearing ? 0 : 25)
-                            .opacity(isAppearing ? 1.0 : 0.0)
-                            .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.5), value: isAppearing)
+                            .offset(y: pieAnimationProgress == 1 ? 0 : 25)
+                            .opacity(pieAnimationProgress == 1 ? 1.0 : 0.0)
                     }
                 }
                 .padding(.top, 5)
@@ -204,16 +267,18 @@ struct AccountsListView: View {
                             .stroke(Color.white.opacity(0.3), lineWidth: 6)
                             .frame(width: 60, height: 60)
                         
-                        Circle()
-                            .trim(from: 0, to: health.score / 100)
+                        // MARK: - Animated Circle Progress using healthAnimationProgress and health.score
+                        AnimatedCircleProgress(progress: healthAnimationProgress * CGFloat(health.score / 100))
                             .stroke(Color.white, lineWidth: 6)
                             .frame(width: 60, height: 60)
                             .rotationEffect(.degrees(-90))
-                            .animation(.easeInOut(duration: 1.5).delay(0.5), value: isAppearing)
+                            .animation(.easeInOut(duration: 1.5).delay(0.5), value: healthAnimationProgress)
                         
-                        Text("\(Int(health.score))")
+                        // MARK: - Animated Health Score Number
+                        Text("\(Int(animatedHealthScore))")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.white)
+                            .animation(.easeOut, value: animatedHealthScore)
                     }
                 }
                 
@@ -247,9 +312,25 @@ struct AccountsListView: View {
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.horizontal)
-        .offset(y: isAppearing ? 0 : 30)
+        // MARK: - Delayed offset and opacity to coordinate with animation
+        .offset(y: isAppearing ? 0 : 35)
         .opacity(isAppearing ? 1.0 : 0.0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1), value: isAppearing)
+        .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.15), value: isAppearing)
+        // MARK: - Animate healthAnimationProgress and animatedHealthScore when the view appears
+        .onAppear {
+            healthAnimationProgress = 0
+            animatedHealthScore = 0
+            
+            withAnimation(.easeInOut(duration: 1.5).delay(0.5)) {
+                healthAnimationProgress = 1
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                withAnimation(.easeOut(duration: 1.2)) {
+                    animatedHealthScore = health.score
+                }
+            }
+        }
         .sheet(isPresented: $showingHealthScoreDetails) {
             HealthScoreDetailsView(
                 score: health.score,
@@ -427,61 +508,67 @@ struct AccountsListView: View {
     }
     
     private func enhancedAccountDistributionView() -> some View {
-        VStack(spacing: 16) {
+        // MARK: - Enhanced Pie Chart with Animated Segments and Animated Net Worth Center
+        
+        // Calculate totals and portions
+        let savingsTotal = viewModel.accounts.filter { $0.type == .savings }.reduce(0.0) { $0 + $1.balance }
+        let creditTotal = viewModel.accounts.filter { $0.type == .credit }.reduce(0.0) { $0 + $1.balance }
+        let totalAbsolute = abs(savingsTotal) + abs(netCurrentBalance) + abs(creditTotal)
+        
+        // Avoid division by zero
+        let totalValid = totalAbsolute > 0 ? totalAbsolute : 1
+        
+        let savingsPortion = abs(savingsTotal) / totalValid
+        let currentPortion = abs(netCurrentBalance) / totalValid
+        let creditPortion = abs(creditTotal) / totalValid
+        
+        // Start angles for segments
+        let startAngleSavings = Angle(degrees: -90)
+        let endAngleSavings = Angle(degrees: -90 + 360 * Double(savingsPortion))
+        let startAngleCurrent = endAngleSavings
+        let endAngleCurrent = Angle(degrees: endAngleSavings.degrees + 360 * Double(currentPortion))
+        let startAngleCredit = endAngleCurrent
+        let endAngleCredit = Angle(degrees: endAngleCurrent.degrees + 360 * Double(creditPortion))
+        
+        return VStack(spacing: 16) {
             HStack(alignment: .center, spacing: 20) {
-                // Enhanced pie chart with animations
                 ZStack {
                     Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 20)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 140 / 7)
                         .frame(width: 140, height: 140)
                     
-                    if netWorth != 0 {
-                        let savingsTotal = viewModel.accounts.filter { $0.type == .savings }.reduce(0.0) { $0 + $1.balance }
-                        let creditTotal = viewModel.accounts.filter { $0.type == .credit }.reduce(0.0) { $0 + $1.balance }
-                        let totalAbsolute = abs(savingsTotal) + abs(netCurrentBalance) + abs(creditTotal)
-                        
-                        let savingsPortion = abs(savingsTotal) / totalAbsolute
-                        let currentPortion = abs(netCurrentBalance) / totalAbsolute
-                        let creditPortion = abs(creditTotal) / totalAbsolute
-                        
-                        // Animated segments
-                        Circle()
-                            .trim(from: 0, to: isAppearing ? savingsPortion : 0)
-                            .stroke(getAccountColor(.savings), lineWidth: 20)
+                    if totalAbsolute != 0 {
+                        // MARK: - Animated Pie Segments
+                        AnimatedPieSegment(startAngle: startAngleSavings, endAngle: endAngleSavings, progress: pieAnimationProgress)
+                            .fill(getAccountColor(.savings))
                             .frame(width: 140, height: 140)
-                            .rotationEffect(.degrees(-90))
-                            .animation(.easeInOut(duration: 1.0).delay(0.5), value: isAppearing)
                         
-                        Circle()
-                            .trim(from: 0, to: isAppearing ? currentPortion : 0)
-                            .stroke(getAccountColor(.current), lineWidth: 20)
+                        AnimatedPieSegment(startAngle: startAngleCurrent, endAngle: endAngleCurrent, progress: pieAnimationProgress)
+                            .fill(getAccountColor(.current))
                             .frame(width: 140, height: 140)
-                            .rotationEffect(.degrees(-90 + 360 * savingsPortion))
-                            .animation(.easeInOut(duration: 1.0).delay(0.7), value: isAppearing)
                         
-                        Circle()
-                            .trim(from: 0, to: isAppearing ? creditPortion : 0)
-                            .stroke(getAccountColor(.credit), lineWidth: 20)
+                        AnimatedPieSegment(startAngle: startAngleCredit, endAngle: endAngleCredit, progress: pieAnimationProgress)
+                            .fill(getAccountColor(.credit))
                             .frame(width: 140, height: 140)
-                            .rotationEffect(.degrees(-90 + 360 * (savingsPortion + currentPortion)))
-                            .animation(.easeInOut(duration: 1.0).delay(0.9), value: isAppearing)
                     }
                     
-                    // Center total
+                    // MARK: - Animated Center Total
                     VStack(spacing: 2) {
                         Text("Total")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         
-                        Text(formatCurrency(abs(netWorth)))
+                        Text(formatCurrency(animatedNetWorth))
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.primary)
+                            .animation(.easeOut, value: animatedNetWorth)
                     }
+                    .opacity(Double(pieAnimationProgress))
                 }
                 
-                // Enhanced legend with percentages
+                // MARK: - Animated Legend with Scale & Fade
                 VStack(alignment: .leading, spacing: 12) {
-                    ForEach(AccountType.allCases, id: \.self) { type in
+                    ForEach(Array(AccountType.allCases.enumerated()), id: \.1) { index, type in
                         let accounts = viewModel.accounts.filter { $0.type == type }
                         let total = accounts.reduce(0.0) { $0 + $1.balance }
                         let percentage = abs(total) / (abs(netWorth) > 0 ? abs(netWorth) : 1) * 100
@@ -509,6 +596,14 @@ struct AccountsListView: View {
                                     .foregroundColor(getBalanceColorForType(type, balance: total))
                             }
                         }
+                        // Animate each legend item with delay based on index
+                        .scaleEffect(pieAnimationProgress)
+                        .opacity(Double(pieAnimationProgress))
+                        .animation(
+                            .spring(response: 0.5, dampingFraction: 0.7)
+                                .delay(0.6 + Double(index) * 0.1),
+                            value: pieAnimationProgress
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -522,6 +617,22 @@ struct AccountsListView: View {
                 .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
         )
         .padding(.horizontal)
+        // MARK: - Trigger Pie Chart Animation on Appear
+        .onAppear {
+            pieAnimationProgress = 0
+            animatedNetWorth = 0
+            
+            withAnimation(.spring(response: 1.0, dampingFraction: 0.7).delay(0.3)) {
+                pieAnimationProgress = 1
+            }
+            
+            // Animate net worth count-up after pie animation delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+                withAnimation(.easeOut(duration: 1.2)) {
+                    animatedNetWorth = abs(netWorth)
+                }
+            }
+        }
     }
     
     // MARK: - Helper Functions
@@ -1296,7 +1407,12 @@ struct HealthScoreDetailsView: View {
 struct AccountsListView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
-            AccountsListView().environmentObject(FinanceViewModel())
+            AccountsListView()
+                .environmentObject(FinanceViewModel())
+                .onAppear {
+                    // Trigger animation deterministically in previews
+                }
         }
     }
 }
+
