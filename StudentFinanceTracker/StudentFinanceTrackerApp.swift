@@ -11,9 +11,15 @@ struct StudentFinanceTrackerApp: App {
                     .environmentObject(viewModel)
                     .accentColor(viewModel.themeColor) // Set the global accent color
             } else {
-                OnboardingContainerView()
+                
+                ContentView()
                     .environmentObject(viewModel)
                     .accentColor(viewModel.themeColor) // Set the global accent color
+                
+                
+//                OnboardingContainerView()
+//                    .environmentObject(viewModel)
+//                    .accentColor(viewModel.themeColor) // Set the global accent color
             }
         }
     }
