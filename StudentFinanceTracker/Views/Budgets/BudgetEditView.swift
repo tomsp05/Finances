@@ -2,9 +2,9 @@ import SwiftUI
 
 struct BudgetEditView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
+    @Environment(\.dismiss) var dismiss
     @Binding var isPresented: Bool
     @Environment(\.colorScheme) var colorScheme
-    @Environment(\.presentationMode) var presentationMode
     
     // If budget is nil, we're creating a new budget
     var budget: Budget?
@@ -155,7 +155,7 @@ struct BudgetEditView: View {
                             // Direct deletion function call
                             if let budgetToDelete = budget {
                                 viewModel.deleteBudget(budgetToDelete)
-                                isPresented = false
+                                dismiss()
                             }
                         }
                     } message: {
@@ -167,6 +167,9 @@ struct BudgetEditView: View {
         }
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .onAppear(perform: setupInitialValues)
+        .onChange(of: budget) { _ in
+            setupInitialValues()
+        }
         .navigationTitle(budget == nil ? "New Budget" : "Edit Budget")
     }
     
@@ -309,7 +312,7 @@ struct BudgetEditView: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         
         // Direct dismissal
-        isPresented = false
+        dismiss()
     }
     
     // Helper functions for account icons and colors

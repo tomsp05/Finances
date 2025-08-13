@@ -55,14 +55,14 @@ struct WhatsNewView: View {
                 FeatureBullet(
                     icon: "sterlingsign.circle.fill",
                     title: "Enhanced Budgeting",
-                    description: "Budgets now automatically reset for new periods (weekly, monthly, yearly) and track spending more accurately based on your chosen timeframes.",
+                    description: "Budgets can now be sorted by urgency and importance, allowing you to prioritise your spending more effectively.",
                     iconColor: .green
                 )
                 
                 FeatureBullet(
                     icon: "chart.bar.fill",
-                    title: "Advanced Analytics Filters",
-                    description: "New time filters (e.g., Year to Date, Past Year) and improved category/type selection for more granular insights into your spending habits.",
+                    title: "Advanced Analytics",
+                    description: "New views for analysing your spending patterns, including category breakdowns and time-based trends. Take control of your financial habits with detailed insights.",
                     iconColor: .blue
                 )
                 
@@ -74,16 +74,9 @@ struct WhatsNewView: View {
                 )
                 
                 FeatureBullet(
-                    icon: "arrow.triangle.2.circlepath",
-                    title: "Recurring Transactions",
-                    description: "Set up transactions to repeat daily, weekly, monthly, or yearly. Manage future instances with options to update or delete the entire series.",
-                    iconColor: .purple
-                )
-                
-                FeatureBullet(
                     icon: "creditcard.fill",
-                    title: "Money Pools",
-                    description: "Allocate portions of your account balances into 'pools' for specific savings goals, helping you visualize and manage funds more effectively.",
+                    title: "Financial Health",
+                    description: "Gain a quick insight into your financial health. Calculated from a few basic parameters, the financial health score gives you a snapshot of your financial situation.",
                     iconColor: .red
                 )
                 
