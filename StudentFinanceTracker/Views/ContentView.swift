@@ -366,6 +366,7 @@ struct ContentView: View {
                 iconName: showNavIcon ? budgetsIconName : nil
             )
         }
+        .dynamicTypeSize(.xSmall ... .large)
     }
     
     private var navCardAnalytics: some View {
@@ -376,6 +377,7 @@ struct ContentView: View {
                 iconName: showNavIcon ? "chart.pie.fill" : nil
             )
         }
+        .dynamicTypeSize(.xSmall ... .large)
     }
     
     private var navCardAddTransaction: some View {
@@ -386,6 +388,7 @@ struct ContentView: View {
                 iconName: showNavIcon ? "plus.circle.fill" : nil
             )
         }
+        .dynamicTypeSize(.xSmall ... .large)
     }
     
     private var navCardSettings: some View {
@@ -396,6 +399,7 @@ struct ContentView: View {
                 iconName: showNavIcon ? "gear" : nil
             )
         }
+        .dynamicTypeSize(.xSmall ... .large)
     }
 }
 
