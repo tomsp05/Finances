@@ -4,6 +4,7 @@ struct BudgetListView: View {
     @EnvironmentObject var viewModel: FinanceViewModel
     @State private var showingAddBudget = false
     @State private var selectedBudgetForEdit: Budget? = nil
+    @State private var showingEditBudget = false
     @State private var searchText = ""
     @State private var selectedFilter: BudgetFilter = .all
     @State private var showingBudgetInsights = false
@@ -57,39 +58,22 @@ struct BudgetListView: View {
         .refreshable {
             await refreshBudgets()
         }
-        .sheet(isPresented: $showingAddBudget, onDismiss: {
-            selectedBudgetForEdit = nil
-        }) {
-            NavigationView {
-                BudgetEditView(isPresented: $showingAddBudget, budget: nil)
-                    .navigationTitle("Add Budget")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Cancel") {
-                                showingAddBudget = false
-                            }
-                        }
-                    }
-            }
+        // Add Budget Sheet
+        .sheet(isPresented: $showingAddBudget) {
+            BudgetEditView(budget: nil)
+                .onDisappear {
+                    showingAddBudget = false
+                }
         }
-        .sheet(item: $selectedBudgetForEdit, onDismiss: { selectedBudgetForEdit = nil }) { budget in
-            NavigationView {
-                BudgetEditView(isPresented: Binding(
-                    get: { selectedBudgetForEdit != nil },
-                    set: { if !$0 { selectedBudgetForEdit = nil } }
-                ), budget: budget)
-                    .navigationTitle("Edit Budget")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Cancel") {
-                                selectedBudgetForEdit = nil
-                            }
-                        }
-                    }
-            }
+        // Edit Budget Sheet - Fixed version
+        .sheet(isPresented: $showingEditBudget) {
+            BudgetEditView(budget: selectedBudgetForEdit)
+                .onDisappear {
+                    showingEditBudget = false
+                    selectedBudgetForEdit = nil
+                }
         }
+        // Budget Details Sheet
         .sheet(item: $selectedBudgetForDetails) { budget in
             NavigationView {
                 BudgetDetailView(budget: budget)
@@ -297,6 +281,7 @@ struct BudgetListView: View {
                         .contextMenu {
                             Button(action: {
                                 selectedBudgetForEdit = budget
+                                showingEditBudget = true
                             }) {
                                 Label("Edit Budget", systemImage: "pencil")
                             }
@@ -366,19 +351,7 @@ struct BudgetListView: View {
                 .cornerRadius(15)
             }
             .buttonStyle(PlainButtonStyle())
-            
-            // Quick budget templates
-            if viewModel.budgets.isEmpty {
-                Text("Quick Start Templates:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                HStack(spacing: 8) {
-                    quickTemplateButton(title: "Monthly", icon: "calendar", amount: 1000)
-                    quickTemplateButton(title: "Groceries", icon: "cart", amount: 400)
-                    quickTemplateButton(title: "Entertainment", icon: "tv", amount: 200)
-                }
-            }
+        
         }
         .padding(.horizontal)
     }
@@ -498,6 +471,3 @@ struct BudgetListView: View {
         // This would integrate with your budget creation logic
     }
 }
-
-
-

@@ -105,22 +105,13 @@ struct BudgetDetailView: View {
                 }
             }
         }
+        // Fixed sheet presentation
         .sheet(isPresented: $showEditSheet) {
-            NavigationView {
-                if let editableBudget = editableBudget {
-                    BudgetEditView(isPresented: $showEditSheet, budget: editableBudget)
-                        .navigationTitle("Edit Budget")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarLeading) {
-                                Button("Cancel") {
-                                    showEditSheet = false
-                                    self.editableBudget = nil
-                                }
-                            }
-                        }
+            BudgetEditView(budget: editableBudget)
+                .onDisappear {
+                    showEditSheet = false
+                    editableBudget = nil
                 }
-            }
         }
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1)) {
